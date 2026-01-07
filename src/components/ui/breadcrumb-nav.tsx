@@ -18,6 +18,7 @@ const routeLabels: Record<string, string> = {
   settings: 'nav.settings',
   dashboard: 'nav.dashboard',
   catalog: 'nav.catalog',
+  profile: 'nav.profile',
 };
 
 export const BreadcrumbNav: React.FC = () => {

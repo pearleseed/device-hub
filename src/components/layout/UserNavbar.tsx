@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
@@ -15,31 +14,21 @@ import {
 import { NotificationCenter } from '@/components/notifications/NotificationCenter';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { cn } from '@/lib/utils';
-import { Search, Monitor, LogOut, User, Settings, LayoutDashboard, Package, Menu, X } from 'lucide-react';
-
-interface UserNavbarProps {
-  onSearch?: (query: string) => void;
-}
+import { Monitor, LogOut, User, LayoutDashboard, Package, Menu, X } from 'lucide-react';
 
 const navLinks = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { to: '/catalog', label: 'Device Catalog', icon: Package },
+  { to: '/catalog', label: 'Catalog', icon: Package },
 ];
 
-export const UserNavbar: React.FC<UserNavbarProps> = ({ onSearch }) => {
+export const UserNavbar: React.FC = () => {
   const { user, logout } = useAuth();
   const location = useLocation();
-  const [searchQuery, setSearchQuery] = useState('');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    onSearch?.(searchQuery);
-  };
-
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60">
-      <div className="container flex h-16 items-center justify-between px-4 md:px-6">
+    <header className="sticky top-0 z-50 w-full border-b bg-background shadow-sm">
+      <div className="container flex h-14 items-center justify-between px-4 md:px-6">
         {/* Logo */}
         <Link to="/dashboard" className="flex items-center gap-2">
           <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
@@ -48,8 +37,8 @@ export const UserNavbar: React.FC<UserNavbarProps> = ({ onSearch }) => {
           <span className="font-semibold text-lg hidden sm:inline-block">DeviceHub</span>
         </Link>
 
-        {/* Desktop Navigation Links */}
-        <nav className="hidden md:flex items-center gap-1 ml-8">
+        {/* Desktop Navigation - Tab Style */}
+        <nav className="hidden md:flex items-center bg-muted/50 rounded-lg p-1 ml-6">
           {navLinks.map(link => {
             const isActive = location.pathname === link.to;
             return (
@@ -57,10 +46,10 @@ export const UserNavbar: React.FC<UserNavbarProps> = ({ onSearch }) => {
                 key={link.to}
                 to={link.to}
                 className={cn(
-                  "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors",
+                  "flex items-center gap-2 px-4 py-1.5 rounded-md text-sm font-medium transition-all",
                   isActive 
-                    ? "bg-primary text-primary-foreground" 
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                    ? "bg-background text-foreground shadow-sm" 
+                    : "text-muted-foreground hover:text-foreground"
                 )}
               >
                 <link.icon className="h-4 w-4" />
@@ -70,33 +59,19 @@ export const UserNavbar: React.FC<UserNavbarProps> = ({ onSearch }) => {
           })}
         </nav>
 
-        {/* Search Bar */}
-        <form onSubmit={handleSearch} className="flex-1 max-w-md mx-4 md:mx-8 hidden sm:block">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              type="search"
-              placeholder="Search devices..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 h-10 bg-secondary border-0"
-            />
-          </div>
-        </form>
+        {/* Spacer */}
+        <div className="flex-1" />
 
         {/* Right Section */}
-        <div className="flex items-center gap-2">
-          {/* Theme Toggle */}
+        <div className="flex items-center gap-1.5">
           <ThemeToggle />
-          
-          {/* Notifications */}
           <NotificationCenter />
 
           {/* Mobile Menu Toggle */}
           <Button
             variant="ghost"
             size="icon"
-            className="md:hidden"
+            className="md:hidden h-9 w-9"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
           >
             {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -105,8 +80,8 @@ export const UserNavbar: React.FC<UserNavbarProps> = ({ onSearch }) => {
           {/* User Menu */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="relative h-10 w-10 rounded-full">
-                <Avatar className="h-10 w-10">
+              <Button variant="ghost" className="relative h-9 w-9 rounded-full">
+                <Avatar className="h-9 w-9">
                   <AvatarImage src={user?.avatar} alt={user?.name} />
                   <AvatarFallback>{user?.name?.charAt(0) || 'U'}</AvatarFallback>
                 </Avatar>
@@ -123,27 +98,9 @@ export const UserNavbar: React.FC<UserNavbarProps> = ({ onSearch }) => {
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild>
-                <Link to="/dashboard" className="cursor-pointer">
-                  <LayoutDashboard className="mr-2 h-4 w-4" />
-                  My Dashboard
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link to="/catalog" className="cursor-pointer">
-                  <Monitor className="mr-2 h-4 w-4" />
-                  Device Catalog
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
                 <Link to="/profile" className="cursor-pointer">
                   <User className="mr-2 h-4 w-4" />
                   Profile
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link to="/settings" className="cursor-pointer">
-                  <Settings className="mr-2 h-4 w-4" />
-                  Settings
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
@@ -158,22 +115,7 @@ export const UserNavbar: React.FC<UserNavbarProps> = ({ onSearch }) => {
 
       {/* Mobile Navigation Menu */}
       {mobileMenuOpen && (
-        <div className="md:hidden border-t bg-card p-4 space-y-3">
-          {/* Mobile Search */}
-          <form onSubmit={handleSearch}>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                type="search"
-                placeholder="Search devices..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 h-10 bg-secondary border-0 w-full"
-              />
-            </div>
-          </form>
-          
-          {/* Mobile Nav Links */}
+        <div className="md:hidden border-t bg-background p-3">
           <nav className="flex flex-col gap-1">
             {navLinks.map(link => {
               const isActive = location.pathname === link.to;
@@ -183,7 +125,7 @@ export const UserNavbar: React.FC<UserNavbarProps> = ({ onSearch }) => {
                   to={link.to}
                   onClick={() => setMobileMenuOpen(false)}
                   className={cn(
-                    "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors",
+                    "flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors",
                     isActive 
                       ? "bg-primary text-primary-foreground" 
                       : "text-muted-foreground hover:text-foreground hover:bg-muted"

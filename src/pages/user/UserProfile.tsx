@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { UserNavbar } from '@/components/layout/UserNavbar';
+import { BreadcrumbNav } from '@/components/ui/breadcrumb-nav';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -57,6 +58,7 @@ const UserProfile: React.FC = () => {
       <UserNavbar />
 
       <main id="main-content" className="container px-4 md:px-6 py-8" tabIndex={-1}>
+        <BreadcrumbNav />
         {/* Profile Header */}
         <div className="mb-8">
           <Card>
@@ -96,12 +98,6 @@ const UserProfile: React.FC = () => {
                   </div>
                 </div>
 
-                <Button asChild variant="outline">
-                  <Link to="/settings">
-                    <Settings className="h-4 w-4 mr-2" />
-                    Edit Settings
-                  </Link>
-                </Button>
               </div>
             </CardContent>
           </Card>

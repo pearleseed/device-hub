@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { Calendar } from '@/components/ui/calendar';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { format, parseISO, isWithinInterval, isSameDay, startOfDay } from 'date-fns';
-import { BookingRequest, Device, getDeviceById, getUserById } from '@/lib/mockData';
+import { CalendarDays, List } from 'lucide-react';
+import { BookingRequest, getDeviceById, getUserById } from '@/lib/mockData';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { BookingDetailsPopover } from './BookingDetailsPopover';
 import { cn } from '@/lib/utils';
@@ -42,7 +43,6 @@ export const DeviceCalendarView: React.FC<DeviceCalendarViewProps> = ({
 }) => {
   const { t } = useLanguage();
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
-  const [selectedBooking, setSelectedBooking] = useState<BookingRequest | null>(null);
 
   // Filter bookings by selected devices
   const filteredBookings = selectedDevices.length > 0
@@ -78,117 +78,146 @@ export const DeviceCalendarView: React.FC<DeviceCalendarViewProps> = ({
     };
 
     return (
-      <div className="flex gap-0.5 justify-center mt-1">
+      <div className="flex gap-0.5 justify-center mt-0.5">
         {statusCounts.pending > 0 && (
-          <div className="w-1.5 h-1.5 rounded-full bg-yellow-500" />
+          <div className="w-1 h-1 rounded-full bg-yellow-500" />
         )}
         {statusCounts.approved > 0 && (
-          <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+          <div className="w-1 h-1 rounded-full bg-blue-500" />
         )}
         {statusCounts.active > 0 && (
-          <div className="w-1.5 h-1.5 rounded-full bg-orange-500" />
+          <div className="w-1 h-1 rounded-full bg-orange-500" />
         )}
         {statusCounts.returned > 0 && (
-          <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
+          <div className="w-1 h-1 rounded-full bg-green-500" />
         )}
       </div>
     );
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <Card className="lg:col-span-2">
-        <CardHeader>
-          <CardTitle>{t('calendar.monthlyView')}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Calendar
-            mode="single"
-            selected={selectedDate}
-            onSelect={setSelectedDate}
-            className="rounded-md border pointer-events-auto"
-            components={{
-              DayContent: ({ date }) => (
-                <div className="flex flex-col items-center">
-                  <span>{format(date, 'd')}</span>
-                  {getDayContent(date)}
-                </div>
-              ),
-            }}
-          />
-          
-          {/* Legend */}
-          <div className="flex flex-wrap gap-4 mt-4 pt-4 border-t border-border">
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-yellow-500" />
-              <span className="text-sm">{t('requests.pending')}</span>
+    <Card className="overflow-hidden">
+      <CardContent className="p-0">
+        <div className="flex flex-col lg:flex-row">
+          {/* Calendar Section */}
+          <div className="flex-1 p-4 border-b lg:border-b-0 lg:border-r border-border">
+            <div className="flex items-center gap-2 mb-3">
+              <CalendarDays className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm font-medium">{t('calendar.monthlyView')}</span>
             </div>
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-blue-500" />
-              <span className="text-sm">{t('requests.approved')}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-orange-500" />
-              <span className="text-sm">{t('requests.active')}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-green-500" />
-              <span className="text-sm">{t('requests.returned')}</span>
+            <Calendar
+              mode="single"
+              selected={selectedDate}
+              onSelect={setSelectedDate}
+              className="rounded-md border w-full"
+              classNames={{
+                months: "w-full",
+                month: "w-full",
+                table: "w-full",
+                head_row: "flex w-full",
+                head_cell: "flex-1 text-muted-foreground font-normal text-xs",
+                row: "flex w-full",
+                cell: "flex-1 text-center p-0 relative",
+                day: cn(
+                  "h-8 w-full p-0 font-normal text-sm hover:bg-accent rounded-md transition-colors",
+                  "aria-selected:bg-primary aria-selected:text-primary-foreground"
+                ),
+                day_selected: "bg-primary text-primary-foreground hover:bg-primary",
+                day_today: "bg-accent font-semibold",
+              }}
+              components={{
+                DayContent: ({ date }) => (
+                  <div className="flex flex-col items-center py-1">
+                    <span>{format(date, 'd')}</span>
+                    {getDayContent(date)}
+                  </div>
+                ),
+              }}
+            />
+            
+            {/* Compact Legend */}
+            <div className="flex items-center gap-3 mt-3 pt-3 border-t border-border text-xs">
+              <div className="flex items-center gap-1">
+                <div className="w-2 h-2 rounded-full bg-yellow-500" />
+                <span className="text-muted-foreground">{t('requests.pending')}</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <div className="w-2 h-2 rounded-full bg-blue-500" />
+                <span className="text-muted-foreground">{t('requests.approved')}</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <div className="w-2 h-2 rounded-full bg-orange-500" />
+                <span className="text-muted-foreground">{t('requests.active')}</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <div className="w-2 h-2 rounded-full bg-green-500" />
+                <span className="text-muted-foreground">{t('requests.returned')}</span>
+              </div>
             </div>
           </div>
-        </CardContent>
-      </Card>
 
-      {/* Bookings for Selected Date */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">
-            {selectedDate
-              ? format(selectedDate, 'MMMM d, yyyy')
-              : t('calendar.selectDate')}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {bookingsForSelectedDate.length === 0 ? (
-            <p className="text-muted-foreground text-sm">{t('calendar.noBookingsForDate')}</p>
-          ) : (
-            <ScrollArea className="h-[400px] pr-4">
-              <div className="space-y-3">
-                {bookingsForSelectedDate.map(booking => {
-                  const device = getDeviceById(booking.deviceId);
-                  const user = getUserById(booking.userId);
-                  
-                  return (
-                    <Popover key={booking.id}>
-                      <PopoverTrigger asChild>
-                        <div className="p-3 rounded-lg border border-border hover:bg-accent cursor-pointer transition-colors">
-                          <div className="flex items-start justify-between mb-1">
-                            <span className="font-medium text-sm">{device?.name}</span>
-                            <Badge className={`${getStatusColor(booking.status)} text-white text-xs`}>
-                              {t(`requests.${booking.status}`)}
-                            </Badge>
-                          </div>
-                          <p className="text-xs text-muted-foreground">{user?.name}</p>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {format(parseISO(booking.startDate), 'MMM d')} - {format(parseISO(booking.endDate), 'MMM d')}
-                          </p>
-                        </div>
-                      </PopoverTrigger>
-                      <PopoverContent className="p-0 w-auto" align="start">
-                        <BookingDetailsPopover
-                          booking={booking}
-                          onApprove={onApprove}
-                          onReject={onReject}
-                        />
-                      </PopoverContent>
-                    </Popover>
-                  );
-                })}
+          {/* Bookings Panel */}
+          <div className="w-full lg:w-80 p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <List className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm font-medium">
+                {selectedDate ? format(selectedDate, 'MMM d, yyyy') : t('calendar.selectDate')}
+              </span>
+              {bookingsForSelectedDate.length > 0 && (
+                <Badge variant="secondary" className="ml-auto text-xs">
+                  {bookingsForSelectedDate.length}
+                </Badge>
+              )}
+            </div>
+            
+            {bookingsForSelectedDate.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-8 text-center">
+                <CalendarDays className="h-8 w-8 text-muted-foreground/50 mb-2" />
+                <p className="text-sm text-muted-foreground">{t('calendar.noBookingsForDate')}</p>
               </div>
-            </ScrollArea>
-          )}
-        </CardContent>
-      </Card>
-    </div>
+            ) : (
+              <ScrollArea className="h-[320px]">
+                <div className="space-y-2 pr-2">
+                  {bookingsForSelectedDate.map(booking => {
+                    const device = getDeviceById(booking.deviceId);
+                    const user = getUserById(booking.userId);
+                    
+                    return (
+                      <Popover key={booking.id}>
+                        <PopoverTrigger asChild>
+                          <div className={cn(
+                            "p-2.5 rounded-lg border-l-2 bg-accent/30 hover:bg-accent cursor-pointer transition-colors",
+                            booking.status === 'pending' && "border-l-yellow-500",
+                            booking.status === 'approved' && "border-l-blue-500",
+                            booking.status === 'active' && "border-l-orange-500",
+                            booking.status === 'returned' && "border-l-green-500",
+                            booking.status === 'rejected' && "border-l-gray-400"
+                          )}>
+                            <div className="flex items-center justify-between mb-0.5">
+                              <span className="font-medium text-sm truncate">{device?.name}</span>
+                              <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4">
+                                {t(`requests.${booking.status}`)}
+                              </Badge>
+                            </div>
+                            <p className="text-xs text-muted-foreground truncate">{user?.name}</p>
+                          </div>
+                        </PopoverTrigger>
+                        <PopoverContent className="p-0 w-auto" align="end">
+                          <BookingDetailsPopover
+                            booking={booking}
+                            onApprove={onApprove}
+                            onReject={onReject}
+                          />
+                        </PopoverContent>
+                      </Popover>
+                    );
+                  })}
+                </div>
+              </ScrollArea>
+            )}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 };

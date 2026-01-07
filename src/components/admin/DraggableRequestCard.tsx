@@ -1,12 +1,12 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { BookingRequest, RequestStatus, getDeviceById, getUserById } from '@/lib/mockData';
-import { Check, X, RotateCcw, GripVertical } from 'lucide-react';
-import { format } from 'date-fns';
+import { Check, X, RotateCcw, GripVertical, Calendar, Smartphone } from 'lucide-react';
+import { format, differenceInDays } from 'date-fns';
 import { cn } from '@/lib/utils';
 import {
   AlertDialog,
@@ -19,17 +19,25 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 interface DraggableRequestCardProps {
   request: BookingRequest;
   onStatusChange: (id: string, status: RequestStatus) => void;
   isSelected?: boolean;
+  compact?: boolean;
 }
 
 export const DraggableRequestCard: React.FC<DraggableRequestCardProps> = ({
   request,
   onStatusChange,
   isSelected,
+  compact = false,
 }) => {
   const {
     attributes,
@@ -59,6 +67,7 @@ export const DraggableRequestCard: React.FC<DraggableRequestCardProps> = ({
         onStatusChange={onStatusChange}
         dragHandleProps={{ ...attributes, ...listeners }}
         isSelected={isSelected}
+        compact={compact}
       />
     </div>
   );
@@ -70,6 +79,7 @@ interface RequestCardContentProps {
   isDragging?: boolean;
   dragHandleProps?: React.HTMLAttributes<HTMLDivElement>;
   isSelected?: boolean;
+  compact?: boolean;
 }
 
 export const RequestCardContent: React.FC<RequestCardContentProps> = ({
@@ -78,85 +88,99 @@ export const RequestCardContent: React.FC<RequestCardContentProps> = ({
   isDragging,
   dragHandleProps,
   isSelected,
+  compact = false,
 }) => {
   const device = getDeviceById(request.deviceId);
   const user = getUserById(request.userId);
 
   if (!device || !user) return null;
 
+  const durationDays = differenceInDays(new Date(request.endDate), new Date(request.startDate));
+
   return (
-    <Card className={cn(
-      "relative shadow-soft hover:shadow-medium transition-all duration-200 cursor-grab active:cursor-grabbing",
-      isDragging && "shadow-elevated ring-2 ring-primary",
-      isSelected && "ring-2 ring-primary bg-primary/5 shadow-medium"
-    )}>
-      <CardContent className="p-4">
-        <div className="flex items-start gap-2">
-          {/* Selection indicator */}
-          {isSelected && (
-            <div className="absolute -left-1 top-1/2 -translate-y-1/2 w-1 h-8 bg-primary rounded-full" />
-          )}
-          
-          {/* Drag Handle */}
-          <div
-            {...dragHandleProps}
-            className="mt-1 text-muted-foreground hover:text-foreground cursor-grab active:cursor-grabbing"
-          >
-            <GripVertical className="h-4 w-4" />
-          </div>
+    <TooltipProvider>
+      <Card className={cn(
+        "relative transition-all duration-200 cursor-grab active:cursor-grabbing group",
+        "hover:shadow-md hover:scale-[1.01]",
+        isDragging && "shadow-lg ring-2 ring-primary rotate-2",
+        isSelected && "ring-2 ring-primary bg-primary/5"
+      )}>
+        {/* Selection indicator */}
+        {isSelected && (
+          <div className="absolute -left-0.5 top-2 bottom-2 w-1 bg-primary rounded-full" />
+        )}
 
-          <div className="flex-1 min-w-0">
-            {/* Device Info */}
-            <div className="flex items-start gap-3 mb-3">
-              <div className="w-10 h-10 rounded-lg overflow-hidden bg-muted flex-shrink-0">
-                <img src={device.image} alt={device.name} className="w-full h-full object-cover" />
+        <div className="p-3">
+          {/* Compact header row */}
+          <div className="flex items-center gap-2">
+            {/* Drag Handle */}
+            <div
+              {...dragHandleProps}
+              className="text-muted-foreground/50 hover:text-muted-foreground cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity"
+            >
+              <GripVertical className="h-4 w-4" />
+            </div>
+
+            {/* Device thumbnail */}
+            <div className="w-8 h-8 rounded-md overflow-hidden bg-muted flex-shrink-0">
+              <img src={device.image} alt={device.name} className="w-full h-full object-cover" />
+            </div>
+
+            {/* Main info */}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <p className="font-medium text-sm truncate cursor-default">{device.name}</p>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="max-w-xs">
+                    <div className="space-y-1">
+                      <p className="font-medium">{device.name}</p>
+                      <p className="text-xs text-muted-foreground">{device.assetTag}</p>
+                      <p className="text-xs">{request.reason}</p>
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
               </div>
-              <div className="min-w-0 flex-1">
-                <p className="font-medium truncate text-sm">{device.name}</p>
-                <p className="text-xs text-muted-foreground">{device.assetTag}</p>
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Avatar className="h-4 w-4">
+                  <AvatarImage src={user.avatar} />
+                  <AvatarFallback className="text-[8px]">{user.name.charAt(0)}</AvatarFallback>
+                </Avatar>
+                <span className="truncate">{user.name}</span>
+                <span className="text-muted-foreground/50">•</span>
+                <span className="flex items-center gap-0.5 whitespace-nowrap">
+                  <Calendar className="h-3 w-3" />
+                  {durationDays}d
+                </span>
               </div>
             </div>
-            
-            {/* User */}
-            <div className="flex items-center gap-2 mb-2">
-              <Avatar className="h-5 w-5">
-                <AvatarImage src={user.avatar} />
-                <AvatarFallback className="text-[10px]">{user.name.charAt(0)}</AvatarFallback>
-              </Avatar>
-              <span className="text-xs text-muted-foreground">{user.name}</span>
-            </div>
 
-            {/* Dates & Reason */}
-            <div className="text-xs text-muted-foreground mb-3">
-              <p>{format(new Date(request.startDate), 'MMM d')} - {format(new Date(request.endDate), 'MMM d, yyyy')}</p>
-              <p className="mt-1 line-clamp-1">{request.reason}</p>
-            </div>
-
-            {/* Action Buttons */}
+            {/* Quick action buttons - inline for efficiency */}
             {onStatusChange && request.status === 'pending' && (
-              <div className="flex gap-2">
+              <div className="flex gap-1 flex-shrink-0">
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
                     <Button 
-                      size="sm" 
-                      className="flex-1 h-8 text-xs bg-status-available hover:bg-status-available/90" 
+                      size="icon"
+                      variant="ghost"
+                      className="h-7 w-7 text-green-600 hover:text-green-700 hover:bg-green-100"
                       onClick={(e) => e.stopPropagation()}
                     >
-                      <Check className="h-3 w-3 mr-1" /> Approve
+                      <Check className="h-4 w-4" />
                     </Button>
                   </AlertDialogTrigger>
                   <AlertDialogContent>
                     <AlertDialogHeader>
                       <AlertDialogTitle>Approve Request</AlertDialogTitle>
                       <AlertDialogDescription>
-                        Are you sure you want to approve this request for {device.name}? 
-                        This will allow {user.name} to use the device.
+                        Approve {user.name}'s request for {device.name}?
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                       <AlertDialogCancel>Cancel</AlertDialogCancel>
                       <AlertDialogAction 
-                        className="bg-status-available hover:bg-status-available/90"
+                        className="bg-green-600 hover:bg-green-700"
                         onClick={() => onStatusChange(request.id, 'approved')}
                       >
                         Approve
@@ -168,20 +192,19 @@ export const RequestCardContent: React.FC<RequestCardContentProps> = ({
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
                     <Button 
-                      size="sm" 
-                      variant="destructive" 
-                      className="flex-1 h-8 text-xs" 
+                      size="icon"
+                      variant="ghost"
+                      className="h-7 w-7 text-red-600 hover:text-red-700 hover:bg-red-100"
                       onClick={(e) => e.stopPropagation()}
                     >
-                      <X className="h-3 w-3 mr-1" /> Reject
+                      <X className="h-4 w-4" />
                     </Button>
                   </AlertDialogTrigger>
                   <AlertDialogContent>
                     <AlertDialogHeader>
                       <AlertDialogTitle>Reject Request</AlertDialogTitle>
                       <AlertDialogDescription>
-                        Are you sure you want to reject this request for {device.name} from {user.name}? 
-                        This action cannot be undone.
+                        Reject {user.name}'s request for {device.name}?
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
@@ -197,28 +220,32 @@ export const RequestCardContent: React.FC<RequestCardContentProps> = ({
                 </AlertDialog>
               </div>
             )}
+
             {onStatusChange && request.status === 'approved' && (
               <Button 
                 size="sm" 
-                className="w-full h-8 text-xs" 
+                variant="ghost"
+                className="h-7 text-xs flex-shrink-0"
                 onClick={(e) => { e.stopPropagation(); onStatusChange(request.id, 'active'); }}
               >
-                Mark as Active
+                Activate
               </Button>
             )}
+
             {onStatusChange && request.status === 'active' && (
               <Button 
                 size="sm" 
-                variant="outline" 
-                className="w-full h-8 text-xs" 
+                variant="ghost"
+                className="h-7 text-xs flex-shrink-0"
                 onClick={(e) => { e.stopPropagation(); onStatusChange(request.id, 'returned'); }}
               >
-                <RotateCcw className="h-3 w-3 mr-1" /> Mark Returned
+                <RotateCcw className="h-3 w-3 mr-1" />
+                Return
               </Button>
             )}
           </div>
         </div>
-      </CardContent>
-    </Card>
+      </Card>
+    </TooltipProvider>
   );
 };

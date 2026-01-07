@@ -1,10 +1,9 @@
 import React, { useState, useRef } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
 import {
   format,
   parseISO,
@@ -18,7 +17,7 @@ import {
   isSameDay,
   startOfDay,
 } from 'date-fns';
-import { BookingRequest, Device, devices, getDeviceById, getUserById } from '@/lib/mockData';
+import { BookingRequest, devices, getUserById } from '@/lib/mockData';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { BookingDetailsPopover } from './BookingDetailsPopover';
 import { cn } from '@/lib/utils';
@@ -34,21 +33,22 @@ interface DeviceTimelineViewProps {
 const getStatusColor = (status: string) => {
   switch (status) {
     case 'pending':
-      return 'bg-yellow-500';
+      return 'bg-yellow-500/90';
     case 'approved':
-      return 'bg-blue-500';
+      return 'bg-blue-500/90';
     case 'active':
-      return 'bg-orange-500';
+      return 'bg-orange-500/90';
     case 'returned':
-      return 'bg-green-500';
+      return 'bg-green-500/90';
     case 'rejected':
-      return 'bg-gray-400';
+      return 'bg-gray-400/90';
     default:
-      return 'bg-gray-400';
+      return 'bg-gray-400/90';
   }
 };
 
-const DAY_WIDTH = 40;
+const DAY_WIDTH = 32;
+const ROW_HEIGHT = 44;
 
 export const DeviceTimelineView: React.FC<DeviceTimelineViewProps> = ({
   bookings,
@@ -104,7 +104,7 @@ export const DeviceTimelineView: React.FC<DeviceTimelineViewProps> = ({
     
     return {
       left: leftDays * DAY_WIDTH,
-      width: Math.max(durationDays * DAY_WIDTH - 4, 20), // Minimum width
+      width: Math.max(durationDays * DAY_WIDTH - 2, 16),
     };
   };
 
@@ -119,53 +119,66 @@ export const DeviceTimelineView: React.FC<DeviceTimelineViewProps> = ({
   };
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between pb-2">
-        <CardTitle>{t('calendar.timelineView')}</CardTitle>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => navigateMonth('prev')}>
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <Button variant="outline" size="sm" onClick={goToToday}>
-            {t('calendar.today')}
-          </Button>
-          <span className="font-medium min-w-[140px] text-center">
-            {format(currentMonth, 'MMMM yyyy')}
-          </span>
-          <Button variant="outline" size="sm" onClick={() => navigateMonth('next')}>
-            <ChevronRight className="h-4 w-4" />
-          </Button>
+    <Card className="overflow-hidden">
+      <CardContent className="p-0">
+        {/* Compact Header */}
+        <div className="flex items-center justify-between px-3 py-2 border-b border-border bg-muted/30">
+          <div className="flex items-center gap-1.5">
+            <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+            <span className="font-medium text-xs">{t('calendar.timelineView')}</span>
+          </div>
+          <div className="flex items-center gap-0.5">
+            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => navigateMonth('prev')}>
+              <ChevronLeft className="h-3.5 w-3.5" />
+            </Button>
+            <Button variant="ghost" size="sm" className="h-6 px-1.5 text-[10px]" onClick={goToToday}>
+              {t('calendar.today')}
+            </Button>
+            <span className="font-medium text-xs min-w-[80px] text-center">
+              {format(currentMonth, 'MMM yyyy')}
+            </span>
+            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => navigateMonth('next')}>
+              <ChevronRight className="h-3.5 w-3.5" />
+            </Button>
+          </div>
         </div>
-      </CardHeader>
-      <CardContent>
+
         <ScrollArea className="w-full" ref={scrollRef}>
-          <div className="relative" style={{ minWidth: daysInMonth.length * DAY_WIDTH + 200 }}>
+          <div className="relative" style={{ minWidth: daysInMonth.length * DAY_WIDTH + 140 }}>
             {/* Header - Days */}
             <div className="flex border-b border-border sticky top-0 bg-background z-10">
-              <div className="w-[200px] flex-shrink-0 p-2 font-medium border-r border-border">
+              <div className="w-[140px] flex-shrink-0 px-2 py-1.5 font-medium text-xs text-muted-foreground border-r border-border">
                 {t('calendar.device')}
               </div>
               <div className="flex">
-                {daysInMonth.map((day, index) => (
-                  <div
-                    key={index}
-                    className={cn(
-                      "flex flex-col items-center justify-center p-1 border-r border-border",
-                      isSameDay(day, today) && "bg-primary/10"
-                    )}
-                    style={{ width: DAY_WIDTH }}
-                  >
-                    <span className="text-xs text-muted-foreground">
-                      {format(day, 'EEE')}
-                    </span>
-                    <span className={cn(
-                      "text-sm font-medium",
-                      isSameDay(day, today) && "text-primary"
-                    )}>
-                      {format(day, 'd')}
-                    </span>
-                  </div>
-                ))}
+                {daysInMonth.map((day, index) => {
+                  const isToday = isSameDay(day, today);
+                  const isWeekend = day.getDay() === 0 || day.getDay() === 6;
+                  return (
+                    <div
+                      key={index}
+                      className={cn(
+                        "flex flex-col items-center justify-center py-1",
+                        isToday && "bg-primary/10",
+                        isWeekend && !isToday && "bg-muted/50"
+                      )}
+                      style={{ width: DAY_WIDTH }}
+                    >
+                      <span className={cn(
+                        "text-[9px] uppercase leading-none",
+                        isToday ? "text-primary font-medium" : "text-muted-foreground"
+                      )}>
+                        {format(day, 'EEE').charAt(0)}
+                      </span>
+                      <span className={cn(
+                        "text-[11px] leading-none mt-0.5",
+                        isToday && "text-primary font-semibold"
+                      )}>
+                        {format(day, 'd')}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
@@ -174,16 +187,33 @@ export const DeviceTimelineView: React.FC<DeviceTimelineViewProps> = ({
               const deviceBookings = getDeviceBookings(device.id);
               
               return (
-                <div key={device.id} className="flex border-b border-border hover:bg-accent/30">
-                  <div className="w-[200px] flex-shrink-0 p-2 border-r border-border">
-                    <div className="font-medium text-sm truncate">{device.name}</div>
-                    <div className="text-xs text-muted-foreground">{device.assetTag}</div>
+                <div key={device.id} className="flex border-b border-border/50 hover:bg-accent/20 transition-colors">
+                  <div className="w-[140px] flex-shrink-0 px-2 py-1.5 border-r border-border">
+                    <div className="font-medium text-[11px] truncate leading-tight">{device.name}</div>
+                    <div className="text-[9px] text-muted-foreground leading-tight">{device.assetTag}</div>
                   </div>
-                  <div className="relative flex-1 h-16">
+                  <div className="relative flex-1" style={{ height: ROW_HEIGHT }}>
+                    {/* Weekend backgrounds */}
+                    {daysInMonth.map((day, index) => {
+                      const isWeekend = day.getDay() === 0 || day.getDay() === 6;
+                      const isToday = isSameDay(day, today);
+                      if (!isWeekend && !isToday) return null;
+                      return (
+                        <div
+                          key={index}
+                          className={cn(
+                            "absolute top-0 bottom-0",
+                            isToday ? "bg-primary/5" : "bg-muted/30"
+                          )}
+                          style={{ left: index * DAY_WIDTH, width: DAY_WIDTH }}
+                        />
+                      );
+                    })}
+                    
                     {/* Today line */}
                     {daysInMonth.some(d => isSameDay(d, today)) && (
                       <div
-                        className="absolute top-0 bottom-0 w-0.5 bg-primary z-5"
+                        className="absolute top-0 bottom-0 w-px bg-primary z-10"
                         style={{ left: differenceInDays(today, monthStart) * DAY_WIDTH + DAY_WIDTH / 2 }}
                       />
                     )}
@@ -198,13 +228,13 @@ export const DeviceTimelineView: React.FC<DeviceTimelineViewProps> = ({
                           <PopoverTrigger asChild>
                             <div
                               className={cn(
-                                "absolute top-3 h-10 rounded-md cursor-pointer transition-opacity hover:opacity-80 flex items-center px-2",
+                                "absolute top-1.5 rounded cursor-pointer transition-all hover:scale-[1.02] hover:shadow-md flex items-center px-1 overflow-hidden",
                                 getStatusColor(booking.status)
                               )}
-                              style={{ left, width }}
+                              style={{ left, width, height: ROW_HEIGHT - 12 }}
                             >
-                              <span className="text-xs text-white font-medium truncate">
-                                {user?.name}
+                              <span className="text-[9px] text-white font-medium truncate">
+                                {user?.name?.split(' ')[0]}
                               </span>
                             </div>
                           </PopoverTrigger>
@@ -224,7 +254,7 @@ export const DeviceTimelineView: React.FC<DeviceTimelineViewProps> = ({
             })}
 
             {filteredDevices.length === 0 && (
-              <div className="p-8 text-center text-muted-foreground">
+              <div className="p-8 text-center text-muted-foreground text-sm">
                 {t('calendar.noDevicesSelected')}
               </div>
             )}
@@ -232,27 +262,27 @@ export const DeviceTimelineView: React.FC<DeviceTimelineViewProps> = ({
           <ScrollBar orientation="horizontal" />
         </ScrollArea>
 
-        {/* Legend */}
-        <div className="flex flex-wrap gap-4 mt-4 pt-4 border-t border-border">
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-yellow-500" />
-            <span className="text-sm">{t('requests.pending')}</span>
+        {/* Compact Legend */}
+        <div className="flex items-center gap-3 px-3 py-1.5 border-t border-border bg-muted/30 text-[10px]">
+          <div className="flex items-center gap-1">
+            <div className="w-1.5 h-1.5 rounded-sm bg-yellow-500" />
+            <span className="text-muted-foreground">{t('requests.pending')}</span>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-blue-500" />
-            <span className="text-sm">{t('requests.approved')}</span>
+          <div className="flex items-center gap-1">
+            <div className="w-1.5 h-1.5 rounded-sm bg-blue-500" />
+            <span className="text-muted-foreground">{t('requests.approved')}</span>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-orange-500" />
-            <span className="text-sm">{t('requests.active')}</span>
+          <div className="flex items-center gap-1">
+            <div className="w-1.5 h-1.5 rounded-sm bg-orange-500" />
+            <span className="text-muted-foreground">{t('requests.active')}</span>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-green-500" />
-            <span className="text-sm">{t('requests.returned')}</span>
+          <div className="flex items-center gap-1">
+            <div className="w-1.5 h-1.5 rounded-sm bg-green-500" />
+            <span className="text-muted-foreground">{t('requests.returned')}</span>
           </div>
-          <div className="flex items-center gap-2 ml-auto">
-            <div className="w-0.5 h-4 bg-primary" />
-            <span className="text-sm">{t('calendar.today')}</span>
+          <div className="flex items-center gap-1 ml-auto">
+            <div className="w-px h-2.5 bg-primary" />
+            <span className="text-muted-foreground">{t('calendar.today')}</span>
           </div>
         </div>
       </CardContent>

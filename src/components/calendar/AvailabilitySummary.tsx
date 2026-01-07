@@ -1,5 +1,5 @@
 import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { CheckCircle, Clock, Calendar, TrendingUp } from 'lucide-react';
 import { devices, bookingRequests, getDeviceById } from '@/lib/mockData';
@@ -56,63 +56,61 @@ export const AvailabilitySummary: React.FC = () => {
       icon: CheckCircle,
       label: t('calendar.availableToday'),
       value: devicesAvailableToday.length,
-      color: 'text-green-500',
+      color: 'text-green-600',
       bgColor: 'bg-green-500/10',
     },
     {
       icon: Clock,
       label: t('calendar.availableThisWeek'),
       value: devicesBecomingAvailable.length,
-      color: 'text-blue-500',
+      color: 'text-blue-600',
       bgColor: 'bg-blue-500/10',
     },
     {
       icon: Calendar,
       label: t('calendar.pendingBookings'),
       value: pendingRequestsCount,
-      color: 'text-yellow-500',
+      color: 'text-yellow-600',
       bgColor: 'bg-yellow-500/10',
     },
     {
       icon: TrendingUp,
       label: t('calendar.noBookings'),
       value: devicesWithNoBookings.length,
-      color: 'text-purple-500',
+      color: 'text-purple-600',
       bgColor: 'bg-purple-500/10',
     },
   ];
 
   return (
     <Card>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-lg">{t('calendar.availabilitySummary')}</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <CardContent className="py-3 px-4">
+        <div className="grid grid-cols-4 gap-4">
           {stats.map((stat, index) => (
-            <div
-              key={index}
-              className={`flex flex-col items-center p-4 rounded-lg ${stat.bgColor}`}
-            >
-              <stat.icon className={`h-8 w-8 ${stat.color} mb-2`} />
-              <span className="text-2xl font-bold">{stat.value}</span>
-              <span className="text-sm text-muted-foreground text-center">{stat.label}</span>
+            <div key={index} className="flex items-center gap-2">
+              <div className={`p-1.5 rounded-md ${stat.bgColor}`}>
+                <stat.icon className={`h-4 w-4 ${stat.color}`} />
+              </div>
+              <div className="flex items-baseline gap-1.5">
+                <span className="text-lg font-semibold">{stat.value}</span>
+                <span className="text-xs text-muted-foreground">{stat.label}</span>
+              </div>
             </div>
           ))}
         </div>
-
+        
         {devicesBecomingAvailable.length > 0 && (
-          <div className="mt-4 pt-4 border-t border-border">
-            <h4 className="text-sm font-medium mb-2">{t('calendar.upcomingAvailability')}</h4>
-            <div className="flex flex-wrap gap-2">
+          <div className="flex items-center gap-2 mt-3 pt-3 border-t border-border">
+            <span className="text-xs text-muted-foreground">{t('calendar.upcomingAvailability')}:</span>
+            <div className="flex gap-1 flex-wrap">
               {devicesBecomingAvailable.slice(0, 5).map((item, index) => (
-                <Badge key={index} variant="secondary" className="text-xs">
+                <Badge key={index} variant="secondary" className="text-[10px] px-1.5 py-0">
                   {item.device?.name}
                 </Badge>
               ))}
               {devicesBecomingAvailable.length > 5 && (
-                <Badge variant="outline" className="text-xs">
-                  +{devicesBecomingAvailable.length - 5} {t('common.more')}
+                <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                  +{devicesBecomingAvailable.length - 5}
                 </Badge>
               )}
             </div>

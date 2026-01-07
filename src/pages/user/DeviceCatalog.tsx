@@ -1,8 +1,8 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { UserNavbar } from '@/components/layout/UserNavbar';
+import { BreadcrumbNav } from '@/components/ui/breadcrumb-nav';
 import { DeviceCard } from '@/components/devices/DeviceCard';
 import { DeviceDetailModal } from '@/components/devices/DeviceDetailModal';
-import { DeviceComparisonModal } from '@/components/devices/DeviceComparisonModal';
 import { devices, Device, DeviceCategory, DeviceStatus } from '@/lib/mockData';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,7 +15,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
-import { Search, Laptop, Smartphone, Tablet, Monitor as MonitorIcon, Headphones, LayoutGrid, GitCompare, List, Grid3X3, X, Heart, ArrowUpDown, SortAsc, SortDesc } from 'lucide-react';
+import { Search, Laptop, Smartphone, Tablet, Monitor as MonitorIcon, Headphones, LayoutGrid, List, Grid3X3, X, Heart, ArrowUpDown, SortAsc, SortDesc } from 'lucide-react';
 import { useRecentlyViewed } from '@/hooks/use-recently-viewed';
 import { useFavorites } from '@/hooks/use-favorites';
 import { toast } from 'sonner';
@@ -58,11 +58,6 @@ const DeviceCatalog: React.FC = () => {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  
-  // Comparison feature
-  const [compareMode, setCompareMode] = useState(false);
-  const [compareDevices, setCompareDevices] = useState<Device[]>([]);
-  const [comparisonModalOpen, setComparisonModalOpen] = useState(false);
   
   // Recently viewed tracking
   const { addToRecentlyViewed } = useRecentlyViewed();
@@ -115,13 +110,9 @@ const DeviceCatalog: React.FC = () => {
   }, [searchQuery, categoryFilter, statusFilter, sortBy, showFavoritesOnly, favorites]);
 
   const handleDeviceClick = (device: Device) => {
-    if (compareMode) {
-      toggleCompareDevice(device);
-    } else {
-      addToRecentlyViewed(device.id);
-      setSelectedDevice(device);
-      setModalOpen(true);
-    }
+    addToRecentlyViewed(device.id);
+    setSelectedDevice(device);
+    setModalOpen(true);
   };
 
   const handleQuickRequest = (device: Device) => {
@@ -143,106 +134,32 @@ const DeviceCatalog: React.FC = () => {
     });
   };
 
-  const toggleCompareDevice = (device: Device) => {
-    setCompareDevices(prev => {
-      const exists = prev.some(d => d.id === device.id);
-      if (exists) {
-        return prev.filter(d => d.id !== device.id);
-      }
-      if (prev.length >= 3) {
-        return prev; // Max 3 devices
-      }
-      return [...prev, device];
-    });
-  };
-
-  const isDeviceSelected = (deviceId: string) => {
-    return compareDevices.some(d => d.id === deviceId);
-  };
-
-  const handleCompare = () => {
-    if (compareDevices.length >= 2) {
-      setComparisonModalOpen(true);
-    }
-  };
-
-  const exitCompareMode = () => {
-    setCompareMode(false);
-    setCompareDevices([]);
-  };
-
   return (
     <div className="min-h-screen bg-background" id="main-content" tabIndex={-1}>
-      <UserNavbar onSearch={setSearchQuery} />
+      <UserNavbar />
 
-      {/* Compare Mode Banner */}
-      {compareMode && (
-        <div className="sticky top-16 z-40 bg-primary text-primary-foreground py-3 px-4 shadow-md">
-          <div className="container flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <GitCompare className="h-5 w-5" />
-              <span className="font-medium">
-                Compare Mode: Select up to 3 devices ({compareDevices.length}/3 selected)
-              </span>
-              {compareDevices.length > 0 && (
-                <div className="flex gap-2">
-                  {compareDevices.map(device => (
-                    <Badge 
-                      key={device.id} 
-                      variant="secondary"
-                      className="bg-primary-foreground/20 text-primary-foreground gap-1"
-                    >
-                      {device.name}
-                      <X 
-                        className="h-3 w-3 cursor-pointer hover:text-destructive" 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          toggleCompareDevice(device);
-                        }}
-                      />
-                    </Badge>
-                  ))}
-                </div>
-              )}
-            </div>
-            <div className="flex items-center gap-2">
-              <Button 
-                variant="secondary" 
-                size="sm"
-                onClick={handleCompare}
-                disabled={compareDevices.length < 2}
-              >
-                Compare ({compareDevices.length})
-              </Button>
-              <Button 
-                variant="ghost" 
-                size="sm"
-                onClick={exitCompareMode}
-                className="text-primary-foreground hover:text-primary-foreground/80"
-              >
-                Cancel
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+      <div className="container px-4 md:px-6 pt-4">
+        <BreadcrumbNav />
+      </div>
 
-      {/* Hero Section */}
-      <section className="border-b bg-card">
-        <div className="container px-4 md:px-6 py-12 md:py-16">
-          <div className="max-w-2xl">
-            <h1 className="text-3xl md:text-4xl font-bold tracking-tight mb-3">
-              Find the equipment you need
-            </h1>
-            <p className="text-lg text-muted-foreground">
-              Browse our catalog of available devices. Request what you need for your projects.
-            </p>
-          </div>
+      {/* Hero Section - Dashboard Style */}
+      <section className="container px-4 md:px-6 py-8">
+        <div className="flex items-center gap-2 mb-1">
+          <Laptop className="h-5 w-5 text-primary" />
+          <span className="text-sm text-muted-foreground">
+            {devices.filter(d => d.status === 'available').length} devices available
+          </span>
         </div>
+        <h1 className="text-2xl md:text-3xl font-bold mb-2">
+          Device Catalog
+        </h1>
+        <p className="text-muted-foreground">
+          Browse and request equipment for your projects.
+        </p>
       </section>
 
-      {/* Filters - Streamlined */}
-      <section className={cn("border-b bg-card/80 backdrop-blur-sm sticky z-40", compareMode ? "top-28" : "top-16")}>
+      {/* Filters - Solid Sticky Header */}
+      <section className="border-b bg-background shadow-sm sticky top-16 z-40">
         <div className="container px-4 md:px-6 py-3">
           {/* Main Filter Row */}
           <div className="flex items-center gap-3">
@@ -374,19 +291,6 @@ const DeviceCatalog: React.FC = () => {
                   <span className="text-xs font-medium">{favoritesCount}</span>
                 )}
               </Button>
-
-              {/* Compare Mode Toggle */}
-              {!compareMode && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setCompareMode(true)}
-                  className="h-8 px-2.5 gap-1.5 rounded-lg hidden sm:flex"
-                >
-                  <GitCompare className="h-3.5 w-3.5" />
-                  <span className="hidden lg:inline text-xs">Compare</span>
-                </Button>
-              )}
             </div>
           </div>
 
@@ -479,36 +383,13 @@ const DeviceCatalog: React.FC = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {filteredAndSortedDevices.map(device => (
                 <div key={device.id} className="relative animate-fade-in">
-                  {compareMode && (
-                    <div 
-                      className={cn(
-                        "absolute top-3 right-3 z-10 h-6 w-6 rounded-full border-2 flex items-center justify-center cursor-pointer transition-colors",
-                        isDeviceSelected(device.id) 
-                          ? "bg-primary border-primary text-primary-foreground" 
-                          : "bg-card border-muted-foreground/30 hover:border-primary"
-                      )}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        toggleCompareDevice(device);
-                      }}
-                    >
-                      {isDeviceSelected(device.id) && (
-                        <span className="text-xs font-bold">
-                          {compareDevices.findIndex(d => d.id === device.id) + 1}
-                        </span>
-                      )}
-                    </div>
-                  )}
                   <DeviceCard 
                     device={device} 
                     onClick={handleDeviceClick}
                     onQuickRequest={handleQuickRequest}
-                    onFavoriteToggle={!compareMode ? handleFavoriteToggle : undefined}
+                    onFavoriteToggle={handleFavoriteToggle}
                     isFavorite={isFavorite(device.id)}
-                    showQuickRequest={!compareMode}
-                    className={cn(
-                      compareMode && isDeviceSelected(device.id) && "ring-2 ring-primary"
-                    )}
+                    showQuickRequest={true}
                   />
                 </div>
               ))}
@@ -518,50 +399,24 @@ const DeviceCatalog: React.FC = () => {
               {filteredAndSortedDevices.map(device => (
                 <div 
                   key={device.id}
-                  className={cn(
-                    "flex items-center gap-4 p-4 rounded-lg border bg-card cursor-pointer transition-all hover:shadow-md animate-fade-in",
-                    compareMode && isDeviceSelected(device.id) && "ring-2 ring-primary"
-                  )}
+                  className="flex items-center gap-4 p-4 rounded-lg border bg-card cursor-pointer transition-all hover:shadow-md animate-fade-in"
                   onClick={() => handleDeviceClick(device)}
                 >
-                  {compareMode && (
-                    <div 
-                      className={cn(
-                        "h-6 w-6 rounded-full border-2 flex items-center justify-center flex-shrink-0",
-                        isDeviceSelected(device.id) 
-                          ? "bg-primary border-primary text-primary-foreground" 
-                          : "bg-card border-muted-foreground/30"
-                      )}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        toggleCompareDevice(device);
-                      }}
-                    >
-                      {isDeviceSelected(device.id) && (
-                        <span className="text-xs font-bold">
-                          {compareDevices.findIndex(d => d.id === device.id) + 1}
-                        </span>
-                      )}
-                    </div>
-                  )}
-                  
                   {/* Favorite button for list view */}
-                  {!compareMode && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleFavoriteToggle(device.id);
-                      }}
-                      className={cn(
-                        "h-8 w-8 rounded-full flex items-center justify-center transition-colors flex-shrink-0",
-                        "hover:bg-muted",
-                        isFavorite(device.id) && "text-red-500"
-                      )}
-                      aria-label={isFavorite(device.id) ? 'Remove from favorites' : 'Add to favorites'}
-                    >
-                      <Heart className={cn("h-4 w-4", isFavorite(device.id) && "fill-current")} />
-                    </button>
-                  )}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleFavoriteToggle(device.id);
+                    }}
+                    className={cn(
+                      "h-8 w-8 rounded-full flex items-center justify-center transition-colors flex-shrink-0",
+                      "hover:bg-muted",
+                      isFavorite(device.id) && "text-red-500"
+                    )}
+                    aria-label={isFavorite(device.id) ? 'Remove from favorites' : 'Add to favorites'}
+                  >
+                    <Heart className={cn("h-4 w-4", isFavorite(device.id) && "fill-current")} />
+                  </button>
                   
                   <div className="w-16 h-16 rounded-lg overflow-hidden bg-muted flex-shrink-0">
                     <img src={device.image} alt={device.name} className="w-full h-full object-cover" />
@@ -586,7 +441,7 @@ const DeviceCatalog: React.FC = () => {
                   </Badge>
                   
                   {/* Quick Request for list view */}
-                  {!compareMode && device.status === 'available' && (
+                  {device.status === 'available' && (
                     <Button 
                       size="sm" 
                       variant="outline"
@@ -617,19 +472,6 @@ const DeviceCatalog: React.FC = () => {
         device={selectedDevice}
         open={modalOpen}
         onOpenChange={setModalOpen}
-      />
-
-      {/* Device Comparison Modal */}
-      <DeviceComparisonModal
-        devices={compareDevices}
-        open={comparisonModalOpen}
-        onOpenChange={setComparisonModalOpen}
-        onRemoveDevice={(deviceId) => {
-          setCompareDevices(prev => prev.filter(d => d.id !== deviceId));
-          if (compareDevices.length <= 2) {
-            setComparisonModalOpen(false);
-          }
-        }}
       />
     </div>
   );

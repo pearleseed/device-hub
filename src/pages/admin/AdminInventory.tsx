@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { devices as initialDevices, Device, getUserById } from '@/lib/mockData';
 import { exportToCSV, deviceExportColumns } from '@/lib/exportUtils';
-import { Plus, MoreHorizontal, Pencil, Trash2, QrCode, Download, Undo2 } from 'lucide-react';
+import { Plus, MoreHorizontal, Pencil, Trash2, Download, Undo2 } from 'lucide-react';
 import { AddDeviceModal } from '@/components/admin/AddDeviceModal';
 import { EditDeviceModal } from '@/components/admin/EditDeviceModal';
 import { useToast } from '@/hooks/use-toast';
@@ -153,7 +153,6 @@ const AdminInventory: React.FC = () => {
             <DropdownMenuItem onClick={() => openEditModal(device)}>
               <Pencil className="mr-2 h-4 w-4" />Edit
             </DropdownMenuItem>
-            <DropdownMenuItem><QrCode className="mr-2 h-4 w-4" />Generate QR</DropdownMenuItem>
             <DropdownMenuItem onClick={() => handleDeleteDevice(device)} className="text-destructive">
               <Trash2 className="mr-2 h-4 w-4" />Delete
             </DropdownMenuItem>

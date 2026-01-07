@@ -1,6 +1,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { UserNavbar } from '@/components/layout/UserNavbar';
+import { BreadcrumbNav } from '@/components/ui/breadcrumb-nav';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/ui/status-badge';
@@ -86,6 +87,7 @@ const UserDashboard: React.FC = () => {
       <UserNavbar />
 
       <main id="main-content" className="container px-4 md:px-6 py-8" tabIndex={-1}>
+        <BreadcrumbNav />
         {/* Enhanced Welcome Section */}
         <div className="mb-8">
           <div className="flex items-center gap-2 mb-1">

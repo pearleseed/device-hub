@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   DndContext,
   DragOverlay,
@@ -13,27 +13,15 @@ import {
 } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { AdminSidebar } from '@/components/layout/AdminSidebar';
+import { BreadcrumbNav } from '@/components/ui/breadcrumb-nav';
 import { Button } from '@/components/ui/button';
 import { bookingRequests as initialRequests, BookingRequest, RequestStatus, getDeviceById, getUserById } from '@/lib/mockData';
 import { exportToCSV, requestExportColumns } from '@/lib/exportUtils';
-import { List, LayoutGrid, Download, Keyboard } from 'lucide-react';
+import { List, LayoutGrid, Download } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { cn } from '@/lib/utils';
 import { KanbanColumn } from '@/components/admin/KanbanColumn';
 import { DraggableRequestCard, RequestCardContent } from '@/components/admin/DraggableRequestCard';
 import { RequestListView } from '@/components/admin/RequestListView';
-import { useKeyboardShortcuts, ShortcutConfig } from '@/hooks/use-keyboard-shortcuts';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
 
 const columns: { status: RequestStatus; label: string; color: string }[] = [
   { status: 'pending', label: 'Pending', color: 'border-yellow-500 bg-yellow-500/10' },
@@ -47,8 +35,6 @@ const AdminRequests: React.FC = () => {
   const [requests, setRequests] = useState<BookingRequest[]>(initialRequests);
   const [viewMode, setViewMode] = useState<'kanban' | 'list'>('kanban');
   const [activeRequest, setActiveRequest] = useState<BookingRequest | null>(null);
-  const [selectedIndex, setSelectedIndex] = useState<number>(0);
-  const [confirmDialog, setConfirmDialog] = useState<{ open: boolean; action: 'approve' | 'reject' | null }>({ open: false, action: null });
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -58,12 +44,6 @@ const AdminRequests: React.FC = () => {
     }),
     useSensor(KeyboardSensor)
   );
-
-  // Get all pending requests for keyboard navigation
-  const pendingRequests = useMemo(() => 
-    requests.filter(r => r.status === 'pending'), [requests]);
-
-  const selectedRequest = pendingRequests[selectedIndex] || null;
 
   const updateStatus = useCallback((id: string, newStatus: RequestStatus) => {
     setRequests(prev => prev.map(r => r.id === id ? { ...r, status: newStatus } : r));
@@ -84,74 +64,6 @@ const AdminRequests: React.FC = () => {
     toast({ title: 'Export complete', description: 'Request history has been downloaded as CSV.' });
   }, [requests, toast]);
 
-  // Keyboard shortcuts
-  const shortcuts: ShortcutConfig[] = useMemo(() => [
-    {
-      key: 'a',
-      action: () => {
-        if (selectedRequest) {
-          setConfirmDialog({ open: true, action: 'approve' });
-        }
-      },
-      description: 'Approve selected request',
-    },
-    {
-      key: 'r',
-      action: () => {
-        if (selectedRequest) {
-          setConfirmDialog({ open: true, action: 'reject' });
-        }
-      },
-      description: 'Reject selected request',
-    },
-    {
-      key: 'ArrowUp',
-      action: () => {
-        setSelectedIndex(prev => Math.max(0, prev - 1));
-      },
-      description: 'Select previous request',
-    },
-    {
-      key: 'ArrowDown',
-      action: () => {
-        setSelectedIndex(prev => Math.min(pendingRequests.length - 1, prev + 1));
-      },
-      description: 'Select next request',
-    },
-    {
-      key: 'k',
-      action: () => {
-        setViewMode('kanban');
-      },
-      description: 'Switch to Kanban view',
-    },
-    {
-      key: 'l',
-      action: () => {
-        setViewMode('list');
-      },
-      description: 'Switch to List view',
-    },
-    {
-      key: 'e',
-      action: handleExportCSV,
-      description: 'Export to CSV',
-    },
-  ], [selectedRequest, pendingRequests.length, handleExportCSV]);
-
-  useKeyboardShortcuts(shortcuts);
-
-  const handleConfirmAction = useCallback(() => {
-    if (!selectedRequest || !confirmDialog.action) return;
-    
-    const newStatus = confirmDialog.action === 'approve' ? 'approved' : 'rejected';
-    updateStatus(selectedRequest.id, newStatus);
-    setConfirmDialog({ open: false, action: null });
-  }, [selectedRequest, confirmDialog.action, updateStatus]);
-
-  const selectedDevice = selectedRequest ? getDeviceById(selectedRequest.deviceId) : null;
-  const selectedUser = selectedRequest ? getUserById(selectedRequest.userId) : null;
-
   const getRequestsByStatus = (status: RequestStatus) => 
     requests.filter(r => r.status === status);
 
@@ -163,6 +75,19 @@ const AdminRequests: React.FC = () => {
     }
   };
 
+  // Helper to find target column status from over id
+  const findTargetStatus = (overId: string): RequestStatus | null => {
+    // Check if overId is a column status
+    const overColumn = columns.find(col => col.status === overId);
+    if (overColumn) return overColumn.status;
+
+    // Check if overId is a request id - get its status
+    const overRequest = requests.find(r => r.id === overId);
+    if (overRequest) return overRequest.status;
+
+    return null;
+  };
+
   const handleDragOver = (event: DragOverEvent) => {
     const { active, over } = event;
     if (!over) return;
@@ -170,34 +95,44 @@ const AdminRequests: React.FC = () => {
     const activeId = active.id as string;
     const overId = over.id as string;
 
-    // Find the request being dragged
-    const activeRequest = requests.find(r => r.id === activeId);
-    if (!activeRequest) return;
+    const draggedRequest = requests.find(r => r.id === activeId);
+    if (!draggedRequest) return;
 
-    // Check if we're over a column
-    const overColumn = columns.find(col => col.status === overId);
-    if (overColumn && activeRequest.status !== overColumn.status) {
+    const targetStatus = findTargetStatus(overId);
+    if (targetStatus && draggedRequest.status !== targetStatus) {
+      // Update status immediately for visual feedback
       setRequests(prev => prev.map(r => 
-        r.id === activeId ? { ...r, status: overColumn.status } : r
+        r.id === activeId ? { ...r, status: targetStatus } : r
       ));
     }
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
+    const draggedId = active.id as string;
+    const originalStatus = activeRequest?.status;
+    
     setActiveRequest(null);
 
-    if (!over) return;
+    if (!over) {
+      // Dropped outside - revert to original status
+      if (originalStatus) {
+        setRequests(prev => prev.map(r => 
+          r.id === draggedId ? { ...r, status: originalStatus } : r
+        ));
+      }
+      return;
+    }
 
-    const activeId = active.id as string;
     const overId = over.id as string;
-
-    // Find target column
-    const overColumn = columns.find(col => col.status === overId);
-    const activeRequest = requests.find(r => r.id === activeId);
-
-    if (overColumn && activeRequest && activeRequest.status !== overId) {
-      updateStatus(activeId, overColumn.status);
+    const targetStatus = findTargetStatus(overId);
+    
+    if (targetStatus && originalStatus && targetStatus !== originalStatus) {
+      // Show toast for successful move
+      toast({ 
+        title: 'Status updated', 
+        description: `Request moved to ${targetStatus}.` 
+      });
     }
   };
 
@@ -205,33 +140,14 @@ const AdminRequests: React.FC = () => {
     <div className="flex min-h-screen bg-background">
       <AdminSidebar />
       
-      <main className="flex-1 p-8">
+      <main id="main-content" className="flex-1 p-8" tabIndex={-1} role="main" aria-label="Request management">
+        <BreadcrumbNav />
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-2xl font-bold">Request Management</h1>
             <p className="text-muted-foreground">Drag cards between columns or use keyboard shortcuts</p>
           </div>
           <div className="flex gap-2">
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="ghost" size="sm" className="text-muted-foreground">
-                    <Keyboard className="h-4 w-4 mr-1" />
-                    <span className="hidden sm:inline">Shortcuts</span>
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" className="max-w-xs">
-                  <div className="text-xs space-y-1">
-                    <p><kbd className="px-1 bg-muted rounded">A</kbd> Approve</p>
-                    <p><kbd className="px-1 bg-muted rounded">R</kbd> Reject</p>
-                    <p><kbd className="px-1 bg-muted rounded">↑↓</kbd> Navigate</p>
-                    <p><kbd className="px-1 bg-muted rounded">K</kbd> Kanban view</p>
-                    <p><kbd className="px-1 bg-muted rounded">L</kbd> List view</p>
-                    <p><kbd className="px-1 bg-muted rounded">E</kbd> Export</p>
-                  </div>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
             <Button variant="outline" size="sm" onClick={handleExportCSV}>
               <Download className="h-4 w-4 mr-1" /> Export
             </Button>
@@ -252,7 +168,7 @@ const AdminRequests: React.FC = () => {
             onDragOver={handleDragOver}
             onDragEnd={handleDragEnd}
           >
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               {columns.map(col => (
                 <KanbanColumn
                   key={col.status}
@@ -260,32 +176,30 @@ const AdminRequests: React.FC = () => {
                   label={col.label}
                   color={col.color}
                   count={getRequestsByStatus(col.status).length}
+                  isDragging={!!activeRequest}
                 >
                   <SortableContext
                     items={getRequestsByStatus(col.status).map(r => r.id)}
                     strategy={verticalListSortingStrategy}
                   >
-                    {getRequestsByStatus(col.status).map((request, index) => (
+                    {getRequestsByStatus(col.status).map((request) => (
                       <DraggableRequestCard
                         key={request.id}
                         request={request}
                         onStatusChange={updateStatus}
-                        isSelected={col.status === 'pending' && selectedRequest?.id === request.id}
                       />
                     ))}
                   </SortableContext>
-                  {getRequestsByStatus(col.status).length === 0 && (
-                    <div className="flex items-center justify-center h-24 border-2 border-dashed border-muted rounded-lg">
-                      <p className="text-sm text-muted-foreground">Drop here</p>
-                    </div>
-                  )}
                 </KanbanColumn>
               ))}
             </div>
 
-            <DragOverlay>
+            <DragOverlay dropAnimation={{
+              duration: 200,
+              easing: 'cubic-bezier(0.18, 0.67, 0.6, 1.22)',
+            }}>
               {activeRequest ? (
-                <div className="opacity-90 rotate-3 scale-105">
+                <div className="opacity-95 scale-105 shadow-2xl">
                   <RequestCardContent request={activeRequest} isDragging />
                 </div>
               ) : null}
@@ -294,32 +208,6 @@ const AdminRequests: React.FC = () => {
         ) : (
           <RequestListView requests={requests} onStatusChange={updateStatus} />
         )}
-
-        {/* Keyboard shortcut confirmation dialog */}
-        <AlertDialog open={confirmDialog.open} onOpenChange={(open) => setConfirmDialog({ open, action: open ? confirmDialog.action : null })}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>
-                {confirmDialog.action === 'approve' ? 'Approve Request' : 'Reject Request'}
-              </AlertDialogTitle>
-              <AlertDialogDescription>
-                {confirmDialog.action === 'approve' 
-                  ? `Are you sure you want to approve this request for ${selectedDevice?.name || 'this device'}? This will allow ${selectedUser?.name || 'the user'} to use the device.`
-                  : `Are you sure you want to reject this request for ${selectedDevice?.name || 'this device'} from ${selectedUser?.name || 'the user'}? This action cannot be undone.`
-                }
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction 
-                className={confirmDialog.action === 'approve' ? 'bg-status-available hover:bg-status-available/90' : 'bg-destructive hover:bg-destructive/90'}
-                onClick={handleConfirmAction}
-              >
-                {confirmDialog.action === 'approve' ? 'Approve' : 'Reject'}
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
       </main>
     </div>
   );

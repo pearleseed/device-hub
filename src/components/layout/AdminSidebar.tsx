@@ -13,7 +13,6 @@ import {
   Package, 
   ClipboardList, 
   Users, 
-  Settings, 
   LogOut,
   Monitor,
   CalendarDays,
@@ -29,7 +28,6 @@ const navItems = [
   { icon: CalendarDays, labelKey: 'nav.calendar', path: '/admin/calendar' },
   { icon: ClipboardList, labelKey: 'nav.requests', path: '/admin/requests' },
   { icon: Users, labelKey: 'nav.users', path: '/admin/users' },
-  { icon: Settings, labelKey: 'nav.settings', path: '/admin/settings' },
 ];
 
 interface AdminSidebarProps {
@@ -89,14 +87,6 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
         {!collapsed && <NotificationCenter />}
       </div>
 
-      {/* Theme & Language Toggle */}
-      {!collapsed && (
-        <div className="flex items-center justify-between px-3 py-2 border-b border-sidebar-border">
-          <LanguageToggle />
-          <ThemeToggle />
-        </div>
-      )}
-
       {/* Navigation */}
       <nav className="flex-1 p-3 space-y-1">
         {navItems.map(item => {
@@ -151,6 +141,23 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
             </>
           )}
         </Button>
+      </div>
+
+      {/* Theme & Language Toggle */}
+      <div className={cn(
+        "flex items-center px-3 py-2 border-t border-sidebar-border",
+        collapsed ? "justify-center" : "justify-between"
+      )}>
+        {collapsed ? (
+          <div className="flex flex-col gap-2">
+            <ThemeToggle />
+          </div>
+        ) : (
+          <>
+            <LanguageToggle />
+            <ThemeToggle />
+          </>
+        )}
       </div>
 
       {/* User Section */}

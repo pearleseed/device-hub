@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import { AdminSidebar } from '@/components/layout/AdminSidebar';
+import { BreadcrumbNav } from '@/components/ui/breadcrumb-nav';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Calendar, LayoutList, ChevronDown, Filter } from 'lucide-react';
+import { Calendar, LayoutList, Filter, X } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { bookingRequests, devices, DeviceCategory } from '@/lib/mockData';
 import { DeviceCalendarView } from '@/components/calendar/DeviceCalendarView';
@@ -26,11 +26,10 @@ const categories: { value: DeviceCategory; labelKey: string }[] = [
 const AdminCalendar: React.FC = () => {
   const { t } = useLanguage();
   const { toast } = useToast();
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [activeView, setActiveView] = useState<'calendar' | 'timeline'>('calendar');
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [selectedDevices, setSelectedDevices] = useState<string[]>([]);
-  const [filterOpen, setFilterOpen] = useState(true);
+  const [filterOpen, setFilterOpen] = useState(false);
 
   // Filter devices by selected categories
   const filteredDevices = selectedCategories.length > 0
@@ -63,6 +62,11 @@ const AdminCalendar: React.FC = () => {
     }
   };
 
+  const handleClearFilters = () => {
+    setSelectedCategories([]);
+    setSelectedDevices([]);
+  };
+
   const handleApprove = (id: string) => {
     toast({
       title: t('requests.approved'),
@@ -78,60 +82,51 @@ const AdminCalendar: React.FC = () => {
     });
   };
 
+  const activeFiltersCount = selectedCategories.length + selectedDevices.length;
+
   return (
     <div className="flex min-h-screen bg-background w-full">
-      <AdminSidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
+      <AdminSidebar />
       
-      <main className="flex-1 p-6">
-        <div className="max-w-[1600px] mx-auto space-y-6">
-          {/* Header */}
-          <div className="flex items-center justify-between">
+      <main id="main-content" className="flex-1 p-4 lg:p-6" tabIndex={-1} role="main" aria-label="Calendar management">
+        <BreadcrumbNav />
+        <div className="max-w-[1600px] mx-auto space-y-4">
+          {/* Compact Header */}
+          <div className="flex items-center justify-between gap-4 flex-wrap">
             <div>
-              <h1 className="text-3xl font-bold">{t('calendar.title')}</h1>
-              <p className="text-muted-foreground">{t('calendar.subtitle')}</p>
+              <h1 className="text-2xl font-bold">{t('calendar.title')}</h1>
+              <p className="text-sm text-muted-foreground">{t('calendar.subtitle')}</p>
             </div>
+            
             <div className="flex items-center gap-2">
-              <Button
-                variant={activeView === 'calendar' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setActiveView('calendar')}
-              >
-                <Calendar className="h-4 w-4 mr-2" />
-                {t('calendar.calendarView')}
-              </Button>
-              <Button
-                variant={activeView === 'timeline' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setActiveView('timeline')}
-              >
-                <LayoutList className="h-4 w-4 mr-2" />
-                {t('calendar.timelineView')}
-              </Button>
-            </div>
-          </div>
-
-          {/* Summary */}
-          <AvailabilitySummary />
-
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-            {/* Filters Sidebar */}
-            <Card className="lg:col-span-1">
-              <Collapsible open={filterOpen} onOpenChange={setFilterOpen}>
-                <CollapsibleTrigger asChild>
-                  <div className="flex items-center justify-between p-4 cursor-pointer hover:bg-accent/50 rounded-t-lg">
-                    <div className="flex items-center gap-2">
-                      <Filter className="h-4 w-4" />
-                      <span className="font-medium">{t('calendar.filters')}</span>
+              {/* Filter Popover */}
+              <Popover open={filterOpen} onOpenChange={setFilterOpen}>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="sm" className="gap-2">
+                    <Filter className="h-4 w-4" />
+                    {t('calendar.filters')}
+                    {activeFiltersCount > 0 && (
+                      <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
+                        {activeFiltersCount}
+                      </Badge>
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-72" align="end">
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium text-sm">{t('calendar.filters')}</span>
+                      {activeFiltersCount > 0 && (
+                        <Button variant="ghost" size="sm" className="h-auto py-1 px-2 text-xs" onClick={handleClearFilters}>
+                          {t('common.clearAll')}
+                        </Button>
+                      )}
                     </div>
-                    <ChevronDown className={`h-4 w-4 transition-transform ${filterOpen ? 'rotate-180' : ''}`} />
-                  </div>
-                </CollapsibleTrigger>
-                <CollapsibleContent>
-                  <CardContent className="pt-0">
+                    
                     {/* Categories */}
-                    <div className="mb-4">
-                      <Label className="text-sm font-medium mb-2 block">{t('calendar.categories')}</Label>
-                      <div className="space-y-2">
+                    <div>
+                      <Label className="text-xs font-medium text-muted-foreground mb-2 block">{t('calendar.categories')}</Label>
+                      <div className="grid grid-cols-2 gap-2">
                         {categories.map(category => (
                           <div key={category.value} className="flex items-center gap-2">
                             <Checkbox
@@ -139,7 +134,7 @@ const AdminCalendar: React.FC = () => {
                               checked={selectedCategories.includes(category.value)}
                               onCheckedChange={() => handleCategoryToggle(category.value)}
                             />
-                            <Label htmlFor={`cat-${category.value}`} className="text-sm cursor-pointer">
+                            <Label htmlFor={`cat-${category.value}`} className="text-xs cursor-pointer">
                               {category.labelKey}
                             </Label>
                           </div>
@@ -150,11 +145,11 @@ const AdminCalendar: React.FC = () => {
                     {/* Devices */}
                     <div>
                       <div className="flex items-center justify-between mb-2">
-                        <Label className="text-sm font-medium">{t('calendar.devices')}</Label>
+                        <Label className="text-xs font-medium text-muted-foreground">{t('calendar.devices')}</Label>
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-auto py-1 px-2 text-xs"
+                          className="h-auto py-0.5 px-1.5 text-[10px]"
                           onClick={handleSelectAllDevices}
                         >
                           {selectedDevices.length === filteredDevices.length
@@ -162,8 +157,8 @@ const AdminCalendar: React.FC = () => {
                             : t('common.selectAll')}
                         </Button>
                       </div>
-                      <ScrollArea className="h-[300px] pr-4">
-                        <div className="space-y-2">
+                      <ScrollArea className="h-[180px]">
+                        <div className="space-y-1.5 pr-2">
                           {filteredDevices.map(device => (
                             <div key={device.id} className="flex items-center gap-2">
                               <Checkbox
@@ -171,7 +166,7 @@ const AdminCalendar: React.FC = () => {
                                 checked={selectedDevices.includes(device.id)}
                                 onCheckedChange={() => handleDeviceToggle(device.id)}
                               />
-                              <Label htmlFor={`device-${device.id}`} className="text-sm cursor-pointer">
+                              <Label htmlFor={`device-${device.id}`} className="text-xs cursor-pointer truncate">
                                 {device.name}
                               </Label>
                             </div>
@@ -179,30 +174,72 @@ const AdminCalendar: React.FC = () => {
                         </div>
                       </ScrollArea>
                     </div>
-                  </CardContent>
-                </CollapsibleContent>
-              </Collapsible>
-            </Card>
+                  </div>
+                </PopoverContent>
+              </Popover>
 
-            {/* Main Content */}
-            <div className="lg:col-span-3">
-              {activeView === 'calendar' ? (
-                <DeviceCalendarView
-                  bookings={bookingRequests}
-                  selectedDevices={selectedDevices}
-                  onApprove={handleApprove}
-                  onReject={handleReject}
-                />
-              ) : (
-                <DeviceTimelineView
-                  bookings={bookingRequests}
-                  selectedDevices={selectedDevices}
-                  selectedCategories={selectedCategories}
-                  onApprove={handleApprove}
-                  onReject={handleReject}
-                />
+              {/* Active Filter Tags */}
+              {activeFiltersCount > 0 && (
+                <div className="hidden sm:flex items-center gap-1">
+                  {selectedCategories.slice(0, 2).map(cat => (
+                    <Badge key={cat} variant="secondary" className="text-xs gap-1">
+                      {categories.find(c => c.value === cat)?.labelKey}
+                      <X className="h-3 w-3 cursor-pointer" onClick={() => handleCategoryToggle(cat)} />
+                    </Badge>
+                  ))}
+                  {selectedCategories.length > 2 && (
+                    <Badge variant="outline" className="text-xs">+{selectedCategories.length - 2}</Badge>
+                  )}
+                </div>
               )}
+
+              <div className="h-6 w-px bg-border mx-1" />
+
+              {/* View Toggle */}
+              <div className="flex items-center bg-muted rounded-md p-0.5">
+                <Button
+                  variant={activeView === 'calendar' ? 'default' : 'ghost'}
+                  size="sm"
+                  className="h-7 px-2.5 gap-1.5"
+                  onClick={() => setActiveView('calendar')}
+                >
+                  <Calendar className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline text-xs">{t('calendar.calendarView')}</span>
+                </Button>
+                <Button
+                  variant={activeView === 'timeline' ? 'default' : 'ghost'}
+                  size="sm"
+                  className="h-7 px-2.5 gap-1.5"
+                  onClick={() => setActiveView('timeline')}
+                >
+                  <LayoutList className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline text-xs">{t('calendar.timelineView')}</span>
+                </Button>
+              </div>
             </div>
+          </div>
+
+          {/* Compact Summary */}
+          <AvailabilitySummary />
+
+          {/* Main Content - Full Width */}
+          <div>
+            {activeView === 'calendar' ? (
+              <DeviceCalendarView
+                bookings={bookingRequests}
+                selectedDevices={selectedDevices}
+                onApprove={handleApprove}
+                onReject={handleReject}
+              />
+            ) : (
+              <DeviceTimelineView
+                bookings={bookingRequests}
+                selectedDevices={selectedDevices}
+                selectedCategories={selectedCategories}
+                onApprove={handleApprove}
+                onReject={handleReject}
+              />
+            )}
           </div>
         </div>
       </main>
