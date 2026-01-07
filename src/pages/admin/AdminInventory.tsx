@@ -1,17 +1,10 @@
 import React, { useState } from 'react';
 import { AdminSidebar } from '@/components/layout/AdminSidebar';
+import { BreadcrumbNav } from '@/components/ui/breadcrumb-nav';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { StatusBadge } from '@/components/ui/status-badge';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import { DataTable, Column } from '@/components/ui/data-table';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,7 +13,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { devices as initialDevices, Device, getUserById } from '@/lib/mockData';
 import { exportToCSV, deviceExportColumns } from '@/lib/exportUtils';
-import { Plus, Search, MoreHorizontal, Pencil, Trash2, QrCode, Download } from 'lucide-react';
+import { Plus, MoreHorizontal, Pencil, Trash2, QrCode, Download, Undo2 } from 'lucide-react';
 import { AddDeviceModal } from '@/components/admin/AddDeviceModal';
 import { EditDeviceModal } from '@/components/admin/EditDeviceModal';
 import { useToast } from '@/hooks/use-toast';
@@ -28,16 +21,10 @@ import { useToast } from '@/hooks/use-toast';
 const AdminInventory: React.FC = () => {
   const { toast } = useToast();
   const [devices, setDevices] = useState<Device[]>(initialDevices);
-  const [searchQuery, setSearchQuery] = useState('');
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [selectedDevice, setSelectedDevice] = useState<Device | null>(null);
-
-  const filteredDevices = devices.filter(device =>
-    device.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    device.assetTag.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    device.brand.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const [selectedDevices, setSelectedDevices] = useState<Device[]>([]);
 
   const handleAddDevice = (newDevice: Omit<Device, 'id'>) => {
     const device: Device = {
@@ -54,8 +41,50 @@ const AdminInventory: React.FC = () => {
   };
 
   const handleDeleteDevice = (device: Device) => {
+    const deletedDevice = device;
     setDevices(devices.filter(d => d.id !== device.id));
-    toast({ title: 'Device deleted', description: `${device.name} has been removed.`, variant: 'destructive' });
+    
+    toast({ 
+      title: 'Device deleted', 
+      description: `${device.name} has been removed.`,
+      action: (
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={() => {
+            setDevices(prev => [...prev, deletedDevice]);
+            toast({ title: 'Restored', description: `${deletedDevice.name} has been restored.` });
+          }}
+        >
+          <Undo2 className="h-4 w-4 mr-1" />
+          Undo
+        </Button>
+      ),
+    });
+  };
+
+  const handleBulkDelete = () => {
+    const deletedDevices = [...selectedDevices];
+    setDevices(devices.filter(d => !selectedDevices.some(s => s.id === d.id)));
+    setSelectedDevices([]);
+    
+    toast({ 
+      title: 'Devices deleted', 
+      description: `${deletedDevices.length} devices have been removed.`,
+      action: (
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={() => {
+            setDevices(prev => [...prev, ...deletedDevices]);
+            toast({ title: 'Restored', description: `${deletedDevices.length} devices have been restored.` });
+          }}
+        >
+          <Undo2 className="h-4 w-4 mr-1" />
+          Undo
+        </Button>
+      ),
+    });
   };
 
   const openEditModal = (device: Device) => {
@@ -68,17 +97,91 @@ const AdminInventory: React.FC = () => {
     toast({ title: 'Export complete', description: 'Device inventory has been downloaded as CSV.' });
   };
 
+  const columns: Column<Device>[] = [
+    {
+      key: 'name',
+      header: 'Device',
+      sortable: true,
+      render: (device) => (
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 rounded-lg overflow-hidden bg-muted">
+            <img src={device.image} alt={device.name} className="w-full h-full object-cover" />
+          </div>
+          <div>
+            <p className="font-medium">{device.name}</p>
+            <p className="text-sm text-muted-foreground">{device.brand}</p>
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: 'assetTag',
+      header: 'Asset Tag',
+      sortable: true,
+      render: (device) => <span className="font-mono">{device.assetTag}</span>,
+    },
+    {
+      key: 'category',
+      header: 'Category',
+      sortable: true,
+      render: (device) => <span className="capitalize">{device.category}</span>,
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      sortable: true,
+      render: (device) => <StatusBadge status={device.status} />,
+    },
+    {
+      key: 'assignedTo',
+      header: 'Assigned To',
+      render: (device) => {
+        const assignedUser = device.assignedTo ? getUserById(device.assignedTo) : null;
+        return assignedUser?.name || '—';
+      },
+    },
+    {
+      key: 'actions',
+      header: 'Actions',
+      className: 'w-[70px]',
+      render: (device) => (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => openEditModal(device)}>
+              <Pencil className="mr-2 h-4 w-4" />Edit
+            </DropdownMenuItem>
+            <DropdownMenuItem><QrCode className="mr-2 h-4 w-4" />Generate QR</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleDeleteDevice(device)} className="text-destructive">
+              <Trash2 className="mr-2 h-4 w-4" />Delete
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      ),
+    },
+  ];
+
   return (
     <div className="flex min-h-screen bg-background">
       <AdminSidebar />
       
       <main className="flex-1 p-8">
+        <BreadcrumbNav />
+        
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-2xl font-bold">Inventory Management</h1>
             <p className="text-muted-foreground">Manage all devices in your inventory</p>
           </div>
           <div className="flex gap-2">
+            {selectedDevices.length > 0 && (
+              <Button variant="destructive" onClick={handleBulkDelete}>
+                <Trash2 className="mr-2 h-4 w-4" />
+                Delete ({selectedDevices.length})
+              </Button>
+            )}
             <Button variant="outline" onClick={handleExportCSV}>
               <Download className="mr-2 h-4 w-4" />
               Export CSV
@@ -92,72 +195,23 @@ const AdminInventory: React.FC = () => {
 
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle>All Devices ({filteredDevices.length})</CardTitle>
-              <div className="relative w-72">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search devices..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-            </div>
+            <CardTitle>All Devices ({devices.length})</CardTitle>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Device</TableHead>
-                  <TableHead>Asset Tag</TableHead>
-                  <TableHead>Category</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Assigned To</TableHead>
-                  <TableHead className="w-[70px]">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredDevices.map(device => {
-                  const assignedUser = device.assignedTo ? getUserById(device.assignedTo) : null;
-                  return (
-                    <TableRow key={device.id}>
-                      <TableCell>
-                        <div className="flex items-center gap-3">
-                          <div className="w-12 h-12 rounded-lg overflow-hidden bg-muted">
-                            <img src={device.image} alt={device.name} className="w-full h-full object-cover" />
-                          </div>
-                          <div>
-                            <p className="font-medium">{device.name}</p>
-                            <p className="text-sm text-muted-foreground">{device.brand}</p>
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell className="font-mono">{device.assetTag}</TableCell>
-                      <TableCell className="capitalize">{device.category}</TableCell>
-                      <TableCell><StatusBadge status={device.status} /></TableCell>
-                      <TableCell>{assignedUser?.name || '—'}</TableCell>
-                      <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => openEditModal(device)}>
-                              <Pencil className="mr-2 h-4 w-4" />Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuItem><QrCode className="mr-2 h-4 w-4" />Generate QR</DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleDeleteDevice(device)} className="text-destructive">
-                              <Trash2 className="mr-2 h-4 w-4" />Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
+            <DataTable
+              data={devices}
+              columns={columns}
+              getRowId={(device) => device.id}
+              searchable
+              searchPlaceholder="Search devices..."
+              searchKeys={['name', 'assetTag', 'brand', 'category']}
+              paginated
+              pageSize={10}
+              selectable
+              onSelectionChange={setSelectedDevices}
+              emptyMessage="No devices found"
+              emptyDescription="Add your first device to get started"
+            />
           </CardContent>
         </Card>
 
