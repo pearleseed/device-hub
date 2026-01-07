@@ -1,10 +1,12 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { NotificationCenter } from '@/components/notifications/NotificationCenter';
+import { LanguageToggle } from '@/components/ui/language-toggle';
 import { 
   LayoutDashboard, 
   Package, 
@@ -16,11 +18,11 @@ import {
 } from 'lucide-react';
 
 const navItems = [
-  { icon: LayoutDashboard, label: 'Dashboard', path: '/admin' },
-  { icon: Package, label: 'Inventory', path: '/admin/inventory' },
-  { icon: ClipboardList, label: 'Requests', path: '/admin/requests' },
-  { icon: Users, label: 'Users', path: '/admin/users' },
-  { icon: Settings, label: 'Settings', path: '/admin/settings' },
+  { icon: LayoutDashboard, labelKey: 'nav.dashboard', path: '/admin' },
+  { icon: Package, labelKey: 'nav.inventory', path: '/admin/inventory' },
+  { icon: ClipboardList, labelKey: 'nav.requests', path: '/admin/requests' },
+  { icon: Users, labelKey: 'nav.users', path: '/admin/users' },
+  { icon: Settings, labelKey: 'nav.settings', path: '/admin/settings' },
 ];
 
 interface AdminSidebarProps {
@@ -30,6 +32,7 @@ interface AdminSidebarProps {
 
 export const AdminSidebar: React.FC<AdminSidebarProps> = ({ collapsed, onToggle }) => {
   const { user, logout } = useAuth();
+  const { t } = useLanguage();
   const location = useLocation();
 
   return (
@@ -37,7 +40,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ collapsed, onToggle 
       "flex flex-col h-screen bg-sidebar text-sidebar-foreground transition-all duration-300 sticky top-0",
       collapsed ? "w-16" : "w-64"
     )}>
-      {/* Logo & Notifications */}
+      {/* Logo & Actions */}
       <div className="flex items-center justify-between p-4 border-b border-sidebar-border">
         <div className="flex items-center gap-3">
           <div className="h-8 w-8 rounded-lg bg-sidebar-primary flex items-center justify-center flex-shrink-0">
@@ -47,6 +50,13 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ collapsed, onToggle 
         </div>
         {!collapsed && <NotificationCenter />}
       </div>
+
+      {/* Language Toggle */}
+      {!collapsed && (
+        <div className="px-3 py-2 border-b border-sidebar-border">
+          <LanguageToggle />
+        </div>
+      )}
 
       {/* Navigation */}
       <nav className="flex-1 p-3 space-y-1">
@@ -64,7 +74,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ collapsed, onToggle 
               )}
             >
               <item.icon className="h-5 w-5 flex-shrink-0" />
-              {!collapsed && <span>{item.label}</span>}
+              {!collapsed && <span>{t(item.labelKey)}</span>}
             </Link>
           );
         })}
@@ -80,7 +90,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ collapsed, onToggle 
           {!collapsed && (
             <div className="min-w-0">
               <p className="text-sm font-medium truncate">{user?.name}</p>
-              <p className="text-xs text-sidebar-foreground/60 truncate">Admin</p>
+              <p className="text-xs text-sidebar-foreground/60 truncate">{t('users.admin')}</p>
             </div>
           )}
         </div>
@@ -91,7 +101,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ collapsed, onToggle 
           className={cn("w-full justify-start text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent", collapsed && "justify-center")}
         >
           <LogOut className="h-4 w-4" />
-          {!collapsed && <span className="ml-2">Log out</span>}
+          {!collapsed && <span className="ml-2">{t('common.logout')}</span>}
         </Button>
       </div>
     </aside>
