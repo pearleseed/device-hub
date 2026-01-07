@@ -12,11 +12,13 @@ import { cn } from '@/lib/utils';
 interface DraggableRequestCardProps {
   request: BookingRequest;
   onStatusChange: (id: string, status: RequestStatus) => void;
+  isSelected?: boolean;
 }
 
 export const DraggableRequestCard: React.FC<DraggableRequestCardProps> = ({
   request,
   onStatusChange,
+  isSelected,
 }) => {
   const {
     attributes,
@@ -45,6 +47,7 @@ export const DraggableRequestCard: React.FC<DraggableRequestCardProps> = ({
         request={request}
         onStatusChange={onStatusChange}
         dragHandleProps={{ ...attributes, ...listeners }}
+        isSelected={isSelected}
       />
     </div>
   );
@@ -55,6 +58,7 @@ interface RequestCardContentProps {
   onStatusChange?: (id: string, status: RequestStatus) => void;
   isDragging?: boolean;
   dragHandleProps?: React.HTMLAttributes<HTMLDivElement>;
+  isSelected?: boolean;
 }
 
 export const RequestCardContent: React.FC<RequestCardContentProps> = ({
@@ -62,6 +66,7 @@ export const RequestCardContent: React.FC<RequestCardContentProps> = ({
   onStatusChange,
   isDragging,
   dragHandleProps,
+  isSelected,
 }) => {
   const device = getDeviceById(request.deviceId);
   const user = getUserById(request.userId);
@@ -70,11 +75,17 @@ export const RequestCardContent: React.FC<RequestCardContentProps> = ({
 
   return (
     <Card className={cn(
-      "shadow-soft hover:shadow-medium transition-all duration-200 cursor-grab active:cursor-grabbing",
-      isDragging && "shadow-elevated ring-2 ring-primary"
+      "relative shadow-soft hover:shadow-medium transition-all duration-200 cursor-grab active:cursor-grabbing",
+      isDragging && "shadow-elevated ring-2 ring-primary",
+      isSelected && "ring-2 ring-primary bg-primary/5 shadow-medium"
     )}>
       <CardContent className="p-4">
         <div className="flex items-start gap-2">
+          {/* Selection indicator */}
+          {isSelected && (
+            <div className="absolute -left-1 top-1/2 -translate-y-1/2 w-1 h-8 bg-primary rounded-full" />
+          )}
+          
           {/* Drag Handle */}
           <div
             {...dragHandleProps}

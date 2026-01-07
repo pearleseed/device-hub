@@ -245,11 +245,12 @@ const AdminRequests: React.FC = () => {
                     items={getRequestsByStatus(col.status).map(r => r.id)}
                     strategy={verticalListSortingStrategy}
                   >
-                    {getRequestsByStatus(col.status).map(request => (
+                    {getRequestsByStatus(col.status).map((request, index) => (
                       <DraggableRequestCard
                         key={request.id}
                         request={request}
                         onStatusChange={updateStatus}
+                        isSelected={col.status === 'pending' && selectedRequest?.id === request.id}
                       />
                     ))}
                   </SortableContext>
