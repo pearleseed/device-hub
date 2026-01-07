@@ -5,7 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { bookingRequests as initialRequests, BookingRequest, RequestStatus, getDeviceById, getUserById } from '@/lib/mockData';
-import { Check, X, RotateCcw, List, LayoutGrid } from 'lucide-react';
+import { exportToCSV, requestExportColumns } from '@/lib/exportUtils';
+import { Check, X, RotateCcw, List, LayoutGrid, Download } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -25,6 +26,20 @@ const AdminRequests: React.FC = () => {
   const updateStatus = (id: string, newStatus: RequestStatus) => {
     setRequests(requests.map(r => r.id === id ? { ...r, status: newStatus } : r));
     toast({ title: 'Status updated', description: `Request moved to ${newStatus}.` });
+  };
+
+  const handleExportCSV = () => {
+    const exportData = requests.map(request => {
+      const device = getDeviceById(request.deviceId);
+      const user = getUserById(request.userId);
+      return {
+        ...request,
+        deviceName: device?.name || 'Unknown',
+        userName: user?.name || 'Unknown',
+      };
+    });
+    exportToCSV(exportData, 'request_history', requestExportColumns);
+    toast({ title: 'Export complete', description: 'Request history has been downloaded as CSV.' });
   };
 
   const getRequestsByStatus = (status: RequestStatus) => requests.filter(r => r.status === status);
@@ -96,6 +111,9 @@ const AdminRequests: React.FC = () => {
             <p className="text-muted-foreground">Review and manage device requests</p>
           </div>
           <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={handleExportCSV}>
+              <Download className="h-4 w-4 mr-1" /> Export
+            </Button>
             <Button variant={viewMode === 'kanban' ? 'default' : 'outline'} size="sm" onClick={() => setViewMode('kanban')}>
               <LayoutGrid className="h-4 w-4 mr-1" /> Kanban
             </Button>

@@ -19,7 +19,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { devices as initialDevices, Device, getUserById } from '@/lib/mockData';
-import { Plus, Search, MoreHorizontal, Pencil, Trash2, QrCode } from 'lucide-react';
+import { exportToCSV, deviceExportColumns } from '@/lib/exportUtils';
+import { Plus, Search, MoreHorizontal, Pencil, Trash2, QrCode, Download } from 'lucide-react';
 import { AddDeviceModal } from '@/components/admin/AddDeviceModal';
 import { EditDeviceModal } from '@/components/admin/EditDeviceModal';
 import { useToast } from '@/hooks/use-toast';
@@ -62,6 +63,11 @@ const AdminInventory: React.FC = () => {
     setEditModalOpen(true);
   };
 
+  const handleExportCSV = () => {
+    exportToCSV(devices, 'device_inventory', deviceExportColumns);
+    toast({ title: 'Export complete', description: 'Device inventory has been downloaded as CSV.' });
+  };
+
   return (
     <div className="flex min-h-screen bg-background">
       <AdminSidebar />
@@ -72,10 +78,16 @@ const AdminInventory: React.FC = () => {
             <h1 className="text-2xl font-bold">Inventory Management</h1>
             <p className="text-muted-foreground">Manage all devices in your inventory</p>
           </div>
-          <Button onClick={() => setAddModalOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            Add Device
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={handleExportCSV}>
+              <Download className="mr-2 h-4 w-4" />
+              Export CSV
+            </Button>
+            <Button onClick={() => setAddModalOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Add Device
+            </Button>
+          </div>
         </div>
 
         <Card>
