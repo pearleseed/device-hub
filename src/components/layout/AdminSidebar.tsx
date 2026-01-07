@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { NotificationCenter } from '@/components/notifications/NotificationCenter';
 import { LanguageToggle } from '@/components/ui/language-toggle';
+import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { 
   LayoutDashboard, 
   Package, 
@@ -51,10 +52,11 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ collapsed, onToggle 
         {!collapsed && <NotificationCenter />}
       </div>
 
-      {/* Language Toggle */}
+      {/* Theme & Language Toggle */}
       {!collapsed && (
-        <div className="px-3 py-2 border-b border-sidebar-border">
+        <div className="flex items-center justify-between px-3 py-2 border-b border-sidebar-border">
           <LanguageToggle />
+          <ThemeToggle />
         </div>
       )}
 

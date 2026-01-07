@@ -13,6 +13,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { NotificationCenter } from '@/components/notifications/NotificationCenter';
+import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { Search, Monitor, LogOut, User, Settings, LayoutDashboard } from 'lucide-react';
 
 interface UserNavbarProps {
@@ -54,7 +55,10 @@ export const UserNavbar: React.FC<UserNavbarProps> = ({ onSearch }) => {
         </form>
 
         {/* Right Section */}
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2">
+          {/* Theme Toggle */}
+          <ThemeToggle />
+          
           {/* Notifications */}
           <NotificationCenter />
 
