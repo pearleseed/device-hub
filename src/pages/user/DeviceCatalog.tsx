@@ -241,25 +241,47 @@ const DeviceCatalog: React.FC = () => {
         </div>
       </section>
 
-      {/* Filters */}
-      <section className={cn("border-b bg-card sticky z-40", compareMode ? "top-28" : "top-16")}>
-        <div className="container px-4 md:px-6 py-4">
-          <div className="flex flex-col sm:flex-row gap-4">
+      {/* Filters - Streamlined */}
+      <section className={cn("border-b bg-card/80 backdrop-blur-sm sticky z-40", compareMode ? "top-28" : "top-16")}>
+        <div className="container px-4 md:px-6 py-3">
+          {/* Main Filter Row */}
+          <div className="flex items-center gap-3">
             {/* Search */}
-            <div className="relative flex-1 max-w-md">
+            <div className="relative flex-1 max-w-sm">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 type="search"
-                placeholder="Search by name, brand, or model..."
+                placeholder="Search devices..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
+                className="pl-9 h-9 bg-background/50"
               />
             </div>
 
-            {/* Category Filter */}
+            {/* Category Pills - Inline */}
+            <div className="hidden md:flex items-center gap-1.5 px-1">
+              {categoryOptions.map(option => (
+                <Button
+                  key={option.value}
+                  variant={categoryFilter === option.value ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setCategoryFilter(option.value)}
+                  className={cn(
+                    "h-8 px-3 text-xs font-medium gap-1.5 rounded-full transition-all",
+                    categoryFilter === option.value 
+                      ? "shadow-sm" 
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  {option.icon}
+                  <span className="hidden lg:inline">{option.label}</span>
+                </Button>
+              ))}
+            </div>
+
+            {/* Mobile Category Dropdown */}
             <Select value={categoryFilter} onValueChange={(v) => setCategoryFilter(v as DeviceCategory | 'all')}>
-              <SelectTrigger className="w-full sm:w-[180px]">
+              <SelectTrigger className="md:hidden w-[130px] h-9">
                 <SelectValue placeholder="Category" />
               </SelectTrigger>
               <SelectContent>
@@ -274,100 +296,157 @@ const DeviceCatalog: React.FC = () => {
               </SelectContent>
             </Select>
 
-            {/* Status Filter */}
-            <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as DeviceStatus | 'all')}>
-              <SelectTrigger className="w-full sm:w-[160px]">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                {statusOptions.map(option => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {/* Divider */}
+            <div className="hidden sm:block h-6 w-px bg-border" />
 
-            {/* Sort Dropdown */}
-            <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortOption)}>
-              <SelectTrigger className="w-full sm:w-[160px]">
-                <ArrowUpDown className="h-4 w-4 mr-2" />
-                <SelectValue placeholder="Sort by" />
-              </SelectTrigger>
-              <SelectContent>
-                {sortOptions.map(option => (
-                  <SelectItem key={option.value} value={option.value}>
-                    <div className="flex items-center gap-2">
-                      {option.icon}
+            {/* Compact Filters Group */}
+            <div className="flex items-center gap-2">
+              {/* Status Filter */}
+              <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as DeviceStatus | 'all')}>
+                <SelectTrigger className="w-[120px] h-9 text-xs">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  {statusOptions.map(option => (
+                    <SelectItem key={option.value} value={option.value}>
                       {option.label}
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
 
-            {/* View Mode Toggle */}
-            <div className="flex items-center border rounded-lg p-1">
-              <Button
-                variant={viewMode === 'grid' ? 'secondary' : 'ghost'}
-                size="icon"
-                className="h-8 w-8"
-                onClick={() => setViewMode('grid')}
-              >
-                <Grid3X3 className="h-4 w-4" />
-              </Button>
-              <Button
-                variant={viewMode === 'list' ? 'secondary' : 'ghost'}
-                size="icon"
-                className="h-8 w-8"
-                onClick={() => setViewMode('list')}
-              >
-                <List className="h-4 w-4" />
-              </Button>
+              {/* Sort */}
+              <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortOption)}>
+                <SelectTrigger className="w-[130px] h-9 text-xs">
+                  <ArrowUpDown className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
+                  <SelectValue placeholder="Sort" />
+                </SelectTrigger>
+                <SelectContent>
+                  {sortOptions.map(option => (
+                    <SelectItem key={option.value} value={option.value}>
+                      <div className="flex items-center gap-2">
+                        {option.icon}
+                        {option.label}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
-            {/* Favorites Filter */}
-            <Button
-              variant={showFavoritesOnly ? 'default' : 'outline'}
-              onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
-              className="gap-2"
-            >
-              <Heart className={cn("h-4 w-4", showFavoritesOnly && "fill-current")} />
-              {favoritesCount > 0 && (
-                <Badge variant="secondary" className="ml-1 h-5 px-1.5">
-                  {favoritesCount}
-                </Badge>
-              )}
-            </Button>
+            {/* Divider */}
+            <div className="hidden sm:block h-6 w-px bg-border" />
 
-            {/* Compare Mode Toggle */}
-            {!compareMode && (
-              <Button
-                variant="outline"
-                onClick={() => setCompareMode(true)}
-                className="gap-2"
-              >
-                <GitCompare className="h-4 w-4" />
-                Compare
-              </Button>
-            )}
-          </div>
+            {/* Action Buttons */}
+            <div className="flex items-center gap-1.5">
+              {/* View Mode Toggle */}
+              <div className="flex items-center rounded-lg border bg-muted/30 p-0.5">
+                <Button
+                  variant={viewMode === 'grid' ? 'secondary' : 'ghost'}
+                  size="icon"
+                  className="h-7 w-7 rounded-md"
+                  onClick={() => setViewMode('grid')}
+                >
+                  <Grid3X3 className="h-3.5 w-3.5" />
+                </Button>
+                <Button
+                  variant={viewMode === 'list' ? 'secondary' : 'ghost'}
+                  size="icon"
+                  className="h-7 w-7 rounded-md"
+                  onClick={() => setViewMode('list')}
+                >
+                  <List className="h-3.5 w-3.5" />
+                </Button>
+              </div>
 
-          {/* Category Pills */}
-          <div className="flex gap-2 mt-4 overflow-x-auto pb-2">
-            {categoryOptions.map(option => (
+              {/* Favorites Filter */}
               <Button
-                key={option.value}
-                variant={categoryFilter === option.value ? 'default' : 'outline'}
+                variant={showFavoritesOnly ? 'default' : 'ghost'}
                 size="sm"
-                onClick={() => setCategoryFilter(option.value)}
-                className="flex items-center gap-2 whitespace-nowrap"
+                onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
+                className={cn(
+                  "h-8 px-2.5 gap-1.5 rounded-lg",
+                  showFavoritesOnly && "shadow-sm"
+                )}
               >
-                {option.icon}
-                {option.label}
+                <Heart className={cn("h-3.5 w-3.5", showFavoritesOnly && "fill-current")} />
+                {favoritesCount > 0 && (
+                  <span className="text-xs font-medium">{favoritesCount}</span>
+                )}
               </Button>
-            ))}
+
+              {/* Compare Mode Toggle */}
+              {!compareMode && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setCompareMode(true)}
+                  className="h-8 px-2.5 gap-1.5 rounded-lg hidden sm:flex"
+                >
+                  <GitCompare className="h-3.5 w-3.5" />
+                  <span className="hidden lg:inline text-xs">Compare</span>
+                </Button>
+              )}
+            </div>
           </div>
+
+          {/* Active Filters Summary */}
+          {(categoryFilter !== 'all' || statusFilter !== 'all' || searchQuery || showFavoritesOnly) && (
+            <div className="flex items-center gap-2 mt-2.5 pt-2.5 border-t border-dashed">
+              <span className="text-xs text-muted-foreground">Active:</span>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                {searchQuery && (
+                  <Badge variant="secondary" className="h-6 text-xs gap-1 pl-2 pr-1">
+                    "{searchQuery}"
+                    <X 
+                      className="h-3 w-3 cursor-pointer hover:text-destructive" 
+                      onClick={() => setSearchQuery('')}
+                    />
+                  </Badge>
+                )}
+                {categoryFilter !== 'all' && (
+                  <Badge variant="secondary" className="h-6 text-xs gap-1 pl-2 pr-1">
+                    {categoryOptions.find(c => c.value === categoryFilter)?.label}
+                    <X 
+                      className="h-3 w-3 cursor-pointer hover:text-destructive" 
+                      onClick={() => setCategoryFilter('all')}
+                    />
+                  </Badge>
+                )}
+                {statusFilter !== 'all' && (
+                  <Badge variant="secondary" className="h-6 text-xs gap-1 pl-2 pr-1">
+                    {statusOptions.find(s => s.value === statusFilter)?.label}
+                    <X 
+                      className="h-3 w-3 cursor-pointer hover:text-destructive" 
+                      onClick={() => setStatusFilter('all')}
+                    />
+                  </Badge>
+                )}
+                {showFavoritesOnly && (
+                  <Badge variant="secondary" className="h-6 text-xs gap-1 pl-2 pr-1">
+                    Favorites only
+                    <X 
+                      className="h-3 w-3 cursor-pointer hover:text-destructive" 
+                      onClick={() => setShowFavoritesOnly(false)}
+                    />
+                  </Badge>
+                )}
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
+                  onClick={() => {
+                    setSearchQuery('');
+                    setCategoryFilter('all');
+                    setStatusFilter('all');
+                    setShowFavoritesOnly(false);
+                  }}
+                >
+                  Clear all
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       </section>
 
