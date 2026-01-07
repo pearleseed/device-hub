@@ -7,7 +7,6 @@ import { devices, Device, DeviceCategory, DeviceStatus } from '@/lib/mockData';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Checkbox } from '@/components/ui/checkbox';
 import {
   Select,
   SelectContent,
@@ -17,6 +16,7 @@ import {
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { Search, Laptop, Smartphone, Tablet, Monitor as MonitorIcon, Headphones, LayoutGrid, GitCompare, List, Grid3X3, X } from 'lucide-react';
+import { useRecentlyViewed } from '@/hooks/use-recently-viewed';
 
 const categoryOptions: { value: DeviceCategory | 'all'; label: string; icon: React.ReactNode }[] = [
   { value: 'all', label: 'All Categories', icon: <LayoutGrid className="h-4 w-4" /> },
@@ -46,6 +46,9 @@ const DeviceCatalog: React.FC = () => {
   const [compareMode, setCompareMode] = useState(false);
   const [compareDevices, setCompareDevices] = useState<Device[]>([]);
   const [comparisonModalOpen, setComparisonModalOpen] = useState(false);
+  
+  // Recently viewed tracking
+  const { addToRecentlyViewed } = useRecentlyViewed();
 
   const filteredDevices = useMemo(() => {
     return devices.filter(device => {
@@ -65,6 +68,7 @@ const DeviceCatalog: React.FC = () => {
     if (compareMode) {
       toggleCompareDevice(device);
     } else {
+      addToRecentlyViewed(device.id);
       setSelectedDevice(device);
       setModalOpen(true);
     }
