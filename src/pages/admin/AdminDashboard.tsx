@@ -1,11 +1,15 @@
 import React from 'react';
 import { AdminSidebar } from '@/components/layout/AdminSidebar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { OverdueAlertsBanner } from '@/components/alerts/OverdueAlertsBanner';
 import { devices, bookingRequests, users, getDevicesByStatus, getRequestsByStatus } from '@/lib/mockData';
-import { Package, AlertTriangle, Users, TrendingUp } from 'lucide-react';
+import { useOverdueAlerts } from '@/hooks/use-overdue-alerts';
+import { Package, AlertTriangle, Users, TrendingUp, Clock } from 'lucide-react';
 import { PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 const AdminDashboard: React.FC = () => {
+  const { totalOverdue } = useOverdueAlerts();
+  
   const availableDevices = getDevicesByStatus('available').length;
   const borrowedDevices = getDevicesByStatus('borrowed').length;
   const maintenanceDevices = getDevicesByStatus('maintenance').length;
@@ -36,8 +40,11 @@ const AdminDashboard: React.FC = () => {
           <p className="text-muted-foreground">Overview of your device management system</p>
         </div>
 
+        {/* Overdue Alerts Banner */}
+        <OverdueAlertsBanner className="mb-6" />
+
         {/* KPI Cards */}
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-8">
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-5 mb-8">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium">Total Devices</CardTitle>
@@ -72,6 +79,17 @@ const AdminDashboard: React.FC = () => {
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold">{users.length}</div>
+            </CardContent>
+          </Card>
+          <Card className={totalOverdue > 0 ? "border-red-500 bg-red-500/5" : ""}>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium">Overdue</CardTitle>
+              <Clock className={`h-4 w-4 ${totalOverdue > 0 ? "text-red-500" : "text-muted-foreground"}`} />
+            </CardHeader>
+            <CardContent>
+              <div className={`text-3xl font-bold ${totalOverdue > 0 ? "text-red-500" : ""}`}>
+                {totalOverdue}
+              </div>
             </CardContent>
           </Card>
         </div>
