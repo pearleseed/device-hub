@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -14,15 +14,23 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { NotificationCenter } from '@/components/notifications/NotificationCenter';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
-import { Search, Monitor, LogOut, User, Settings, LayoutDashboard } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { Search, Monitor, LogOut, User, Settings, LayoutDashboard, Package, Menu, X } from 'lucide-react';
 
 interface UserNavbarProps {
   onSearch?: (query: string) => void;
 }
 
+const navLinks = [
+  { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { to: '/catalog', label: 'Device Catalog', icon: Package },
+];
+
 export const UserNavbar: React.FC<UserNavbarProps> = ({ onSearch }) => {
   const { user, logout } = useAuth();
+  const location = useLocation();
   const [searchQuery, setSearchQuery] = useState('');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,8 +48,30 @@ export const UserNavbar: React.FC<UserNavbarProps> = ({ onSearch }) => {
           <span className="font-semibold text-lg hidden sm:inline-block">DeviceHub</span>
         </Link>
 
+        {/* Desktop Navigation Links */}
+        <nav className="hidden md:flex items-center gap-1 ml-8">
+          {navLinks.map(link => {
+            const isActive = location.pathname === link.to;
+            return (
+              <Link
+                key={link.to}
+                to={link.to}
+                className={cn(
+                  "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors",
+                  isActive 
+                    ? "bg-primary text-primary-foreground" 
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                )}
+              >
+                <link.icon className="h-4 w-4" />
+                {link.label}
+              </Link>
+            );
+          })}
+        </nav>
+
         {/* Search Bar */}
-        <form onSubmit={handleSearch} className="flex-1 max-w-md mx-4 md:mx-8">
+        <form onSubmit={handleSearch} className="flex-1 max-w-md mx-4 md:mx-8 hidden sm:block">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
@@ -61,6 +91,16 @@ export const UserNavbar: React.FC<UserNavbarProps> = ({ onSearch }) => {
           
           {/* Notifications */}
           <NotificationCenter />
+
+          {/* Mobile Menu Toggle */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="md:hidden"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          >
+            {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </Button>
 
           {/* User Menu */}
           <DropdownMenu>
@@ -111,6 +151,48 @@ export const UserNavbar: React.FC<UserNavbarProps> = ({ onSearch }) => {
           </DropdownMenu>
         </div>
       </div>
+
+      {/* Mobile Navigation Menu */}
+      {mobileMenuOpen && (
+        <div className="md:hidden border-t bg-card p-4 space-y-3">
+          {/* Mobile Search */}
+          <form onSubmit={handleSearch}>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                type="search"
+                placeholder="Search devices..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10 h-10 bg-secondary border-0 w-full"
+              />
+            </div>
+          </form>
+          
+          {/* Mobile Nav Links */}
+          <nav className="flex flex-col gap-1">
+            {navLinks.map(link => {
+              const isActive = location.pathname === link.to;
+              return (
+                <Link
+                  key={link.to}
+                  to={link.to}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={cn(
+                    "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors",
+                    isActive 
+                      ? "bg-primary text-primary-foreground" 
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                  )}
+                >
+                  <link.icon className="h-5 w-5" />
+                  {link.label}
+                </Link>
+              );
+            })}
+          </nav>
+        </div>
+      )}
     </header>
   );
 };

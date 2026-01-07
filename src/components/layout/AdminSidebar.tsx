@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -17,7 +17,11 @@ import {
   LogOut,
   Monitor,
   CalendarDays,
+  PanelLeftClose,
+  PanelLeft,
 } from 'lucide-react';
+
+const SIDEBAR_COLLAPSED_KEY = 'admin-sidebar-collapsed';
 
 const navItems = [
   { icon: LayoutDashboard, labelKey: 'nav.dashboard', path: '/admin' },
@@ -33,10 +37,41 @@ interface AdminSidebarProps {
   onToggle?: () => void;
 }
 
-export const AdminSidebar: React.FC<AdminSidebarProps> = ({ collapsed, onToggle }) => {
+export const AdminSidebar: React.FC<AdminSidebarProps> = ({ 
+  collapsed: controlledCollapsed, 
+  onToggle 
+}) => {
   const { user, logout } = useAuth();
   const { t } = useLanguage();
   const location = useLocation();
+  
+  // Use localStorage for persistence when not controlled
+  const [internalCollapsed, setInternalCollapsed] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem(SIDEBAR_COLLAPSED_KEY);
+      return saved === 'true';
+    }
+    return false;
+  });
+
+  const collapsed = controlledCollapsed ?? internalCollapsed;
+
+  const handleToggle = () => {
+    if (onToggle) {
+      onToggle();
+    } else {
+      const newValue = !internalCollapsed;
+      setInternalCollapsed(newValue);
+      localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(newValue));
+    }
+  };
+
+  // Persist controlled state too
+  useEffect(() => {
+    if (controlledCollapsed !== undefined) {
+      localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(controlledCollapsed));
+    }
+  }, [controlledCollapsed]);
 
   return (
     <aside className={cn(
@@ -71,18 +106,52 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ collapsed, onToggle 
               key={item.path}
               to={item.path}
               className={cn(
-                "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors",
+                "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors relative group",
                 isActive 
-                  ? "bg-sidebar-accent text-sidebar-accent-foreground" 
-                  : "hover:bg-sidebar-accent/50"
+                  ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium" 
+                  : "hover:bg-sidebar-accent/50",
+                collapsed && "justify-center"
               )}
             >
+              {/* Active indicator */}
+              {isActive && (
+                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-sidebar-primary rounded-r-full" />
+              )}
               <item.icon className="h-5 w-5 flex-shrink-0" />
               {!collapsed && <span>{t(item.labelKey)}</span>}
+              
+              {/* Tooltip for collapsed state */}
+              {collapsed && (
+                <div className="absolute left-full ml-2 px-2 py-1 bg-popover text-popover-foreground text-sm rounded-md shadow-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap z-50">
+                  {t(item.labelKey)}
+                </div>
+              )}
             </Link>
           );
         })}
       </nav>
+
+      {/* Collapse Toggle */}
+      <div className="px-3 pb-2">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={handleToggle}
+          className={cn(
+            "w-full text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent",
+            collapsed ? "justify-center" : "justify-start"
+          )}
+        >
+          {collapsed ? (
+            <PanelLeft className="h-4 w-4" />
+          ) : (
+            <>
+              <PanelLeftClose className="h-4 w-4" />
+              <span className="ml-2">Collapse</span>
+            </>
+          )}
+        </Button>
+      </div>
 
       {/* User Section */}
       <div className="p-3 border-t border-sidebar-border">

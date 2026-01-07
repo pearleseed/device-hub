@@ -1,18 +1,11 @@
 import React, { useState } from 'react';
 import { AdminSidebar } from '@/components/layout/AdminSidebar';
+import { BreadcrumbNav } from '@/components/ui/breadcrumb-nav';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import { DataTable, Column } from '@/components/ui/data-table';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,28 +19,23 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { users as initialUsers, User, UserRole, getRequestsByUser } from '@/lib/mockData';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { Plus, Search, MoreHorizontal, Pencil, Trash2, Mail, Shield, ShieldCheck } from 'lucide-react';
+import { Plus, MoreHorizontal, Pencil, Trash2, Mail, Shield, ShieldCheck, Undo2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 const AdminUsers: React.FC = () => {
   const { t } = useLanguage();
   const { toast } = useToast();
   const [users, setUsers] = useState<User[]>(initialUsers);
-  const [searchQuery, setSearchQuery] = useState('');
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [selectedUsers, setSelectedUsers] = useState<User[]>([]);
   const [newUser, setNewUser] = useState({ name: '', email: '', department: '', role: 'user' as UserRole });
-
-  const filteredUsers = users.filter(user =>
-    user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    user.department.toLowerCase().includes(searchQuery.toLowerCase())
-  );
 
   const handleAddUser = () => {
     const user: User = {
@@ -69,104 +57,172 @@ const AdminUsers: React.FC = () => {
   };
 
   const handleDeleteUser = (user: User) => {
+    const deletedUser = user;
     setUsers(users.filter(u => u.id !== user.id));
-    toast({ title: 'User deleted', description: `${user.name} has been removed.`, variant: 'destructive' });
+    
+    toast({ 
+      title: 'User deleted', 
+      description: `${user.name} has been removed.`,
+      action: (
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={() => {
+            setUsers(prev => [...prev, deletedUser]);
+            toast({ title: 'Restored', description: `${deletedUser.name} has been restored.` });
+          }}
+        >
+          <Undo2 className="h-4 w-4 mr-1" />
+          Undo
+        </Button>
+      ),
+    });
+  };
+
+  const handleBulkDelete = () => {
+    const deletedUsers = [...selectedUsers];
+    setUsers(users.filter(u => !selectedUsers.some(s => s.id === u.id)));
+    setSelectedUsers([]);
+    
+    toast({ 
+      title: 'Users deleted', 
+      description: `${deletedUsers.length} users have been removed.`,
+      action: (
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={() => {
+            setUsers(prev => [...prev, ...deletedUsers]);
+            toast({ title: 'Restored', description: `${deletedUsers.length} users have been restored.` });
+          }}
+        >
+          <Undo2 className="h-4 w-4 mr-1" />
+          Undo
+        </Button>
+      ),
+    });
   };
 
   const getActiveLoansCount = (userId: string) => {
     return getRequestsByUser(userId).filter(r => r.status === 'active').length;
   };
 
+  const columns: Column<User>[] = [
+    {
+      key: 'name',
+      header: t('common.name'),
+      sortable: true,
+      render: (user) => (
+        <div className="flex items-center gap-3">
+          <Avatar className="h-10 w-10">
+            <AvatarImage src={user.avatar} />
+            <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+          </Avatar>
+          <span className="font-medium">{user.name}</span>
+        </div>
+      ),
+    },
+    {
+      key: 'email',
+      header: t('common.email'),
+      sortable: true,
+      render: (user) => (
+        <div className="flex items-center gap-2">
+          <Mail className="h-4 w-4 text-muted-foreground" />
+          {user.email}
+        </div>
+      ),
+    },
+    {
+      key: 'department',
+      header: t('common.department'),
+      sortable: true,
+    },
+    {
+      key: 'role',
+      header: t('common.role'),
+      sortable: true,
+      render: (user) => (
+        <Badge variant={user.role === 'admin' ? 'default' : 'secondary'} className="gap-1">
+          {user.role === 'admin' ? <ShieldCheck className="h-3 w-3" /> : <Shield className="h-3 w-3" />}
+          {user.role === 'admin' ? t('users.admin') : t('users.user')}
+        </Badge>
+      ),
+    },
+    {
+      key: 'activeLoans',
+      header: t('users.activeLoans'),
+      render: (user) => (
+        <Badge variant="outline">{getActiveLoansCount(user.id)}</Badge>
+      ),
+    },
+    {
+      key: 'actions',
+      header: t('common.actions'),
+      className: 'w-[70px]',
+      render: (user) => (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => { setSelectedUser(user); setEditModalOpen(true); }}>
+              <Pencil className="mr-2 h-4 w-4" />{t('common.edit')}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleDeleteUser(user)} className="text-destructive">
+              <Trash2 className="mr-2 h-4 w-4" />{t('common.delete')}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      ),
+    },
+  ];
+
   return (
     <div className="flex min-h-screen bg-background">
       <AdminSidebar />
       
       <main className="flex-1 p-8">
+        <BreadcrumbNav />
+        
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-2xl font-bold">{t('users.title')}</h1>
             <p className="text-muted-foreground">{t('users.subtitle')}</p>
           </div>
-          <Button onClick={() => setAddModalOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            {t('users.addUser')}
-          </Button>
+          <div className="flex gap-2">
+            {selectedUsers.length > 0 && (
+              <Button variant="destructive" onClick={handleBulkDelete}>
+                <Trash2 className="mr-2 h-4 w-4" />
+                Delete ({selectedUsers.length})
+              </Button>
+            )}
+            <Button onClick={() => setAddModalOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              {t('users.addUser')}
+            </Button>
+          </div>
         </div>
 
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle>{t('users.allUsers')} ({filteredUsers.length})</CardTitle>
-              <div className="relative w-72">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder={`${t('common.search')}...`}
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-            </div>
+            <CardTitle>{t('users.allUsers')} ({users.length})</CardTitle>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>{t('common.name')}</TableHead>
-                  <TableHead>{t('common.email')}</TableHead>
-                  <TableHead>{t('common.department')}</TableHead>
-                  <TableHead>{t('common.role')}</TableHead>
-                  <TableHead>{t('users.activeLoans')}</TableHead>
-                  <TableHead className="w-[70px]">{t('common.actions')}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredUsers.map(user => (
-                  <TableRow key={user.id}>
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        <Avatar className="h-10 w-10">
-                          <AvatarImage src={user.avatar} />
-                          <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
-                        </Avatar>
-                        <span className="font-medium">{user.name}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Mail className="h-4 w-4 text-muted-foreground" />
-                        {user.email}
-                      </div>
-                    </TableCell>
-                    <TableCell>{user.department}</TableCell>
-                    <TableCell>
-                      <Badge variant={user.role === 'admin' ? 'default' : 'secondary'} className="gap-1">
-                        {user.role === 'admin' ? <ShieldCheck className="h-3 w-3" /> : <Shield className="h-3 w-3" />}
-                        {user.role === 'admin' ? t('users.admin') : t('users.user')}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{getActiveLoansCount(user.id)}</Badge>
-                    </TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => { setSelectedUser(user); setEditModalOpen(true); }}>
-                            <Pencil className="mr-2 h-4 w-4" />{t('common.edit')}
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleDeleteUser(user)} className="text-destructive">
-                            <Trash2 className="mr-2 h-4 w-4" />{t('common.delete')}
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            <DataTable
+              data={users}
+              columns={columns}
+              getRowId={(user) => user.id}
+              searchable
+              searchPlaceholder={`${t('common.search')}...`}
+              searchKeys={['name', 'email', 'department']}
+              paginated
+              pageSize={10}
+              selectable
+              onSelectionChange={setSelectedUsers}
+              emptyMessage="No users found"
+              emptyDescription="Add your first user to get started"
+            />
           </CardContent>
         </Card>
 
