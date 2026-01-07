@@ -42,6 +42,10 @@
 
     --radius: 0.75rem;
 
+    /* Focus ring for accessibility */
+    --focus-ring: 222 47% 40%;
+    --focus-ring-offset: 210 40% 98%;
+
     /* Status Colors */
     --status-available: 142 71% 45%;
     --status-available-foreground: 0 0% 100%;
@@ -97,6 +101,10 @@
     --input: 222 47% 18%;
     --ring: 210 40% 80%;
 
+    /* Focus ring for accessibility - Dark mode */
+    --focus-ring: 210 40% 70%;
+    --focus-ring-offset: 222 47% 5%;
+
     /* Status Colors - Dark Mode */
     --status-available: 142 71% 45%;
     --status-available-foreground: 0 0% 100%;
@@ -129,10 +137,115 @@
   h1, h2, h3, h4, h5, h6 {
     @apply font-semibold tracking-tight;
   }
+
+  /* Enhanced Focus States for Accessibility */
+  :focus-visible {
+    @apply outline-none ring-2 ring-offset-2;
+    ring-color: hsl(var(--focus-ring));
+    ring-offset-color: hsl(var(--focus-ring-offset));
+  }
+
+  /* Ensure focus is visible on all interactive elements */
+  a:focus-visible,
+  button:focus-visible,
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible,
+  [tabindex]:focus-visible {
+    @apply outline-none ring-2 ring-offset-2;
+    ring-color: hsl(var(--focus-ring));
+    ring-offset-color: hsl(var(--focus-ring-offset));
+  }
+
+  /* Remove default outline but keep for non-mouse users */
+  :focus:not(:focus-visible) {
+    outline: none;
+  }
+}
+
+@layer components {
+  /* Skip to Content Link - Accessibility */
+  .skip-to-content {
+    @apply fixed top-0 left-0 z-[100] px-4 py-2 text-sm font-medium;
+    @apply bg-primary text-primary-foreground rounded-br-lg;
+    @apply transform -translate-y-full transition-transform duration-200;
+    @apply focus:translate-y-0;
+  }
+
+  /* Screen reader only text */
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
+  }
+
+  /* Focus trap indicator for modals */
+  .focus-trap-indicator {
+    @apply absolute inset-0 pointer-events-none;
+    @apply ring-2 ring-inset ring-primary/20 rounded-lg;
+  }
 }
 
 @layer utilities {
   .glass-effect {
     @apply backdrop-blur-lg bg-white/80 border border-white/20;
+  }
+
+  /* High contrast mode support */
+  @media (prefers-contrast: high) {
+    :root {
+      --border: 222 47% 30%;
+      --muted-foreground: 222 47% 30%;
+    }
+  }
+}
+
+/* Reduced Motion Support */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  /* Disable specific animations */
+  .animate-spin,
+  .animate-pulse,
+  .animate-bounce,
+  .animate-ping {
+    animation: none !important;
+  }
+
+  /* Disable hover transforms */
+  .hover\:-translate-y-1:hover,
+  .hover\:scale-105:hover,
+  .group-hover\:scale-105 {
+    transform: none !important;
+  }
+}
+
+/* Print styles for accessibility */
+@media print {
+  .no-print,
+  [aria-hidden="true"] {
+    display: none !important;
+  }
+
+  body {
+    background: white !important;
+    color: black !important;
+  }
+
+  a[href]::after {
+    content: " (" attr(href) ")";
   }
 }

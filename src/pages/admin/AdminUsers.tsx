@@ -182,7 +182,7 @@ const AdminUsers: React.FC = () => {
     <div className="flex min-h-screen bg-background">
       <AdminSidebar />
       
-      <main className="flex-1 p-8">
+      <main id="main-content" className="flex-1 p-8" tabIndex={-1} role="main" aria-label="User management">
         <BreadcrumbNav />
         
         <div className="flex items-center justify-between mb-8">

@@ -7,6 +7,7 @@ import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { NotificationProvider } from "@/contexts/NotificationContext";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
+import { SkipToContent } from "@/components/accessibility/SkipToContent";
 import Login from "./pages/Login";
 import UserDashboard from "./pages/user/UserDashboard";
 import DeviceCatalog from "./pages/user/DeviceCatalog";
@@ -58,8 +59,14 @@ const App = () => {
             <LanguageProvider>
               <NotificationProvider>
                 <TooltipProvider>
+                  {/* Accessibility: Skip to main content link */}
+                  <SkipToContent />
+                  
+                  {/* Toast notifications with ARIA */}
                   <Toaster />
                   <Sonner />
+                  
+                  {/* Main application routes */}
                   <AppRoutes />
                 </TooltipProvider>
               </NotificationProvider>

@@ -42,7 +42,7 @@ const UserDashboard: React.FC = () => {
     <div className="min-h-screen bg-background">
       <UserNavbar />
 
-      <main className="container px-4 md:px-6 py-8">
+      <main id="main-content" className="container px-4 md:px-6 py-8" tabIndex={-1}>
         {/* Welcome Section */}
         <div className="mb-8">
           <h1 className="text-2xl font-bold mb-2">
