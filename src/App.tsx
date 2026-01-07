@@ -53,19 +53,19 @@ const App = () => {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
-        <AuthProvider>
-          <LanguageProvider>
-            <NotificationProvider>
-              <TooltipProvider>
-                <Toaster />
-                <Sonner />
-                <BrowserRouter>
+        <BrowserRouter>
+          <AuthProvider>
+            <LanguageProvider>
+              <NotificationProvider>
+                <TooltipProvider>
+                  <Toaster />
+                  <Sonner />
                   <AppRoutes />
-                </BrowserRouter>
-              </TooltipProvider>
-            </NotificationProvider>
-          </LanguageProvider>
-        </AuthProvider>
+                </TooltipProvider>
+              </NotificationProvider>
+            </LanguageProvider>
+          </AuthProvider>
+        </BrowserRouter>
       </ThemeProvider>
     </QueryClientProvider>
   );
