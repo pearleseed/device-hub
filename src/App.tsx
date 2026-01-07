@@ -11,6 +11,8 @@ import { SkipToContent } from "@/components/accessibility/SkipToContent";
 import Login from "./pages/Login";
 import UserDashboard from "./pages/user/UserDashboard";
 import DeviceCatalog from "./pages/user/DeviceCatalog";
+import UserProfile from "./pages/user/UserProfile";
+import UserSettings from "./pages/user/UserSettings";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminInventory from "./pages/admin/AdminInventory";
 import AdminCalendar from "./pages/admin/AdminCalendar";
@@ -38,6 +40,8 @@ const AppRoutes = () => {
       <Route path="/login" element={isAuthenticated ? <Navigate to={isAdmin ? "/admin" : "/dashboard"} /> : <Login />} />
       <Route path="/dashboard" element={<ProtectedRoute><UserDashboard /></ProtectedRoute>} />
       <Route path="/catalog" element={<ProtectedRoute><DeviceCatalog /></ProtectedRoute>} />
+      <Route path="/profile" element={<ProtectedRoute><UserProfile /></ProtectedRoute>} />
+      <Route path="/settings" element={<ProtectedRoute><UserSettings /></ProtectedRoute>} />
       <Route path="/admin" element={<ProtectedRoute adminOnly><AdminDashboard /></ProtectedRoute>} />
       <Route path="/admin/inventory" element={<ProtectedRoute adminOnly><AdminInventory /></ProtectedRoute>} />
       <Route path="/admin/calendar" element={<ProtectedRoute adminOnly><AdminCalendar /></ProtectedRoute>} />
