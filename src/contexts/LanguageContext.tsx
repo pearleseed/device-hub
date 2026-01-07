@@ -13,6 +13,7 @@ const translations: Translations = {
   // Navigation
   'nav.dashboard': { en: 'Dashboard', ja: 'ダッシュボード' },
   'nav.inventory': { en: 'Inventory', ja: '在庫管理' },
+  'nav.calendar': { en: 'Calendar', ja: 'カレンダー' },
   'nav.requests': { en: 'Requests', ja: 'リクエスト' },
   'nav.users': { en: 'Users', ja: 'ユーザー' },
   'nav.settings': { en: 'Settings', ja: '設定' },
@@ -87,6 +88,34 @@ const translations: Translations = {
   'requests.returned': { en: 'Returned', ja: '返却済み' },
   'requests.approve': { en: 'Approve', ja: '承認' },
   'requests.reject': { en: 'Reject', ja: '却下' },
+  'requests.rejected': { en: 'Rejected', ja: '却下済み' },
+  
+  // Calendar
+  'calendar.title': { en: 'Device Availability Calendar', ja: 'デバイス空き状況カレンダー' },
+  'calendar.subtitle': { en: 'View device bookings and availability', ja: 'デバイスの予約と空き状況を確認' },
+  'calendar.calendarView': { en: 'Calendar', ja: 'カレンダー' },
+  'calendar.timelineView': { en: 'Timeline', ja: 'タイムライン' },
+  'calendar.monthlyView': { en: 'Monthly View', ja: '月間表示' },
+  'calendar.filters': { en: 'Filters', ja: 'フィルター' },
+  'calendar.categories': { en: 'Categories', ja: 'カテゴリー' },
+  'calendar.devices': { en: 'Devices', ja: 'デバイス' },
+  'calendar.device': { en: 'Device', ja: 'デバイス' },
+  'calendar.selectDate': { en: 'Select a date', ja: '日付を選択' },
+  'calendar.noBookingsForDate': { en: 'No bookings for this date', ja: 'この日の予約はありません' },
+  'calendar.noDevicesSelected': { en: 'No devices match the current filters', ja: '現在のフィルターに一致するデバイスがありません' },
+  'calendar.today': { en: 'Today', ja: '今日' },
+  'calendar.availableToday': { en: 'Available Today', ja: '本日空き' },
+  'calendar.availableThisWeek': { en: 'Available This Week', ja: '今週空きあり' },
+  'calendar.pendingBookings': { en: 'Pending Bookings', ja: '保留中の予約' },
+  'calendar.noBookings': { en: 'No Scheduled Bookings', ja: '予約なし' },
+  'calendar.availabilitySummary': { en: 'Availability Summary', ja: '空き状況サマリー' },
+  'calendar.upcomingAvailability': { en: 'Becoming Available Soon', ja: 'まもなく利用可能' },
+  'calendar.requestedOn': { en: 'Requested on', ja: 'リクエスト日' },
+  
+  // Common additions
+  'common.selectAll': { en: 'Select All', ja: 'すべて選択' },
+  'common.deselectAll': { en: 'Deselect All', ja: 'すべて解除' },
+  'common.more': { en: 'more', ja: '件' },
 };
 
 interface LanguageContextType {
