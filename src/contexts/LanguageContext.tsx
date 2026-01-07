@@ -116,6 +116,14 @@ const translations: Translations = {
   'common.selectAll': { en: 'Select All', ja: 'すべて選択' },
   'common.deselectAll': { en: 'Deselect All', ja: 'すべて解除' },
   'common.more': { en: 'more', ja: '件' },
+  
+  // Overdue alerts
+  'overdue.title': { en: 'Overdue Returns', ja: '返却期限超過' },
+  'overdue.overdueDevices': { en: 'overdue devices', ja: '台が期限超過' },
+  'overdue.critical': { en: 'critical', ja: '緊急' },
+  'overdue.viewAll': { en: 'View All', ja: 'すべて表示' },
+  'overdue.dueOn': { en: 'Due:', ja: '返却日:' },
+  'overdue.daysOverdue': { en: 'days overdue', ja: '日超過' },
 };
 
 interface LanguageContextType {
