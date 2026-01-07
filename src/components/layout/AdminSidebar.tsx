@@ -16,11 +16,13 @@ import {
   Settings, 
   LogOut,
   Monitor,
+  CalendarDays,
 } from 'lucide-react';
 
 const navItems = [
   { icon: LayoutDashboard, labelKey: 'nav.dashboard', path: '/admin' },
   { icon: Package, labelKey: 'nav.inventory', path: '/admin/inventory' },
+  { icon: CalendarDays, labelKey: 'nav.calendar', path: '/admin/calendar' },
   { icon: ClipboardList, labelKey: 'nav.requests', path: '/admin/requests' },
   { icon: Users, labelKey: 'nav.users', path: '/admin/users' },
   { icon: Settings, labelKey: 'nav.settings', path: '/admin/settings' },
