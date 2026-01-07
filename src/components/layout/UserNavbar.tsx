@@ -12,7 +12,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Search, Bell, Monitor, LogOut, User, Settings, LayoutDashboard } from 'lucide-react';
+import { NotificationCenter } from '@/components/notifications/NotificationCenter';
+import { Search, Monitor, LogOut, User, Settings, LayoutDashboard } from 'lucide-react';
 
 interface UserNavbarProps {
   onSearch?: (query: string) => void;
@@ -55,10 +56,7 @@ export const UserNavbar: React.FC<UserNavbarProps> = ({ onSearch }) => {
         {/* Right Section */}
         <div className="flex items-center gap-4">
           {/* Notifications */}
-          <Button variant="ghost" size="icon" className="relative">
-            <Bell className="h-5 w-5" />
-            <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-destructive" />
-          </Button>
+          <NotificationCenter />
 
           {/* User Menu */}
           <DropdownMenu>

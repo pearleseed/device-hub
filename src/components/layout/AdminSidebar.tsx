@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { NotificationCenter } from '@/components/notifications/NotificationCenter';
 import { 
   LayoutDashboard, 
   Package, 
@@ -12,7 +13,6 @@ import {
   Settings, 
   LogOut,
   Monitor,
-  ChevronLeft
 } from 'lucide-react';
 
 const navItems = [
@@ -34,15 +34,18 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ collapsed, onToggle 
 
   return (
     <aside className={cn(
-      "flex flex-col h-screen bg-sidebar text-sidebar-foreground transition-all duration-300",
+      "flex flex-col h-screen bg-sidebar text-sidebar-foreground transition-all duration-300 sticky top-0",
       collapsed ? "w-16" : "w-64"
     )}>
-      {/* Logo */}
-      <div className="flex items-center gap-3 p-4 border-b border-sidebar-border">
-        <div className="h-8 w-8 rounded-lg bg-sidebar-primary flex items-center justify-center flex-shrink-0">
-          <Monitor className="h-5 w-5 text-sidebar-primary-foreground" />
+      {/* Logo & Notifications */}
+      <div className="flex items-center justify-between p-4 border-b border-sidebar-border">
+        <div className="flex items-center gap-3">
+          <div className="h-8 w-8 rounded-lg bg-sidebar-primary flex items-center justify-center flex-shrink-0">
+            <Monitor className="h-5 w-5 text-sidebar-primary-foreground" />
+          </div>
+          {!collapsed && <span className="font-semibold text-lg">DeviceHub</span>}
         </div>
-        {!collapsed && <span className="font-semibold text-lg">DeviceHub</span>}
+        {!collapsed && <NotificationCenter />}
       </div>
 
       {/* Navigation */}
@@ -85,7 +88,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ collapsed, onToggle 
           variant="ghost" 
           size="sm" 
           onClick={logout}
-          className={cn("w-full justify-start text-sidebar-foreground/70 hover:text-sidebar-foreground", collapsed && "justify-center")}
+          className={cn("w-full justify-start text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent", collapsed && "justify-center")}
         >
           <LogOut className="h-4 w-4" />
           {!collapsed && <span className="ml-2">Log out</span>}
