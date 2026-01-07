@@ -15,8 +15,10 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
-import { Search, Laptop, Smartphone, Tablet, Monitor as MonitorIcon, Headphones, LayoutGrid, GitCompare, List, Grid3X3, X } from 'lucide-react';
+import { Search, Laptop, Smartphone, Tablet, Monitor as MonitorIcon, Headphones, LayoutGrid, GitCompare, List, Grid3X3, X, Heart, ArrowUpDown, SortAsc, SortDesc } from 'lucide-react';
 import { useRecentlyViewed } from '@/hooks/use-recently-viewed';
+import { useFavorites } from '@/hooks/use-favorites';
+import { toast } from 'sonner';
 
 const categoryOptions: { value: DeviceCategory | 'all'; label: string; icon: React.ReactNode }[] = [
   { value: 'all', label: 'All Categories', icon: <LayoutGrid className="h-4 w-4" /> },
@@ -34,13 +36,25 @@ const statusOptions: { value: DeviceStatus | 'all'; label: string }[] = [
   { value: 'maintenance', label: 'Maintenance' },
 ];
 
+type SortOption = 'name-asc' | 'name-desc' | 'newest' | 'availability' | 'favorites';
+
+const sortOptions: { value: SortOption; label: string; icon: React.ReactNode }[] = [
+  { value: 'name-asc', label: 'Name (A-Z)', icon: <SortAsc className="h-4 w-4" /> },
+  { value: 'name-desc', label: 'Name (Z-A)', icon: <SortDesc className="h-4 w-4" /> },
+  { value: 'newest', label: 'Newest First', icon: <ArrowUpDown className="h-4 w-4" /> },
+  { value: 'availability', label: 'Available First', icon: <ArrowUpDown className="h-4 w-4" /> },
+  { value: 'favorites', label: 'Favorites First', icon: <Heart className="h-4 w-4" /> },
+];
+
 const DeviceCatalog: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<DeviceCategory | 'all'>('all');
   const [statusFilter, setStatusFilter] = useState<DeviceStatus | 'all'>('all');
+  const [sortBy, setSortBy] = useState<SortOption>('name-asc');
   const [selectedDevice, setSelectedDevice] = useState<Device | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
   
   // Comparison feature
   const [compareMode, setCompareMode] = useState(false);
@@ -49,9 +63,12 @@ const DeviceCatalog: React.FC = () => {
   
   // Recently viewed tracking
   const { addToRecentlyViewed } = useRecentlyViewed();
+  
+  // Favorites
+  const { favorites, toggleFavorite, isFavorite, favoritesCount } = useFavorites();
 
-  const filteredDevices = useMemo(() => {
-    return devices.filter(device => {
+  const filteredAndSortedDevices = useMemo(() => {
+    let result = devices.filter(device => {
       const matchesSearch = 
         device.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         device.brand.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -59,10 +76,34 @@ const DeviceCatalog: React.FC = () => {
       
       const matchesCategory = categoryFilter === 'all' || device.category === categoryFilter;
       const matchesStatus = statusFilter === 'all' || device.status === statusFilter;
+      const matchesFavorites = !showFavoritesOnly || favorites.includes(device.id);
 
-      return matchesSearch && matchesCategory && matchesStatus;
+      return matchesSearch && matchesCategory && matchesStatus && matchesFavorites;
     });
-  }, [searchQuery, categoryFilter, statusFilter]);
+
+    // Sort
+    result.sort((a, b) => {
+      switch (sortBy) {
+        case 'name-asc':
+          return a.name.localeCompare(b.name);
+        case 'name-desc':
+          return b.name.localeCompare(a.name);
+        case 'newest':
+          return new Date(b.addedDate).getTime() - new Date(a.addedDate).getTime();
+        case 'availability':
+          const statusOrder = { available: 0, borrowed: 1, maintenance: 2 };
+          return statusOrder[a.status] - statusOrder[b.status];
+        case 'favorites':
+          const aFav = favorites.includes(a.id) ? 0 : 1;
+          const bFav = favorites.includes(b.id) ? 0 : 1;
+          return aFav - bFav;
+        default:
+          return 0;
+      }
+    });
+
+    return result;
+  }, [searchQuery, categoryFilter, statusFilter, sortBy, showFavoritesOnly, favorites]);
 
   const handleDeviceClick = (device: Device) => {
     if (compareMode) {
@@ -72,6 +113,25 @@ const DeviceCatalog: React.FC = () => {
       setSelectedDevice(device);
       setModalOpen(true);
     }
+  };
+
+  const handleQuickRequest = (device: Device) => {
+    addToRecentlyViewed(device.id);
+    setSelectedDevice(device);
+    setModalOpen(true);
+    toast.info('Quick Request', {
+      description: `Opening request form for ${device.name}`,
+    });
+  };
+
+  const handleFavoriteToggle = (deviceId: string) => {
+    const wasAdded = !isFavorite(deviceId);
+    toggleFavorite(deviceId);
+    
+    const device = devices.find(d => d.id === deviceId);
+    toast.success(wasAdded ? 'Added to favorites' : 'Removed from favorites', {
+      description: device?.name,
+    });
   };
 
   const toggleCompareDevice = (device: Device) => {
@@ -219,6 +279,24 @@ const DeviceCatalog: React.FC = () => {
               </SelectContent>
             </Select>
 
+            {/* Sort Dropdown */}
+            <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortOption)}>
+              <SelectTrigger className="w-full sm:w-[160px]">
+                <ArrowUpDown className="h-4 w-4 mr-2" />
+                <SelectValue placeholder="Sort by" />
+              </SelectTrigger>
+              <SelectContent>
+                {sortOptions.map(option => (
+                  <SelectItem key={option.value} value={option.value}>
+                    <div className="flex items-center gap-2">
+                      {option.icon}
+                      {option.label}
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
             {/* View Mode Toggle */}
             <div className="flex items-center border rounded-lg p-1">
               <Button
@@ -238,6 +316,20 @@ const DeviceCatalog: React.FC = () => {
                 <List className="h-4 w-4" />
               </Button>
             </div>
+
+            {/* Favorites Filter */}
+            <Button
+              variant={showFavoritesOnly ? 'default' : 'outline'}
+              onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
+              className="gap-2"
+            >
+              <Heart className={cn("h-4 w-4", showFavoritesOnly && "fill-current")} />
+              {favoritesCount > 0 && (
+                <Badge variant="secondary" className="ml-1 h-5 px-1.5">
+                  {favoritesCount}
+                </Badge>
+              )}
+            </Button>
 
             {/* Compare Mode Toggle */}
             {!compareMode && (
@@ -274,14 +366,15 @@ const DeviceCatalog: React.FC = () => {
       <section className="container px-4 md:px-6 py-8">
         <div className="flex items-center justify-between mb-6">
           <p className="text-muted-foreground">
-            Showing <span className="font-medium text-foreground">{filteredDevices.length}</span> devices
+            Showing <span className="font-medium text-foreground">{filteredAndSortedDevices.length}</span> devices
+            {showFavoritesOnly && ' (favorites only)'}
           </p>
         </div>
 
-        {filteredDevices.length > 0 ? (
+        {filteredAndSortedDevices.length > 0 ? (
           viewMode === 'grid' ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {filteredDevices.map(device => (
+              {filteredAndSortedDevices.map(device => (
                 <div key={device.id} className="relative">
                   {compareMode && (
                     <div 
@@ -306,6 +399,10 @@ const DeviceCatalog: React.FC = () => {
                   <DeviceCard 
                     device={device} 
                     onClick={handleDeviceClick}
+                    onQuickRequest={handleQuickRequest}
+                    onFavoriteToggle={!compareMode ? handleFavoriteToggle : undefined}
+                    isFavorite={isFavorite(device.id)}
+                    showQuickRequest={!compareMode}
                     className={cn(
                       compareMode && isDeviceSelected(device.id) && "ring-2 ring-primary"
                     )}
@@ -315,7 +412,7 @@ const DeviceCatalog: React.FC = () => {
             </div>
           ) : (
             <div className="space-y-3">
-              {filteredDevices.map(device => (
+              {filteredAndSortedDevices.map(device => (
                 <div 
                   key={device.id}
                   className={cn(
@@ -344,6 +441,25 @@ const DeviceCatalog: React.FC = () => {
                       )}
                     </div>
                   )}
+                  
+                  {/* Favorite button for list view */}
+                  {!compareMode && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleFavoriteToggle(device.id);
+                      }}
+                      className={cn(
+                        "h-8 w-8 rounded-full flex items-center justify-center transition-colors flex-shrink-0",
+                        "hover:bg-muted",
+                        isFavorite(device.id) && "text-red-500"
+                      )}
+                      aria-label={isFavorite(device.id) ? 'Remove from favorites' : 'Add to favorites'}
+                    >
+                      <Heart className={cn("h-4 w-4", isFavorite(device.id) && "fill-current")} />
+                    </button>
+                  )}
+                  
                   <div className="w-16 h-16 rounded-lg overflow-hidden bg-muted flex-shrink-0">
                     <img src={device.image} alt={device.name} className="w-full h-full object-cover" />
                   </div>
@@ -365,6 +481,21 @@ const DeviceCatalog: React.FC = () => {
                   <Badge variant={device.status === 'available' ? 'default' : 'secondary'}>
                     {device.status}
                   </Badge>
+                  
+                  {/* Quick Request for list view */}
+                  {!compareMode && device.status === 'available' && (
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleQuickRequest(device);
+                      }}
+                      className="hidden lg:flex gap-1"
+                    >
+                      Quick Request
+                    </Button>
+                  )}
                 </div>
               ))}
             </div>
@@ -372,12 +503,26 @@ const DeviceCatalog: React.FC = () => {
         ) : (
           <div className="text-center py-16">
             <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
-              <Search className="h-8 w-8 text-muted-foreground" />
+              {showFavoritesOnly ? <Heart className="h-8 w-8 text-muted-foreground" /> : <Search className="h-8 w-8 text-muted-foreground" />}
             </div>
-            <h3 className="font-semibold text-lg mb-2">No devices found</h3>
+            <h3 className="font-semibold text-lg mb-2">
+              {showFavoritesOnly ? 'No favorites yet' : 'No devices found'}
+            </h3>
             <p className="text-muted-foreground">
-              Try adjusting your search or filter criteria.
+              {showFavoritesOnly 
+                ? 'Click the heart icon on any device to add it to your favorites.'
+                : 'Try adjusting your search or filter criteria.'
+              }
             </p>
+            {showFavoritesOnly && (
+              <Button 
+                variant="link" 
+                className="mt-2"
+                onClick={() => setShowFavoritesOnly(false)}
+              >
+                View all devices
+              </Button>
+            )}
           </div>
         )}
       </section>
