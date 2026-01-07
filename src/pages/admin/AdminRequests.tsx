@@ -24,6 +24,16 @@ import { DraggableRequestCard, RequestCardContent } from '@/components/admin/Dra
 import { RequestListView } from '@/components/admin/RequestListView';
 import { useKeyboardShortcuts, ShortcutConfig } from '@/hooks/use-keyboard-shortcuts';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 const columns: { status: RequestStatus; label: string; color: string }[] = [
   { status: 'pending', label: 'Pending', color: 'border-yellow-500 bg-yellow-500/10' },
@@ -38,6 +48,7 @@ const AdminRequests: React.FC = () => {
   const [viewMode, setViewMode] = useState<'kanban' | 'list'>('kanban');
   const [activeRequest, setActiveRequest] = useState<BookingRequest | null>(null);
   const [selectedIndex, setSelectedIndex] = useState<number>(0);
+  const [confirmDialog, setConfirmDialog] = useState<{ open: boolean; action: 'approve' | 'reject' | null }>({ open: false, action: null });
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -79,8 +90,7 @@ const AdminRequests: React.FC = () => {
       key: 'a',
       action: () => {
         if (selectedRequest) {
-          updateStatus(selectedRequest.id, 'approved');
-          toast({ title: 'Approved', description: `Request approved via keyboard shortcut.` });
+          setConfirmDialog({ open: true, action: 'approve' });
         }
       },
       description: 'Approve selected request',
@@ -89,8 +99,7 @@ const AdminRequests: React.FC = () => {
       key: 'r',
       action: () => {
         if (selectedRequest) {
-          updateStatus(selectedRequest.id, 'rejected');
-          toast({ title: 'Rejected', description: `Request rejected via keyboard shortcut.` });
+          setConfirmDialog({ open: true, action: 'reject' });
         }
       },
       description: 'Reject selected request',
@@ -128,9 +137,20 @@ const AdminRequests: React.FC = () => {
       action: handleExportCSV,
       description: 'Export to CSV',
     },
-  ], [selectedRequest, updateStatus, pendingRequests.length, handleExportCSV, toast]);
+  ], [selectedRequest, pendingRequests.length, handleExportCSV]);
 
   useKeyboardShortcuts(shortcuts);
+
+  const handleConfirmAction = useCallback(() => {
+    if (!selectedRequest || !confirmDialog.action) return;
+    
+    const newStatus = confirmDialog.action === 'approve' ? 'approved' : 'rejected';
+    updateStatus(selectedRequest.id, newStatus);
+    setConfirmDialog({ open: false, action: null });
+  }, [selectedRequest, confirmDialog.action, updateStatus]);
+
+  const selectedDevice = selectedRequest ? getDeviceById(selectedRequest.deviceId) : null;
+  const selectedUser = selectedRequest ? getUserById(selectedRequest.userId) : null;
 
   const getRequestsByStatus = (status: RequestStatus) => 
     requests.filter(r => r.status === status);
@@ -274,6 +294,32 @@ const AdminRequests: React.FC = () => {
         ) : (
           <RequestListView requests={requests} onStatusChange={updateStatus} />
         )}
+
+        {/* Keyboard shortcut confirmation dialog */}
+        <AlertDialog open={confirmDialog.open} onOpenChange={(open) => setConfirmDialog({ open, action: open ? confirmDialog.action : null })}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                {confirmDialog.action === 'approve' ? 'Approve Request' : 'Reject Request'}
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                {confirmDialog.action === 'approve' 
+                  ? `Are you sure you want to approve this request for ${selectedDevice?.name || 'this device'}? This will allow ${selectedUser?.name || 'the user'} to use the device.`
+                  : `Are you sure you want to reject this request for ${selectedDevice?.name || 'this device'} from ${selectedUser?.name || 'the user'}? This action cannot be undone.`
+                }
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction 
+                className={confirmDialog.action === 'approve' ? 'bg-status-available hover:bg-status-available/90' : 'bg-destructive hover:bg-destructive/90'}
+                onClick={handleConfirmAction}
+              >
+                {confirmDialog.action === 'approve' ? 'Approve' : 'Reject'}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </main>
     </div>
   );
