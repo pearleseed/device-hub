@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Card, CardContent } from '@/components/ui/card';
@@ -8,6 +8,17 @@ import { BookingRequest, RequestStatus, getDeviceById, getUserById } from '@/lib
 import { Check, X, RotateCcw, GripVertical } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
 interface DraggableRequestCardProps {
   request: BookingRequest;
@@ -124,21 +135,66 @@ export const RequestCardContent: React.FC<RequestCardContentProps> = ({
             {/* Action Buttons */}
             {onStatusChange && request.status === 'pending' && (
               <div className="flex gap-2">
-                <Button 
-                  size="sm" 
-                  className="flex-1 h-8 text-xs bg-status-available hover:bg-status-available/90" 
-                  onClick={(e) => { e.stopPropagation(); onStatusChange(request.id, 'approved'); }}
-                >
-                  <Check className="h-3 w-3 mr-1" /> Approve
-                </Button>
-                <Button 
-                  size="sm" 
-                  variant="destructive" 
-                  className="flex-1 h-8 text-xs" 
-                  onClick={(e) => { e.stopPropagation(); onStatusChange(request.id, 'rejected'); }}
-                >
-                  <X className="h-3 w-3 mr-1" /> Reject
-                </Button>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button 
+                      size="sm" 
+                      className="flex-1 h-8 text-xs bg-status-available hover:bg-status-available/90" 
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <Check className="h-3 w-3 mr-1" /> Approve
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Approve Request</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Are you sure you want to approve this request for {device.name}? 
+                        This will allow {user.name} to use the device.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction 
+                        className="bg-status-available hover:bg-status-available/90"
+                        onClick={() => onStatusChange(request.id, 'approved')}
+                      >
+                        Approve
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+                
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button 
+                      size="sm" 
+                      variant="destructive" 
+                      className="flex-1 h-8 text-xs" 
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <X className="h-3 w-3 mr-1" /> Reject
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Reject Request</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Are you sure you want to reject this request for {device.name} from {user.name}? 
+                        This action cannot be undone.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction 
+                        className="bg-destructive hover:bg-destructive/90"
+                        onClick={() => onStatusChange(request.id, 'rejected')}
+                      >
+                        Reject
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               </div>
             )}
             {onStatusChange && request.status === 'approved' && (
