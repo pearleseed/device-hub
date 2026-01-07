@@ -99,7 +99,7 @@ const DeviceCatalog: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background" id="main-content" tabIndex={-1}>
       <UserNavbar onSearch={setSearchQuery} />
 
       {/* Compare Mode Banner */}

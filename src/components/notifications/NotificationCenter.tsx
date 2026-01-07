@@ -27,10 +27,19 @@ export const NotificationCenter: React.FC = () => {
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="icon" className="relative">
-          <Bell className="h-5 w-5" />
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          className="relative"
+          aria-label={`Notifications${unreadCount > 0 ? `, ${unreadCount} unread` : ''}`}
+          aria-haspopup="true"
+        >
+          <Bell className="h-5 w-5" aria-hidden="true" />
           {unreadCount > 0 && (
-            <span className="absolute -top-0.5 -right-0.5 h-5 w-5 rounded-full bg-destructive text-destructive-foreground text-xs flex items-center justify-center font-medium">
+            <span 
+              className="absolute -top-0.5 -right-0.5 h-5 w-5 rounded-full bg-destructive text-destructive-foreground text-xs flex items-center justify-center font-medium"
+              aria-hidden="true"
+            >
               {unreadCount > 9 ? '9+' : unreadCount}
             </span>
           )}
@@ -101,8 +110,9 @@ export const NotificationCenter: React.FC = () => {
                           size="icon"
                           className="h-6 w-6"
                           onClick={() => markAsRead(notification.id)}
+                          aria-label="Mark as read"
                         >
-                          <Check className="h-3 w-3" />
+                          <Check className="h-3 w-3" aria-hidden="true" />
                         </Button>
                       )}
                       <Button
@@ -110,8 +120,9 @@ export const NotificationCenter: React.FC = () => {
                         size="icon"
                         className="h-6 w-6 text-muted-foreground hover:text-destructive"
                         onClick={() => clearNotification(notification.id)}
+                        aria-label="Delete notification"
                       >
-                        <Trash2 className="h-3 w-3" />
+                        <Trash2 className="h-3 w-3" aria-hidden="true" />
                       </Button>
                     </div>
                   </div>
