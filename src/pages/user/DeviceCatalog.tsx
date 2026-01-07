@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { UserNavbar } from '@/components/layout/UserNavbar';
 import { DeviceCard } from '@/components/devices/DeviceCard';
 import { DeviceDetailModal } from '@/components/devices/DeviceDetailModal';
@@ -19,6 +19,8 @@ import { Search, Laptop, Smartphone, Tablet, Monitor as MonitorIcon, Headphones,
 import { useRecentlyViewed } from '@/hooks/use-recently-viewed';
 import { useFavorites } from '@/hooks/use-favorites';
 import { toast } from 'sonner';
+import { SkeletonCard, SkeletonListItem } from '@/components/ui/skeleton-card';
+import { EmptyState } from '@/components/ui/empty-state';
 
 const categoryOptions: { value: DeviceCategory | 'all'; label: string; icon: React.ReactNode }[] = [
   { value: 'all', label: 'All Categories', icon: <LayoutGrid className="h-4 w-4" /> },
@@ -55,6 +57,7 @@ const DeviceCatalog: React.FC = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   
   // Comparison feature
   const [compareMode, setCompareMode] = useState(false);
@@ -66,6 +69,12 @@ const DeviceCatalog: React.FC = () => {
   
   // Favorites
   const { favorites, toggleFavorite, isFavorite, favoritesCount } = useFavorites();
+
+  // Simulate initial loading
+  useEffect(() => {
+    const timer = setTimeout(() => setIsLoading(false), 800);
+    return () => clearTimeout(timer);
+  }, []);
 
   const filteredAndSortedDevices = useMemo(() => {
     let result = devices.filter(device => {
@@ -371,11 +380,26 @@ const DeviceCatalog: React.FC = () => {
           </p>
         </div>
 
-        {filteredAndSortedDevices.length > 0 ? (
+        {isLoading ? (
+          // Loading Skeletons
+          viewMode === 'grid' ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <SkeletonCard key={i} />
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <SkeletonListItem key={i} />
+              ))}
+            </div>
+          )
+        ) : filteredAndSortedDevices.length > 0 ? (
           viewMode === 'grid' ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {filteredAndSortedDevices.map(device => (
-                <div key={device.id} className="relative">
+                <div key={device.id} className="relative animate-fade-in">
                   {compareMode && (
                     <div 
                       className={cn(
@@ -416,7 +440,7 @@ const DeviceCatalog: React.FC = () => {
                 <div 
                   key={device.id}
                   className={cn(
-                    "flex items-center gap-4 p-4 rounded-lg border bg-card cursor-pointer transition-all hover:shadow-md",
+                    "flex items-center gap-4 p-4 rounded-lg border bg-card cursor-pointer transition-all hover:shadow-md animate-fade-in",
                     compareMode && isDeviceSelected(device.id) && "ring-2 ring-primary"
                   )}
                   onClick={() => handleDeviceClick(device)}
@@ -501,29 +525,11 @@ const DeviceCatalog: React.FC = () => {
             </div>
           )
         ) : (
-          <div className="text-center py-16">
-            <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
-              {showFavoritesOnly ? <Heart className="h-8 w-8 text-muted-foreground" /> : <Search className="h-8 w-8 text-muted-foreground" />}
-            </div>
-            <h3 className="font-semibold text-lg mb-2">
-              {showFavoritesOnly ? 'No favorites yet' : 'No devices found'}
-            </h3>
-            <p className="text-muted-foreground">
-              {showFavoritesOnly 
-                ? 'Click the heart icon on any device to add it to your favorites.'
-                : 'Try adjusting your search or filter criteria.'
-              }
-            </p>
-            {showFavoritesOnly && (
-              <Button 
-                variant="link" 
-                className="mt-2"
-                onClick={() => setShowFavoritesOnly(false)}
-              >
-                View all devices
-              </Button>
-            )}
-          </div>
+          <EmptyState
+            type={showFavoritesOnly ? 'no-favorites' : 'no-results'}
+            actionLabel={showFavoritesOnly ? 'View all devices' : undefined}
+            onAction={showFavoritesOnly ? () => setShowFavoritesOnly(false) : undefined}
+          />
         )}
       </section>
 

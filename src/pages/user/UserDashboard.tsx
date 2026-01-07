@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { UserNavbar } from '@/components/layout/UserNavbar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -26,11 +26,14 @@ import { RequestTimeline } from '@/components/user/RequestTimeline';
 import { RecentlyViewedSection } from '@/components/user/RecentlyViewedSection';
 import { useRecentlyViewed } from '@/hooks/use-recently-viewed';
 import { toast } from 'sonner';
+import { SkeletonKPICard, SkeletonTable } from '@/components/ui/skeleton-card';
+import { EmptyState } from '@/components/ui/empty-state';
 
 const UserDashboard: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { recentlyViewed, clearRecentlyViewed } = useRecentlyViewed();
+  const [isLoading, setIsLoading] = useState(true);
   
   const loansRef = useRef<HTMLDivElement>(null);
   const historyRef = useRef<HTMLDivElement>(null);
@@ -41,6 +44,12 @@ const UserDashboard: React.FC = () => {
   
   const activeLoans = userRequests.filter(r => r.status === 'active');
   const pendingRequests = userRequests.filter(r => r.status === 'pending');
+
+  // Simulate initial loading
+  useEffect(() => {
+    const timer = setTimeout(() => setIsLoading(false), 600);
+    return () => clearTimeout(timer);
+  }, []);
 
   const getDeviceInfo = (request: BookingRequest) => {
     return getDeviceById(request.deviceId);
@@ -94,40 +103,48 @@ const UserDashboard: React.FC = () => {
         </div>
 
         {/* Interactive KPI Cards */}
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-8">
-          <DashboardKPICard
-            title="Active Loans"
-            value={activeLoans.length}
-            description="Devices currently borrowed"
-            icon={Package}
-            onClick={activeLoans.length > 0 ? handleScrollToLoans : undefined}
-            accentColor={activeLoans.length > 0 ? 'success' : 'default'}
-          />
+        {isLoading ? (
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-8">
+            <SkeletonKPICard />
+            <SkeletonKPICard />
+            <SkeletonKPICard />
+          </div>
+        ) : (
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-8">
+            <DashboardKPICard
+              title="Active Loans"
+              value={activeLoans.length}
+              description="Devices currently borrowed"
+              icon={Package}
+              onClick={activeLoans.length > 0 ? handleScrollToLoans : undefined}
+              accentColor={activeLoans.length > 0 ? 'success' : 'default'}
+            />
 
-          <DashboardKPICard
-            title="Pending Requests"
-            value={pendingRequests.length}
-            description="Awaiting approval"
-            icon={Clock}
-            onClick={pendingRequests.length > 0 ? handleScrollToHistory : undefined}
-            accentColor={pendingRequests.length > 0 ? 'warning' : 'default'}
-          />
+            <DashboardKPICard
+              title="Pending Requests"
+              value={pendingRequests.length}
+              description="Awaiting approval"
+              icon={Clock}
+              onClick={pendingRequests.length > 0 ? handleScrollToHistory : undefined}
+              accentColor={pendingRequests.length > 0 ? 'warning' : 'default'}
+            />
 
-          <Card className="md:col-span-2 lg:col-span-1">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Quick Actions</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Button asChild className="w-full">
-                <Link to="/catalog">
-                  <Monitor className="mr-2 h-4 w-4" />
-                  Browse Catalog
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Link>
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
+            <Card className="md:col-span-2 lg:col-span-1">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Quick Actions</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Button asChild className="w-full">
+                  <Link to="/catalog">
+                    <Monitor className="mr-2 h-4 w-4" />
+                    Browse Catalog
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Link>
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         {/* Recently Viewed Section */}
         {recentlyViewed.length > 0 && (
@@ -210,7 +227,9 @@ const UserDashboard: React.FC = () => {
             <CardTitle>Request History</CardTitle>
           </CardHeader>
           <CardContent>
-            {userRequests.length > 0 ? (
+            {isLoading ? (
+              <SkeletonTable rows={4} className="border-0" />
+            ) : userRequests.length > 0 ? (
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -226,7 +245,7 @@ const UserDashboard: React.FC = () => {
                     if (!device) return null;
                     
                     return (
-                      <TableRow key={request.id}>
+                      <TableRow key={request.id} className="animate-fade-in">
                         <TableCell>
                           <div className="flex items-center gap-3">
                             <div className="w-10 h-10 rounded-lg overflow-hidden bg-muted flex-shrink-0">
@@ -260,13 +279,11 @@ const UserDashboard: React.FC = () => {
                 </TableBody>
               </Table>
             ) : (
-              <div className="text-center py-8">
-                <Package className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <p className="text-muted-foreground">No requests yet</p>
-                <Button asChild variant="link" className="mt-2">
-                  <Link to="/catalog">Browse available devices</Link>
-                </Button>
-              </div>
+              <EmptyState
+                type="no-requests"
+                actionLabel="Browse Catalog"
+                actionHref="/catalog"
+              />
             )}
           </CardContent>
         </Card>
