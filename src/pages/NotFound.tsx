@@ -9,16 +9,23 @@ const NotFound = () => {
   const { isAuthenticated, isAdmin } = useAuth();
 
   useEffect(() => {
-    console.error("404 Error: User attempted to access non-existent route:", location.pathname);
+    console.error(
+      "404 Error: User attempted to access non-existent route:",
+      location.pathname,
+    );
   }, [location.pathname]);
 
-  const homeLink = isAuthenticated ? (isAdmin ? "/admin" : "/dashboard") : "/login";
+  const homeLink = isAuthenticated
+    ? isAdmin
+      ? "/admin"
+      : "/dashboard"
+    : "/login";
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
       {/* Main Content */}
-      <main 
-        id="main-content" 
+      <main
+        id="main-content"
         className="flex-1 flex items-center justify-center p-6"
         role="main"
         aria-labelledby="error-title"
@@ -33,10 +40,10 @@ const NotFound = () => {
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="w-32 h-32 rounded-full bg-primary/10" />
             </div>
-            
+
             {/* 404 Number */}
             <div className="relative z-10 py-8">
-              <span 
+              <span
                 className="text-[120px] sm:text-[160px] font-bold leading-none tracking-tighter text-primary/10 select-none"
                 aria-hidden="true"
               >
@@ -47,15 +54,15 @@ const NotFound = () => {
 
           {/* Error Message */}
           <div className="space-y-3 animate-fade-in">
-            <h1 
-              id="error-title" 
+            <h1
+              id="error-title"
               className="text-2xl sm:text-3xl font-bold text-foreground"
             >
               Page not found
             </h1>
             <p className="text-muted-foreground text-base sm:text-lg max-w-md mx-auto">
-              The page you're looking for doesn't exist or has been moved. 
-              Let's get you back on track.
+              The page you're looking for doesn't exist or has been moved. Let's
+              get you back on track.
             </p>
             {location.pathname && (
               <p className="text-sm text-muted-foreground/70 font-mono bg-muted px-3 py-1.5 rounded-md inline-block">
@@ -72,10 +79,10 @@ const NotFound = () => {
                 Go to {isAuthenticated ? "Dashboard" : "Home"}
               </Link>
             </Button>
-            <Button 
-              asChild 
-              variant="outline" 
-              size="lg" 
+            <Button
+              asChild
+              variant="outline"
+              size="lg"
               className="w-full sm:w-auto"
             >
               <Link to="#" onClick={() => window.history.back()}>
@@ -114,8 +121,8 @@ const NotFound = () => {
       <footer className="py-6 text-center">
         <p className="text-sm text-muted-foreground">
           Need help?{" "}
-          <a 
-            href="mailto:support@company.com" 
+          <a
+            href="mailto:support@company.com"
             className="text-primary hover:underline underline-offset-4 transition-colors"
           >
             Contact Support

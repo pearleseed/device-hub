@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef } from "react";
 
 interface FocusTrapProps {
   children: React.ReactNode;
@@ -6,10 +6,10 @@ interface FocusTrapProps {
   restoreFocus?: boolean;
 }
 
-export const FocusTrap: React.FC<FocusTrapProps> = ({ 
-  children, 
+export const FocusTrap: React.FC<FocusTrapProps> = ({
+  children,
   active = true,
-  restoreFocus = true 
+  restoreFocus = true,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const previousActiveElement = useRef<Element | null>(null);
@@ -24,17 +24,19 @@ export const FocusTrap: React.FC<FocusTrapProps> = ({
     if (!container) return;
 
     const focusableElements = container.querySelectorAll(
-      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
     );
 
     const firstElement = focusableElements[0] as HTMLElement;
-    const lastElement = focusableElements[focusableElements.length - 1] as HTMLElement;
+    const lastElement = focusableElements[
+      focusableElements.length - 1
+    ] as HTMLElement;
 
     // Focus the first element
     firstElement?.focus();
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key !== 'Tab') return;
+      if (e.key !== "Tab") return;
 
       if (e.shiftKey) {
         if (document.activeElement === firstElement) {
@@ -49,13 +51,16 @@ export const FocusTrap: React.FC<FocusTrapProps> = ({
       }
     };
 
-    container.addEventListener('keydown', handleKeyDown);
+    container.addEventListener("keydown", handleKeyDown);
 
     return () => {
-      container.removeEventListener('keydown', handleKeyDown);
-      
+      container.removeEventListener("keydown", handleKeyDown);
+
       // Restore focus when unmounting
-      if (restoreFocus && previousActiveElement.current instanceof HTMLElement) {
+      if (
+        restoreFocus &&
+        previousActiveElement.current instanceof HTMLElement
+      ) {
         previousActiveElement.current.focus();
       }
     };

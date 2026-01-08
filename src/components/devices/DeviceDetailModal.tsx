@@ -1,394 +1,360 @@
-import React, { useState } from 'react';
-import { format, differenceInDays } from 'date-fns';
-import { Device, getUserById, devices } from '@/lib/mockData';
-import { StatusBadge } from '@/components/ui/status-badge';
-import { Button } from '@/components/ui/button';
-import { Calendar } from '@/components/ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
+import React, { useState, useEffect } from "react";
+import { usersAPI, borrowingAPI } from "@/lib/api";
+import type {
+  DeviceCategory,
+  DeviceStatus,
+  User,
+  BorrowingRequest,
+} from "@/lib/types";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
-import { CalendarIcon, Cpu, HardDrive, Battery, Monitor, CheckCircle2, Sparkles, Clock, ArrowRight } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { useToast } from '@/hooks/use-toast';
-import type { DateRange } from 'react-day-picker';
+} from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
+import {
+  Calendar as CalendarIcon,
+  User as UserIcon,
+  Clock,
+  CheckCircle2,
+} from "lucide-react";
+import { format, addDays } from "date-fns";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
+import { SuccessAnimation } from "@/components/ui/success-animation";
+
+// Legacy Device interface
+interface Device {
+  id: string;
+  name: string;
+  category: DeviceCategory;
+  brand: string;
+  model: string;
+  assetTag: string;
+  status: DeviceStatus;
+  assignedTo: string | null;
+  specs: Record<string, string | undefined>;
+  image: string;
+  addedDate: string;
+}
 
 interface DeviceDetailModalProps {
   device: Device | null;
   open: boolean;
-  onOpenChange: (open: boolean) => void;
+  onClose: () => void;
 }
-
-type ModalStep = 'details' | 'confirm' | 'success';
 
 export const DeviceDetailModal: React.FC<DeviceDetailModalProps> = ({
   device,
   open,
-  onOpenChange,
+  onClose,
 }) => {
-  const { toast } = useToast();
-  const [dateRange, setDateRange] = useState<DateRange | undefined>();
-  const [reason, setReason] = useState('');
-  const [step, setStep] = useState<ModalStep>('details');
+  const { user } = useAuth();
+  const [assignedUser, setAssignedUser] = useState<User | null>(null);
+  const [isBooking, setIsBooking] = useState(false);
+  const [startDate, setStartDate] = useState<Date>();
+  const [endDate, setEndDate] = useState<Date>();
+  const [reason, setReason] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
+
+  useEffect(() => {
+    const fetchAssignedUser = async () => {
+      if (device?.assignedTo) {
+        const response = await usersAPI.getById(parseInt(device.assignedTo));
+        if (response.success && response.data) {
+          setAssignedUser(response.data);
+        }
+      } else {
+        setAssignedUser(null);
+      }
+    };
+
+    fetchAssignedUser();
+  }, [device?.assignedTo]);
 
   if (!device) return null;
 
-  const assignedUser = device.assignedTo ? getUserById(device.assignedTo) : null;
+  const statusColors: Record<DeviceStatus, string> = {
+    available: "bg-status-available text-status-available-foreground",
+    borrowed: "bg-status-borrowed text-status-borrowed-foreground",
+    maintenance: "bg-status-maintenance text-status-maintenance-foreground",
+  };
 
-  // Get similar devices (same category, available, excluding current)
-  const similarDevices = devices
-    .filter(d => d.category === device.category && d.id !== device.id && d.status === 'available')
-    .slice(0, 3);
+  const specLabels: Record<string, string> = {
+    os: "Operating System",
+    processor: "Processor",
+    ram: "RAM",
+    storage: "Storage",
+    display: "Display",
+    battery: "Battery",
+  };
 
-  const handleProceedToConfirm = () => {
-    if (!dateRange?.from || !dateRange?.to) {
-      toast({
-        title: 'Please select dates',
-        description: 'Both start and end dates are required.',
-        variant: 'destructive',
-      });
+  const handleSubmitBooking = async () => {
+    if (!startDate || !endDate || !reason.trim() || !user) {
+      toast.error("Please fill in all fields");
       return;
     }
 
-    if (!reason.trim()) {
-      toast({
-        title: 'Please provide a reason',
-        description: 'A reason for the request is required.',
-        variant: 'destructive',
+    setIsSubmitting(true);
+
+    try {
+      const response = await borrowingAPI.create({
+        equipment_id: parseInt(device.id),
+        start_date: format(startDate, "yyyy-MM-dd"),
+        end_date: format(endDate, "yyyy-MM-dd"),
+        reason: reason.trim(),
       });
-      return;
+
+      if (response.success) {
+        setShowSuccess(true);
+        setTimeout(() => {
+          setShowSuccess(false);
+          setIsBooking(false);
+          setStartDate(undefined);
+          setEndDate(undefined);
+          setReason("");
+          onClose();
+        }, 2000);
+      } else {
+        toast.error(response.error || "Failed to submit request");
+      }
+    } catch (error) {
+      toast.error("An error occurred while submitting the request");
+    } finally {
+      setIsSubmitting(false);
     }
-
-    setStep('confirm');
   };
 
-  const handleConfirmRequest = () => {
-    setStep('success');
-  };
-
-  const handleClose = () => {
-    // Reset form and close modal
-    setDateRange(undefined);
-    setReason('');
-    setStep('details');
-    onOpenChange(false);
-  };
-
-  const handleQuickDateSelect = (days: number) => {
-    const from = new Date();
-    const to = new Date();
-    to.setDate(to.getDate() + days);
-    setDateRange({ from, to });
-  };
-
-  const specItems = [
-    { icon: Cpu, label: 'Processor', value: device.specs.processor },
-    { icon: HardDrive, label: 'Storage', value: device.specs.storage },
-    { icon: Monitor, label: 'Display', value: device.specs.display },
-    { icon: Battery, label: 'Battery', value: device.specs.battery },
-  ].filter(item => item.value);
-
-  const loanDuration = dateRange?.from && dateRange?.to 
-    ? differenceInDays(dateRange.to, dateRange.from) + 1 
-    : 0;
-
-  // Success Step
-  if (step === 'success') {
-    return (
-      <Dialog open={open} onOpenChange={handleClose}>
-        <DialogContent className="max-w-md">
-          <div className="text-center py-8">
-            <div className="w-20 h-20 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mx-auto mb-6 animate-scale-in">
-              <CheckCircle2 className="h-10 w-10 text-green-600 dark:text-green-400" />
-            </div>
-            <h2 className="text-2xl font-bold mb-2 animate-fade-in">Request Submitted!</h2>
-            <p className="text-muted-foreground mb-6 animate-fade-in">
-              Your request for <span className="font-medium text-foreground">{device.name}</span> has been sent for approval.
-            </p>
-            
-            <div className="bg-muted rounded-lg p-4 mb-6 text-left animate-fade-in">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
-                <Clock className="h-4 w-4" />
-                <span>Estimated approval time</span>
-              </div>
-              <p className="font-medium">1-2 business days</p>
-            </div>
-
-            <div className="space-y-3 animate-fade-in">
-              <Button onClick={handleClose} className="w-full">
-                Done
-              </Button>
-              <Button variant="outline" onClick={handleClose} className="w-full">
-                View My Requests
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-    );
-  }
-
-  // Confirmation Step
-  if (step === 'confirm') {
-    return (
-      <Dialog open={open} onOpenChange={handleClose}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Confirm Your Request</DialogTitle>
-            <DialogDescription>
-              Please review the details before submitting.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4 py-4">
-            {/* Device Info */}
-            <div className="flex gap-4 p-4 bg-muted rounded-lg">
-              <div className="w-16 h-16 rounded-lg overflow-hidden bg-background flex-shrink-0">
-                <img
-                  src={device.image}
-                  alt={device.name}
-                  className="w-full h-full object-cover"
-                />
-              </div>
-              <div>
-                <h4 className="font-medium">{device.name}</h4>
-                <p className="text-sm text-muted-foreground">{device.brand} • {device.model}</p>
-                <p className="text-sm text-muted-foreground">{device.assetTag}</p>
-              </div>
-            </div>
-
-            {/* Date Range */}
-            <div className="p-4 bg-muted rounded-lg">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
-                <CalendarIcon className="h-4 w-4" />
-                <span>Loan Period</span>
-              </div>
-              <p className="font-medium">
-                {dateRange?.from && format(dateRange.from, 'MMM d, yyyy')} – {dateRange?.to && format(dateRange.to, 'MMM d, yyyy')}
-              </p>
-              <p className="text-sm text-muted-foreground mt-1">
-                {loanDuration} day{loanDuration !== 1 ? 's' : ''}
-              </p>
-            </div>
-
-            {/* Reason */}
-            <div className="p-4 bg-muted rounded-lg">
-              <p className="text-sm text-muted-foreground mb-2">Reason</p>
-              <p className="text-sm">{reason}</p>
-            </div>
-          </div>
-
-          <div className="flex gap-3">
-            <Button variant="outline" onClick={() => setStep('details')} className="flex-1">
-              Back
-            </Button>
-            <Button onClick={handleConfirmRequest} className="flex-1">
-              <Sparkles className="h-4 w-4 mr-2" />
-              Submit Request
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-    );
-  }
-
-  // Details Step (default)
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <DialogTitle className="text-xl">{device.name}</DialogTitle>
-              <DialogDescription>{device.brand} • {device.model}</DialogDescription>
-            </div>
-            <StatusBadge status={device.status} />
-          </div>
-        </DialogHeader>
-
-        <div className="grid md:grid-cols-2 gap-6 mt-4">
-          {/* Image */}
-          <div className="aspect-[4/3] rounded-lg overflow-hidden bg-muted">
-            <img
-              src={device.image}
-              alt={device.name}
-              className="object-cover w-full h-full"
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        {showSuccess ? (
+          <div className="py-12">
+            <SuccessAnimation
+              title="Request Submitted!"
+              description="Your booking request has been sent for approval."
             />
           </div>
+        ) : (
+          <>
+            <DialogHeader>
+              <DialogTitle className="text-2xl">{device.name}</DialogTitle>
+            </DialogHeader>
 
-          {/* Details */}
-          <div className="space-y-6">
-            {/* Asset Tag */}
-            <div>
-              <p className="text-sm text-muted-foreground">Asset Tag</p>
-              <p className="font-mono text-lg">{device.assetTag}</p>
+            <div className="grid gap-6 md:grid-cols-2">
+              <div className="space-y-4">
+                <div className="aspect-[4/3] rounded-lg overflow-hidden bg-muted">
+                  <img
+                    src={device.image}
+                    alt={device.name}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge className={statusColors[device.status]}>
+                    {device.status}
+                  </Badge>
+                  <span className="text-sm text-muted-foreground">
+                    {device.assetTag}
+                  </span>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <h3 className="font-semibold mb-2">Details</h3>
+                  <dl className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <dt className="text-muted-foreground">Brand</dt>
+                      <dd>{device.brand}</dd>
+                    </div>
+                    <div className="flex justify-between">
+                      <dt className="text-muted-foreground">Model</dt>
+                      <dd>{device.model}</dd>
+                    </div>
+                    <div className="flex justify-between">
+                      <dt className="text-muted-foreground">Category</dt>
+                      <dd className="capitalize">{device.category}</dd>
+                    </div>
+                  </dl>
+                </div>
+
+                <Separator />
+
+                <div>
+                  <h3 className="font-semibold mb-2">Specifications</h3>
+                  <dl className="space-y-2 text-sm">
+                    {Object.entries(device.specs).map(
+                      ([key, value]) =>
+                        value && (
+                          <div key={key} className="flex justify-between">
+                            <dt className="text-muted-foreground">
+                              {specLabels[key] || key}
+                            </dt>
+                            <dd className="text-right max-w-[60%]">{value}</dd>
+                          </div>
+                        ),
+                    )}
+                  </dl>
+                </div>
+
+                {device.status === "borrowed" && assignedUser && (
+                  <>
+                    <Separator />
+                    <div className="flex items-center gap-3 p-3 bg-muted rounded-lg">
+                      <div className="w-10 h-10 rounded-full overflow-hidden bg-background">
+                        <img
+                          src={assignedUser.avatar_url || ""}
+                          alt={assignedUser.name}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium">
+                          Currently assigned to
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          {assignedUser.name}
+                        </p>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
 
-            {/* Specs */}
-            <div className="space-y-3">
-              <p className="text-sm font-medium text-muted-foreground">Specifications</p>
-              {device.specs.os && (
-                <div className="flex items-center gap-2 bg-secondary rounded-lg p-3">
-                  <span className="text-sm font-medium">Operating System:</span>
-                  <span className="text-sm text-muted-foreground">{device.specs.os}</span>
-                </div>
-              )}
-              <div className="grid grid-cols-2 gap-3">
-                {specItems.map((item, index) => (
-                  <div key={index} className="flex items-center gap-2 bg-secondary rounded-lg p-3">
-                    <item.icon className="h-4 w-4 text-muted-foreground" />
-                    <div className="min-w-0">
-                      <p className="text-xs text-muted-foreground">{item.label}</p>
-                      <p className="text-sm font-medium truncate">{item.value}</p>
+            {device.status === "available" && (
+              <>
+                <Separator className="my-4" />
+
+                {!isBooking ? (
+                  <Button className="w-full" onClick={() => setIsBooking(true)}>
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    Request to Borrow
+                  </Button>
+                ) : (
+                  <div className="space-y-4">
+                    <h3 className="font-semibold">Book this Device</h3>
+
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label>Start Date</Label>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant="outline"
+                              className={cn(
+                                "w-full justify-start text-left font-normal",
+                                !startDate && "text-muted-foreground",
+                              )}
+                            >
+                              <CalendarIcon className="mr-2 h-4 w-4" />
+                              {startDate
+                                ? format(startDate, "PPP")
+                                : "Pick a date"}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                              mode="single"
+                              selected={startDate}
+                              onSelect={setStartDate}
+                              disabled={(date) => date < new Date()}
+                            />
+                          </PopoverContent>
+                        </Popover>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>End Date</Label>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant="outline"
+                              className={cn(
+                                "w-full justify-start text-left font-normal",
+                                !endDate && "text-muted-foreground",
+                              )}
+                            >
+                              <CalendarIcon className="mr-2 h-4 w-4" />
+                              {endDate ? format(endDate, "PPP") : "Pick a date"}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                              mode="single"
+                              selected={endDate}
+                              onSelect={setEndDate}
+                              disabled={(date) =>
+                                date < (startDate || new Date()) ||
+                                date < addDays(startDate || new Date(), 1)
+                              }
+                            />
+                          </PopoverContent>
+                        </Popover>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="reason">Reason for borrowing</Label>
+                      <Textarea
+                        id="reason"
+                        placeholder="Please describe why you need this device..."
+                        value={reason}
+                        onChange={(e) => setReason(e.target.value)}
+                        rows={3}
+                      />
+                    </div>
+
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        className="flex-1"
+                        onClick={() => {
+                          setIsBooking(false);
+                          setStartDate(undefined);
+                          setEndDate(undefined);
+                          setReason("");
+                        }}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        className="flex-1"
+                        onClick={handleSubmitBooking}
+                        disabled={
+                          !startDate ||
+                          !endDate ||
+                          !reason.trim() ||
+                          isSubmitting
+                        }
+                      >
+                        {isSubmitting ? (
+                          <Clock className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                          <CheckCircle2 className="mr-2 h-4 w-4" />
+                        )}
+                        Submit Request
+                      </Button>
                     </div>
                   </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Current Assignment */}
-            {assignedUser && (
-              <div className="p-3 bg-muted rounded-lg">
-                <p className="text-sm text-muted-foreground">Currently assigned to</p>
-                <p className="font-medium">{assignedUser.name}</p>
-                <p className="text-sm text-muted-foreground">{assignedUser.department}</p>
-              </div>
+                )}
+              </>
             )}
-          </div>
-        </div>
-
-        {/* Booking Section */}
-        {device.status === 'available' && (
-          <div className="border-t pt-6 mt-6 space-y-4">
-            <h4 className="font-semibold">Request this Device</h4>
-            
-            {/* Quick Date Presets */}
-            <div className="flex flex-wrap gap-2">
-              <span className="text-sm text-muted-foreground mr-2">Quick select:</span>
-              <Button variant="outline" size="sm" onClick={() => handleQuickDateSelect(7)}>
-                1 Week
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => handleQuickDateSelect(14)}>
-                2 Weeks
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => handleQuickDateSelect(30)}>
-                1 Month
-              </Button>
-            </div>
-
-            {/* Date Range Picker */}
-            <div className="space-y-2">
-              <Label>Select Date Range</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      "w-full justify-start text-left font-normal",
-                      !dateRange && "text-muted-foreground"
-                    )}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {dateRange?.from ? (
-                      dateRange.to ? (
-                        <>
-                          {format(dateRange.from, "MMM d, yyyy")} – {format(dateRange.to, "MMM d, yyyy")}
-                          {loanDuration > 0 && (
-                            <Badge variant="secondary" className="ml-auto">
-                              {loanDuration} day{loanDuration !== 1 ? 's' : ''}
-                            </Badge>
-                          )}
-                        </>
-                      ) : (
-                        format(dateRange.from, "MMM d, yyyy")
-                      )
-                    ) : (
-                      <span>Select start and end dates</span>
-                    )}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="range"
-                    selected={dateRange}
-                    onSelect={setDateRange}
-                    disabled={(date) => date < new Date()}
-                    numberOfMonths={2}
-                    initialFocus
-                    className="p-3 pointer-events-auto"
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
-
-            {/* Reason */}
-            <div className="space-y-2">
-              <Label htmlFor="reason">Reason for Request</Label>
-              <Textarea
-                id="reason"
-                placeholder="Please describe why you need this device..."
-                value={reason}
-                onChange={(e) => setReason(e.target.value)}
-                rows={3}
-              />
-            </div>
-
-            <Button onClick={handleProceedToConfirm} className="w-full">
-              Review Request
-              <ArrowRight className="h-4 w-4 ml-2" />
-            </Button>
-          </div>
-        )}
-
-        {device.status !== 'available' && (
-          <div className="border-t pt-6 mt-6">
-            <div className="text-center p-4 bg-muted rounded-lg">
-              <p className="text-muted-foreground">
-                This device is currently {device.status === 'borrowed' ? 'borrowed' : 'under maintenance'}.
-              </p>
-              <p className="text-sm text-muted-foreground mt-1">
-                Check back later or browse other available devices.
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* Similar Devices Section */}
-        {similarDevices.length > 0 && (
-          <div className="border-t pt-6 mt-6">
-            <h4 className="font-semibold mb-4 flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-primary" />
-              Also Available
-            </h4>
-            <div className="grid grid-cols-3 gap-4">
-              {similarDevices.map(similarDevice => (
-                <div 
-                  key={similarDevice.id} 
-                  className="p-3 border rounded-lg hover:bg-muted transition-colors cursor-pointer group"
-                >
-                  <div className="aspect-[4/3] rounded-lg overflow-hidden bg-muted mb-2">
-                    <img
-                      src={similarDevice.image}
-                      alt={similarDevice.name}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                    />
-                  </div>
-                  <h5 className="font-medium text-sm truncate">{similarDevice.name}</h5>
-                  <p className="text-xs text-muted-foreground truncate">{similarDevice.brand}</p>
-                  <Badge variant="outline" className="mt-2 text-xs">
-                    Available
-                  </Badge>
-                </div>
-              ))}
-            </div>
-          </div>
+          </>
         )}
       </DialogContent>
     </Dialog>

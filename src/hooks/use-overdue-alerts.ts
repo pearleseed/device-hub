@@ -1,88 +1,123 @@
-import { useMemo, useEffect, useRef } from 'react';
-import { parseISO, differenceInDays, startOfDay } from 'date-fns';
-import { bookingRequests, getDeviceById, getUserById, BookingRequest, Device, User } from '@/lib/mockData';
-import { useNotifications } from '@/contexts/NotificationContext';
+import { useState, useEffect, useMemo } from "react";
+import { borrowingAPI, equipmentAPI, usersAPI } from "@/lib/api";
+import type { BorrowingRequest, Equipment, User } from "@/lib/types";
+import { isAfter, parseISO, format } from "date-fns";
 
-export interface OverdueItem {
-  booking: BookingRequest;
-  device: Device;
-  user: User;
+export interface OverdueAlert {
+  request: BorrowingRequest;
+  device: Equipment | undefined;
+  user: User | undefined;
   daysOverdue: number;
 }
 
-export const useOverdueAlerts = () => {
-  const { addNotification, notifications } = useNotifications();
-  const notifiedRef = useRef<Set<string>>(new Set());
+// Type expected by OverdueAlertsBanner component
+export interface OverdueItem {
+  booking: {
+    id: number;
+    endDate: string;
+  };
+  device: {
+    name: string;
+    assetTag: string;
+  };
+  user: {
+    name: string;
+    department: string;
+  };
+  daysOverdue: number;
+}
 
-  const overdueItems = useMemo(() => {
-    const today = startOfDay(new Date());
-    
-    return bookingRequests
-      .filter(request => {
-        if (request.status !== 'active') return false;
-        const endDate = parseISO(request.endDate);
-        return endDate < today;
+export function useOverdueAlerts() {
+  const [requests, setRequests] = useState<BorrowingRequest[]>([]);
+  const [devices, setDevices] = useState<Equipment[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      setIsLoading(true);
+      try {
+        const [requestsRes, devicesRes, usersRes] = await Promise.all([
+          borrowingAPI.getAll(),
+          equipmentAPI.getAll(),
+          usersAPI.getAll(),
+        ]);
+
+        if (requestsRes.success && requestsRes.data) {
+          setRequests(requestsRes.data);
+        }
+        if (devicesRes.success && devicesRes.data) {
+          setDevices(devicesRes.data);
+        }
+        if (usersRes.success && usersRes.data) {
+          setUsers(usersRes.data);
+        }
+      } catch (error) {
+        console.error("Error fetching overdue data:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  const overdueAlerts: OverdueAlert[] = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    return requests
+      .filter((request) => {
+        if (request.status !== "active") return false;
+        const endDate = parseISO(request.end_date);
+        return isAfter(today, endDate);
       })
-      .map(request => {
-        const device = getDeviceById(request.deviceId);
-        const user = getUserById(request.userId);
-        const endDate = parseISO(request.endDate);
-        const daysOverdue = differenceInDays(today, endDate);
-        
+      .map((request) => {
+        const endDate = parseISO(request.end_date);
+        const diffTime = today.getTime() - endDate.getTime();
+        const daysOverdue = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
         return {
-          booking: request,
-          device: device!,
-          user: user!,
+          request,
+          device: devices.find((d) => d.id === request.equipment_id),
+          user: users.find((u) => u.id === request.user_id),
           daysOverdue,
         };
       })
-      .filter(item => item.device && item.user)
       .sort((a, b) => b.daysOverdue - a.daysOverdue);
-  }, []);
+  }, [requests, devices, users]);
 
-  // Generate notifications for overdue items that haven't been notified
-  useEffect(() => {
-    // Check existing overdue notifications to avoid duplicates
-    const existingOverdueNotifications = notifications
-      .filter(n => n.type === 'overdue')
-      .map(n => n.message);
+  // Transform to OverdueItem format for the banner component
+  const overdueItems: OverdueItem[] = useMemo(() => {
+    return overdueAlerts
+      .filter((alert) => alert.device && alert.user)
+      .map((alert) => ({
+        booking: {
+          id: alert.request.id,
+          endDate: format(parseISO(alert.request.end_date), "MMM d, yyyy"),
+        },
+        device: {
+          name: alert.device!.name,
+          assetTag: alert.device!.asset_tag,
+        },
+        user: {
+          name: alert.user!.name,
+          department: alert.user!.department_name || "Unknown",
+        },
+        daysOverdue: alert.daysOverdue,
+      }));
+  }, [overdueAlerts]);
 
-    overdueItems.forEach(item => {
-      const key = `${item.booking.id}-${item.daysOverdue}`;
-      
-      // Only notify if we haven't already notified for this exact overdue state
-      if (!notifiedRef.current.has(key)) {
-        // Check if a similar notification already exists
-        const alreadyExists = existingOverdueNotifications.some(
-          msg => msg.includes(item.device.name)
-        );
-        
-        if (!alreadyExists) {
-          addNotification({
-            type: 'overdue',
-            title: 'Overdue Return Alert',
-            message: `${item.device.name} is ${item.daysOverdue} day${item.daysOverdue > 1 ? 's' : ''} overdue (assigned to ${item.user.name})`,
-            link: '/admin/requests',
-          });
-        }
-        
-        notifiedRef.current.add(key);
-      }
-    });
-  }, [overdueItems, addNotification, notifications]);
-
-  const totalOverdue = overdueItems.length;
-  
-  const criticalOverdue = overdueItems.filter(item => item.daysOverdue >= 7);
-  const warningOverdue = overdueItems.filter(item => item.daysOverdue >= 3 && item.daysOverdue < 7);
-  const recentOverdue = overdueItems.filter(item => item.daysOverdue < 3);
+  // Critical items are those overdue by 7+ days
+  const criticalOverdue = useMemo(() => {
+    return overdueItems.filter((item) => item.daysOverdue >= 7);
+  }, [overdueItems]);
 
   return {
+    overdueAlerts,
     overdueItems,
-    totalOverdue,
+    totalOverdue: overdueItems.length,
     criticalOverdue,
-    warningOverdue,
-    recentOverdue,
-    hasOverdue: totalOverdue > 0,
+    isLoading,
   };
-};
+}

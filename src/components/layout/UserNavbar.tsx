@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
-import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import React, { useState } from "react";
+import { Link, useLocation } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
+import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,15 +10,25 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { NotificationCenter } from '@/components/notifications/NotificationCenter';
-import { ThemeToggle } from '@/components/ui/theme-toggle';
-import { cn } from '@/lib/utils';
-import { Monitor, LogOut, User, LayoutDashboard, Package, Menu, X } from 'lucide-react';
+} from "@/components/ui/dropdown-menu";
+import { NotificationCenter } from "@/components/notifications/NotificationCenter";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { cn } from "@/lib/utils";
+import {
+  Monitor,
+  LogOut,
+  User,
+  LayoutDashboard,
+  Package,
+  Menu,
+  X,
+  Briefcase,
+} from "lucide-react";
 
 const navLinks = [
-  { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { to: '/catalog', label: 'Catalog', icon: Package },
+  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { to: "/catalog", label: "Catalog", icon: Package },
+  { to: "/my-devices", label: "My Devices", icon: Briefcase },
 ];
 
 export const UserNavbar: React.FC = () => {
@@ -34,12 +44,14 @@ export const UserNavbar: React.FC = () => {
           <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
             <Monitor className="h-5 w-5 text-primary-foreground" />
           </div>
-          <span className="font-semibold text-lg hidden sm:inline-block">DeviceHub</span>
+          <span className="font-semibold text-lg hidden sm:inline-block">
+            DeviceHub
+          </span>
         </Link>
 
         {/* Desktop Navigation - Tab Style */}
         <nav className="hidden md:flex items-center bg-muted/50 rounded-lg p-1 ml-6">
-          {navLinks.map(link => {
+          {navLinks.map((link) => {
             const isActive = location.pathname === link.to;
             return (
               <Link
@@ -47,9 +59,9 @@ export const UserNavbar: React.FC = () => {
                 to={link.to}
                 className={cn(
                   "flex items-center gap-2 px-4 py-1.5 rounded-md text-sm font-medium transition-all",
-                  isActive 
-                    ? "bg-background text-foreground shadow-sm" 
-                    : "text-muted-foreground hover:text-foreground"
+                  isActive
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground",
                 )}
               >
                 <link.icon className="h-4 w-4" />
@@ -74,7 +86,11 @@ export const UserNavbar: React.FC = () => {
             className="md:hidden h-9 w-9"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
           >
-            {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            {mobileMenuOpen ? (
+              <X className="h-5 w-5" />
+            ) : (
+              <Menu className="h-5 w-5" />
+            )}
           </Button>
 
           {/* User Menu */}
@@ -83,14 +99,18 @@ export const UserNavbar: React.FC = () => {
               <Button variant="ghost" className="relative h-9 w-9 rounded-full">
                 <Avatar className="h-9 w-9">
                   <AvatarImage src={user?.avatar} alt={user?.name} />
-                  <AvatarFallback>{user?.name?.charAt(0) || 'U'}</AvatarFallback>
+                  <AvatarFallback>
+                    {user?.name?.charAt(0) || "U"}
+                  </AvatarFallback>
                 </Avatar>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent className="w-56" align="end" forceMount>
               <DropdownMenuLabel className="font-normal">
                 <div className="flex flex-col space-y-1">
-                  <p className="text-sm font-medium leading-none">{user?.name}</p>
+                  <p className="text-sm font-medium leading-none">
+                    {user?.name}
+                  </p>
                   <p className="text-xs leading-none text-muted-foreground">
                     {user?.email}
                   </p>
@@ -117,7 +137,7 @@ export const UserNavbar: React.FC = () => {
       {mobileMenuOpen && (
         <div className="md:hidden border-t bg-background p-3">
           <nav className="flex flex-col gap-1">
-            {navLinks.map(link => {
+            {navLinks.map((link) => {
               const isActive = location.pathname === link.to;
               return (
                 <Link
@@ -126,9 +146,9 @@ export const UserNavbar: React.FC = () => {
                   onClick={() => setMobileMenuOpen(false)}
                   className={cn(
                     "flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors",
-                    isActive 
-                      ? "bg-primary text-primary-foreground" 
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                    isActive
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted",
                   )}
                 >
                   <link.icon className="h-5 w-5" />

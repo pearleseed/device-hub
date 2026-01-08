@@ -1,114 +1,92 @@
-import React from 'react';
-import { RequestStatus } from '@/lib/mockData';
-import { cn } from '@/lib/utils';
-import { 
-  Clock, 
-  CheckCircle2, 
-  XCircle, 
-  Package, 
-  RotateCcw,
-  Circle
-} from 'lucide-react';
+import React from "react";
+import type { RequestStatus } from "@/lib/types";
+import { Check, Clock, FileText, Loader2 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface RequestTimelineProps {
   status: RequestStatus;
   createdAt: string;
-  className?: string;
 }
 
-const steps = [
-  { key: 'submitted', label: 'Submitted', icon: Clock },
-  { key: 'review', label: 'Under Review', icon: Circle },
-  { key: 'decision', label: 'Decision', icon: CheckCircle2 },
-  { key: 'active', label: 'Active', icon: Package },
-  { key: 'returned', label: 'Returned', icon: RotateCcw },
-];
+export const RequestTimeline: React.FC<RequestTimelineProps> = ({ status }) => {
+  const steps = [
+    { id: "submitted", label: "Submitted", icon: FileText },
+    { id: "review", label: "Under Review", icon: Loader2 },
+    { id: "approved", label: "Approved", icon: Check },
+  ];
 
-function getActiveStep(status: RequestStatus): number {
-  switch (status) {
-    case 'pending':
-      return 1; // Under Review
-    case 'approved':
-      return 2; // Decision (approved)
-    case 'rejected':
-      return 2; // Decision (rejected)
-    case 'active':
-      return 3; // Active
-    case 'returned':
-      return 4; // Returned
-    default:
-      return 0;
-  }
-}
+  const getStepStatus = (
+    stepId: string,
+  ): "completed" | "current" | "pending" => {
+    if (status === "rejected") {
+      return stepId === "submitted" ? "completed" : "pending";
+    }
 
-function getStepStatus(stepIndex: number, activeStep: number, requestStatus: RequestStatus): 'completed' | 'current' | 'upcoming' | 'rejected' {
-  if (stepIndex < activeStep) return 'completed';
-  if (stepIndex === activeStep) {
-    if (requestStatus === 'rejected' && stepIndex === 2) return 'rejected';
-    return 'current';
-  }
-  return 'upcoming';
-}
+    const statusOrder: Record<RequestStatus, number> = {
+      pending: 1,
+      approved: 2,
+      active: 3,
+      returned: 3,
+      rejected: 0,
+    };
 
-export const RequestTimeline: React.FC<RequestTimelineProps> = ({ 
-  status, 
-  createdAt,
-  className 
-}) => {
-  const activeStep = getActiveStep(status);
+    const stepOrder: Record<string, number> = {
+      submitted: 0,
+      review: 1,
+      approved: 2,
+    };
 
-  // Filter steps based on status - if rejected, don't show active/returned
-  const visibleSteps = status === 'rejected' 
-    ? steps.slice(0, 3) 
-    : steps;
+    const currentStepIndex = statusOrder[status];
+    const thisStepIndex = stepOrder[stepId];
+
+    if (thisStepIndex < currentStepIndex) return "completed";
+    if (thisStepIndex === currentStepIndex) return "current";
+    return "pending";
+  };
 
   return (
-    <div className={cn("w-full", className)}>
-      <div className="flex items-center justify-between">
-        {visibleSteps.map((step, index) => {
-          const stepStatus = getStepStatus(index, activeStep, status);
-          const Icon = stepStatus === 'rejected' ? XCircle : step.icon;
-          
-          return (
-            <React.Fragment key={step.key}>
-              {/* Step */}
-              <div className="flex flex-col items-center gap-2">
-                <div
-                  className={cn(
-                    "w-8 h-8 rounded-full flex items-center justify-center transition-colors",
-                    stepStatus === 'completed' && "bg-primary text-primary-foreground",
-                    stepStatus === 'current' && "bg-primary text-primary-foreground ring-4 ring-primary/20",
-                    stepStatus === 'upcoming' && "bg-muted text-muted-foreground",
-                    stepStatus === 'rejected' && "bg-destructive text-destructive-foreground ring-4 ring-destructive/20"
-                  )}
-                >
-                  <Icon className="h-4 w-4" />
-                </div>
-                <span 
-                  className={cn(
-                    "text-xs font-medium text-center",
-                    stepStatus === 'current' && "text-primary",
-                    stepStatus === 'upcoming' && "text-muted-foreground",
-                    stepStatus === 'rejected' && "text-destructive"
-                  )}
-                >
-                  {stepStatus === 'rejected' && index === 2 ? 'Rejected' : step.label}
-                </span>
-              </div>
-              
-              {/* Connector */}
-              {index < visibleSteps.length - 1 && (
-                <div 
-                  className={cn(
-                    "flex-1 h-0.5 mx-2 transition-colors",
-                    index < activeStep ? "bg-primary" : "bg-muted"
-                  )}
-                />
+    <div className="flex items-center justify-between relative">
+      {/* Progress Line */}
+      <div className="absolute left-0 right-0 top-1/2 h-0.5 bg-muted -translate-y-1/2 z-0" />
+
+      {steps.map((step, index) => {
+        const stepStatus = getStepStatus(step.id);
+        const Icon = step.icon;
+
+        return (
+          <div key={step.id} className="flex flex-col items-center z-10">
+            <div
+              className={cn(
+                "w-10 h-10 rounded-full flex items-center justify-center border-2 bg-background transition-colors",
+                stepStatus === "completed" &&
+                  "border-primary bg-primary text-primary-foreground",
+                stepStatus === "current" && "border-primary text-primary",
+                stepStatus === "pending" &&
+                  "border-muted-foreground/30 text-muted-foreground/50",
               )}
-            </React.Fragment>
-          );
-        })}
-      </div>
+            >
+              <Icon
+                className={cn(
+                  "h-4 w-4",
+                  stepStatus === "current" &&
+                    step.id === "review" &&
+                    "animate-spin",
+                )}
+              />
+            </div>
+            <span
+              className={cn(
+                "text-xs mt-2 font-medium",
+                stepStatus === "completed" && "text-primary",
+                stepStatus === "current" && "text-foreground",
+                stepStatus === "pending" && "text-muted-foreground/50",
+              )}
+            >
+              {step.label}
+            </span>
+          </div>
+        );
+      })}
     </div>
   );
 };

@@ -1,89 +1,145 @@
-import React from 'react';
-import { BookingRequest, Device } from '@/lib/mockData';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { cn } from '@/lib/utils';
-import { differenceInDays, format } from 'date-fns';
-import { RotateCcw, Calendar } from 'lucide-react';
+import React from "react";
+import type { DeviceCategory, DeviceStatus, RequestStatus } from "@/lib/types";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import { Calendar, Clock, RotateCcw } from "lucide-react";
+import { format, differenceInDays, parseISO, isAfter } from "date-fns";
+import { cn } from "@/lib/utils";
+
+// Legacy interfaces for backward compatibility
+interface Device {
+  id: string;
+  name: string;
+  category: DeviceCategory;
+  brand: string;
+  model: string;
+  assetTag: string;
+  status: DeviceStatus;
+  assignedTo: string | null;
+  specs: Record<string, string | undefined>;
+  image: string;
+  addedDate: string;
+}
+
+interface BookingRequest {
+  id: string;
+  deviceId: string;
+  userId: string;
+  startDate: string;
+  endDate: string;
+  reason: string;
+  status: RequestStatus;
+  createdAt: string;
+}
 
 interface ActiveLoanCardProps {
   loan: BookingRequest;
   device: Device;
   onReturn?: (loanId: string) => void;
-  className?: string;
 }
 
 export const ActiveLoanCard: React.FC<ActiveLoanCardProps> = ({
   loan,
   device,
   onReturn,
-  className,
 }) => {
-  const daysRemaining = differenceInDays(new Date(loan.endDate), new Date());
-  
-  const getUrgencyColor = () => {
-    if (daysRemaining < 0) return 'bg-destructive text-destructive-foreground';
-    if (daysRemaining <= 3) return 'bg-orange-500 text-white';
-    if (daysRemaining <= 7) return 'bg-yellow-500 text-black';
-    return 'bg-primary text-primary-foreground';
-  };
+  const startDate = parseISO(loan.startDate);
+  const endDate = parseISO(loan.endDate);
+  const today = new Date();
 
-  const getUrgencyLabel = () => {
-    if (daysRemaining < 0) return `${Math.abs(daysRemaining)}d overdue`;
-    if (daysRemaining === 0) return 'Due today';
-    if (daysRemaining === 1) return '1 day left';
-    return `${daysRemaining} days left`;
-  };
+  const totalDays = differenceInDays(endDate, startDate);
+  const daysUsed = differenceInDays(today, startDate);
+  const daysRemaining = differenceInDays(endDate, today);
+  const progress = Math.min(Math.max((daysUsed / totalDays) * 100, 0), 100);
+
+  const isOverdue = isAfter(today, endDate);
+  const isNearDue = !isOverdue && daysRemaining <= 3;
 
   return (
-    <div
+    <Card
       className={cn(
-        "flex gap-4 p-4 border rounded-lg bg-card transition-shadow hover:shadow-md",
-        daysRemaining < 0 && "border-destructive/50",
-        className
+        "overflow-hidden transition-all",
+        isOverdue && "border-destructive",
+        isNearDue && !isOverdue && "border-yellow-500",
       )}
     >
-      {/* Device Image */}
-      <div className="w-20 h-20 rounded-lg overflow-hidden bg-muted flex-shrink-0">
-        <img
-          src={device.image}
-          alt={device.name}
-          className="w-full h-full object-cover"
-          loading="lazy"
-        />
-      </div>
-
-      {/* Device Info */}
-      <div className="flex-1 min-w-0">
-        <div className="flex items-start justify-between gap-2">
-          <div>
-            <h4 className="font-medium truncate">{device.name}</h4>
-            <p className="text-sm text-muted-foreground">{device.assetTag}</p>
+      <CardContent className="p-4">
+        <div className="flex gap-4">
+          <div className="w-20 h-20 rounded-lg overflow-hidden bg-muted shrink-0">
+            <img
+              src={device.image}
+              alt={device.name}
+              className="w-full h-full object-cover"
+            />
           </div>
-          
-          {/* Countdown Badge */}
-          <Badge className={cn("flex-shrink-0", getUrgencyColor())}>
-            {getUrgencyLabel()}
-          </Badge>
-        </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <h4 className="font-semibold truncate">{device.name}</h4>
+                <p className="text-sm text-muted-foreground">
+                  {device.assetTag}
+                </p>
+              </div>
+              {isOverdue && <Badge variant="destructive">Overdue</Badge>}
+              {isNearDue && !isOverdue && (
+                <Badge
+                  variant="outline"
+                  className="border-yellow-500 text-yellow-600"
+                >
+                  Due Soon
+                </Badge>
+              )}
+            </div>
 
-        {/* Return Date */}
-        <div className="flex items-center gap-1 mt-2 text-xs text-muted-foreground">
-          <Calendar className="h-3 w-3" />
-          <span>Return by: {format(new Date(loan.endDate), 'MMM d, yyyy')}</span>
-        </div>
+            <div className="mt-3 space-y-2">
+              <div className="flex items-center gap-4 text-sm">
+                <div className="flex items-center gap-1 text-muted-foreground">
+                  <Calendar className="h-3.5 w-3.5" />
+                  <span>{format(startDate, "MMM d")}</span>
+                </div>
+                <span className="text-muted-foreground">→</span>
+                <div className="flex items-center gap-1 text-muted-foreground">
+                  <span>{format(endDate, "MMM d, yyyy")}</span>
+                </div>
+              </div>
 
-        {/* Return Button */}
-        <Button
-          variant="outline"
-          size="sm"
-          className="mt-3 h-8"
-          onClick={() => onReturn?.(loan.id)}
-        >
-          <RotateCcw className="h-3 w-3 mr-1" />
-          Return Device
-        </Button>
-      </div>
-    </div>
+              <div className="space-y-1">
+                <div className="flex justify-between text-xs">
+                  <span className="text-muted-foreground">Loan progress</span>
+                  <span
+                    className={cn(
+                      "font-medium",
+                      isOverdue ? "text-destructive" : "text-muted-foreground",
+                    )}
+                  >
+                    {isOverdue
+                      ? `${Math.abs(daysRemaining)} days overdue`
+                      : `${daysRemaining} days left`}
+                  </span>
+                </div>
+                <Progress
+                  value={progress}
+                  className={cn("h-2", isOverdue && "[&>div]:bg-destructive")}
+                />
+              </div>
+            </div>
+
+            {onReturn && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-3 w-full"
+                onClick={() => onReturn(loan.id)}
+              >
+                <RotateCcw className="h-3.5 w-3.5 mr-1" />
+                Return Device
+              </Button>
+            )}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 };

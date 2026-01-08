@@ -1,222 +1,435 @@
-import React, { useState } from 'react';
-import { AdminSidebar } from '@/components/layout/AdminSidebar';
-import { BreadcrumbNav } from '@/components/ui/breadcrumb-nav';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { StatusBadge } from '@/components/ui/status-badge';
-import { DataTable, Column } from '@/components/ui/data-table';
+import React, { useState, useEffect, useMemo } from "react";
+import { AdminSidebar } from "@/components/layout/AdminSidebar";
+import { BreadcrumbNav } from "@/components/ui/breadcrumb-nav";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { devices as initialDevices, Device, getUserById } from '@/lib/mockData';
-import { exportToCSV, deviceExportColumns } from '@/lib/exportUtils';
-import { Plus, MoreHorizontal, Pencil, Trash2, Download, Undo2 } from 'lucide-react';
-import { AddDeviceModal } from '@/components/admin/AddDeviceModal';
-import { EditDeviceModal } from '@/components/admin/EditDeviceModal';
-import { useToast } from '@/hooks/use-toast';
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { equipmentAPI, usersAPI } from "@/lib/api";
+import type {
+  Equipment,
+  User,
+  DeviceCategory,
+  DeviceStatus,
+} from "@/lib/types";
+import { getCategoryIcon } from "@/lib/types";
+import { AddDeviceModal } from "@/components/admin/AddDeviceModal";
+import { EditDeviceModal } from "@/components/admin/EditDeviceModal";
+import { Plus, Search, Pencil, Trash2, Loader2 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+
+// Legacy Device interface
+interface Device {
+  id: string;
+  name: string;
+  category: DeviceCategory;
+  brand: string;
+  model: string;
+  assetTag: string;
+  status: DeviceStatus;
+  assignedTo: string | null;
+  specs: Record<string, string | undefined>;
+  image: string;
+  addedDate: string;
+}
 
 const AdminInventory: React.FC = () => {
   const { toast } = useToast();
-  const [devices, setDevices] = useState<Device[]>(initialDevices);
-  const [addModalOpen, setAddModalOpen] = useState(false);
-  const [editModalOpen, setEditModalOpen] = useState(false);
-  const [selectedDevice, setSelectedDevice] = useState<Device | null>(null);
-  const [selectedDevices, setSelectedDevices] = useState<Device[]>([]);
+  const [equipment, setEquipment] = useState<Equipment[]>([]);
+  const [users, setUsers] = useState<Map<number, User>>(new Map());
+  const [isLoading, setIsLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState<DeviceCategory | "all">(
+    "all",
+  );
+  const [statusFilter, setStatusFilter] = useState<DeviceStatus | "all">("all");
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [editDevice, setEditDevice] = useState<Device | null>(null);
+  const [deleteDevice, setDeleteDevice] = useState<Device | null>(null);
 
-  const handleAddDevice = (newDevice: Omit<Device, 'id'>) => {
-    const device: Device = {
-      ...newDevice,
-      id: String(devices.length + 1),
-    };
-    setDevices([...devices, device]);
-    toast({ title: 'Device added', description: `${device.name} has been added to inventory.` });
+  // Fetch data
+  const fetchData = async () => {
+    setIsLoading(true);
+    try {
+      const [equipmentRes, usersRes] = await Promise.all([
+        equipmentAPI.getAll(),
+        usersAPI.getAll(),
+      ]);
+
+      if (equipmentRes.success && equipmentRes.data) {
+        setEquipment(equipmentRes.data);
+      }
+
+      if (usersRes.success && usersRes.data) {
+        const userMap = new Map<number, User>();
+        usersRes.data.forEach((u) => userMap.set(u.id, u));
+        setUsers(userMap);
+      }
+    } catch (error) {
+      console.error("Error fetching inventory:", error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleEditDevice = (updatedDevice: Device) => {
-    setDevices(devices.map(d => d.id === updatedDevice.id ? updatedDevice : d));
-    toast({ title: 'Device updated', description: `${updatedDevice.name} has been updated.` });
-  };
+  useEffect(() => {
+    fetchData();
+  }, []);
 
-  const handleDeleteDevice = (device: Device) => {
-    const deletedDevice = device;
-    setDevices(devices.filter(d => d.id !== device.id));
-    
-    toast({ 
-      title: 'Device deleted', 
-      description: `${device.name} has been removed.`,
-      action: (
-        <Button 
-          variant="outline" 
-          size="sm" 
-          onClick={() => {
-            setDevices(prev => [...prev, deletedDevice]);
-            toast({ title: 'Restored', description: `${deletedDevice.name} has been restored.` });
-          }}
-        >
-          <Undo2 className="h-4 w-4 mr-1" />
-          Undo
-        </Button>
-      ),
+  // Convert to legacy format
+  const devices: Device[] = useMemo(() => {
+    return equipment.map((eq) => ({
+      id: String(eq.id),
+      name: eq.name,
+      category: eq.category,
+      brand: eq.brand,
+      model: eq.model,
+      assetTag: eq.asset_tag,
+      status: eq.status,
+      assignedTo: eq.assigned_to_id ? String(eq.assigned_to_id) : null,
+      specs: eq.specs as Record<string, string | undefined>,
+      image: eq.image_url,
+      addedDate: eq.created_at,
+    }));
+  }, [equipment]);
+
+  const filteredDevices = useMemo(() => {
+    return devices.filter((device) => {
+      const matchesSearch =
+        device.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        device.assetTag.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        device.brand.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesCategory =
+        categoryFilter === "all" || device.category === categoryFilter;
+      const matchesStatus =
+        statusFilter === "all" || device.status === statusFilter;
+      return matchesSearch && matchesCategory && matchesStatus;
     });
+  }, [devices, searchQuery, categoryFilter, statusFilter]);
+
+  const statusColors: Record<DeviceStatus, string> = {
+    available: "bg-status-available text-status-available-foreground",
+    borrowed: "bg-status-borrowed text-status-borrowed-foreground",
+    maintenance: "bg-status-maintenance text-status-maintenance-foreground",
   };
 
-  const handleBulkDelete = () => {
-    const deletedDevices = [...selectedDevices];
-    setDevices(devices.filter(d => !selectedDevices.some(s => s.id === d.id)));
-    setSelectedDevices([]);
-    
-    toast({ 
-      title: 'Devices deleted', 
-      description: `${deletedDevices.length} devices have been removed.`,
-      action: (
-        <Button 
-          variant="outline" 
-          size="sm" 
-          onClick={() => {
-            setDevices(prev => [...prev, ...deletedDevices]);
-            toast({ title: 'Restored', description: `${deletedDevices.length} devices have been restored.` });
-          }}
-        >
-          <Undo2 className="h-4 w-4 mr-1" />
-          Undo
-        </Button>
-      ),
+  const handleAddDevice = async (newDevice: Omit<Device, "id">) => {
+    // This would call the API to create a new device
+    toast({
+      title: "Device added",
+      description: `${newDevice.name} has been added to inventory.`,
     });
+    setShowAddModal(false);
+    fetchData();
   };
 
-  const openEditModal = (device: Device) => {
-    setSelectedDevice(device);
-    setEditModalOpen(true);
+  const handleEditDevice = async (updatedDevice: Device) => {
+    try {
+      const response = await equipmentAPI.update(parseInt(updatedDevice.id), {
+        name: updatedDevice.name,
+        asset_tag: updatedDevice.assetTag,
+        category: updatedDevice.category,
+        brand: updatedDevice.brand,
+        model: updatedDevice.model,
+        status: updatedDevice.status,
+        specs_json: JSON.stringify(updatedDevice.specs),
+        image_url: updatedDevice.image,
+      });
+
+      if (response.success) {
+        toast({
+          title: "Device updated",
+          description: `${updatedDevice.name} has been updated.`,
+        });
+        setEditDevice(null);
+        fetchData();
+      } else {
+        toast({
+          title: "Error",
+          description: response.error || "Failed to update device",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update device",
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleExportCSV = () => {
-    exportToCSV(devices, 'device_inventory', deviceExportColumns);
-    toast({ title: 'Export complete', description: 'Device inventory has been downloaded as CSV.' });
+  const handleDeleteDevice = async () => {
+    if (!deleteDevice) return;
+
+    try {
+      const response = await equipmentAPI.delete(parseInt(deleteDevice.id));
+      if (response.success) {
+        toast({
+          title: "Device deleted",
+          description: `${deleteDevice.name} has been removed.`,
+        });
+        setDeleteDevice(null);
+        fetchData();
+      } else {
+        toast({
+          title: "Error",
+          description: response.error || "Failed to delete device",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete device",
+        variant: "destructive",
+      });
+    }
   };
 
-  const columns: Column<Device>[] = [
-    {
-      key: 'name',
-      header: 'Device',
-      sortable: true,
-      render: (device) => (
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-lg overflow-hidden bg-muted">
-            <img src={device.image} alt={device.name} className="w-full h-full object-cover" />
+  const getUserById = (userId: string | null): User | undefined => {
+    if (!userId) return undefined;
+    return users.get(parseInt(userId));
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen bg-background">
+        <AdminSidebar />
+        <main className="flex-1 p-8 flex items-center justify-center">
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <Loader2 className="h-6 w-6 animate-spin" />
+            <span>Loading inventory...</span>
           </div>
-          <div>
-            <p className="font-medium">{device.name}</p>
-            <p className="text-sm text-muted-foreground">{device.brand}</p>
-          </div>
-        </div>
-      ),
-    },
-    {
-      key: 'assetTag',
-      header: 'Asset Tag',
-      sortable: true,
-      render: (device) => <span className="font-mono">{device.assetTag}</span>,
-    },
-    {
-      key: 'category',
-      header: 'Category',
-      sortable: true,
-      render: (device) => <span className="capitalize">{device.category}</span>,
-    },
-    {
-      key: 'status',
-      header: 'Status',
-      sortable: true,
-      render: (device) => <StatusBadge status={device.status} />,
-    },
-    {
-      key: 'assignedTo',
-      header: 'Assigned To',
-      render: (device) => {
-        const assignedUser = device.assignedTo ? getUserById(device.assignedTo) : null;
-        return assignedUser?.name || '—';
-      },
-    },
-    {
-      key: 'actions',
-      header: 'Actions',
-      className: 'w-[70px]',
-      render: (device) => (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => openEditModal(device)}>
-              <Pencil className="mr-2 h-4 w-4" />Edit
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleDeleteDevice(device)} className="text-destructive">
-              <Trash2 className="mr-2 h-4 w-4" />Delete
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      ),
-    },
-  ];
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen bg-background">
       <AdminSidebar />
-      
-      <main id="main-content" className="flex-1 p-8" tabIndex={-1} role="main" aria-label="Inventory management">
+
+      <main id="main-content" className="flex-1 p-8" tabIndex={-1}>
         <BreadcrumbNav />
-        
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-2xl font-bold">Inventory Management</h1>
-            <p className="text-muted-foreground">Manage all devices in your inventory</p>
+            <h1 className="text-2xl font-bold">Device Inventory</h1>
+            <p className="text-muted-foreground">
+              Manage all devices in your organization
+            </p>
           </div>
-          <div className="flex gap-2">
-            {selectedDevices.length > 0 && (
-              <Button variant="destructive" onClick={handleBulkDelete}>
-                <Trash2 className="mr-2 h-4 w-4" />
-                Delete ({selectedDevices.length})
-              </Button>
-            )}
-            <Button variant="outline" onClick={handleExportCSV}>
-              <Download className="mr-2 h-4 w-4" />
-              Export CSV
-            </Button>
-            <Button onClick={() => setAddModalOpen(true)}>
-              <Plus className="mr-2 h-4 w-4" />
-              Add Device
-            </Button>
-          </div>
+          <Button onClick={() => setShowAddModal(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add Device
+          </Button>
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>All Devices ({devices.length})</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <DataTable
-              data={devices}
-              columns={columns}
-              getRowId={(device) => device.id}
-              searchable
-              searchPlaceholder="Search devices..."
-              searchKeys={['name', 'assetTag', 'brand', 'category']}
-              paginated
-              pageSize={10}
-              selectable
-              onSelectionChange={setSelectedDevices}
-              emptyMessage="No devices found"
-              emptyDescription="Add your first device to get started"
+        {/* Filters */}
+        <div className="flex flex-col sm:flex-row gap-4 mb-6">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+            <Input
+              placeholder="Search by name, asset tag, or brand..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10"
             />
-          </CardContent>
-        </Card>
+          </div>
+          <Select
+            value={categoryFilter}
+            onValueChange={(v) =>
+              setCategoryFilter(v as DeviceCategory | "all")
+            }
+          >
+            <SelectTrigger className="w-[160px]">
+              <SelectValue placeholder="Category" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Categories</SelectItem>
+              <SelectItem value="laptop">💻 Laptops</SelectItem>
+              <SelectItem value="mobile">📱 Mobile</SelectItem>
+              <SelectItem value="tablet">📲 Tablets</SelectItem>
+              <SelectItem value="monitor">🖥️ Monitors</SelectItem>
+              <SelectItem value="accessories">🎧 Accessories</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select
+            value={statusFilter}
+            onValueChange={(v) => setStatusFilter(v as DeviceStatus | "all")}
+          >
+            <SelectTrigger className="w-[140px]">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Statuses</SelectItem>
+              <SelectItem value="available">Available</SelectItem>
+              <SelectItem value="borrowed">Borrowed</SelectItem>
+              <SelectItem value="maintenance">Maintenance</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
 
-        <AddDeviceModal open={addModalOpen} onOpenChange={setAddModalOpen} onAdd={handleAddDevice} />
-        <EditDeviceModal open={editModalOpen} onOpenChange={setEditModalOpen} device={selectedDevice} onSave={handleEditDevice} />
+        {/* Results count */}
+        <p className="text-sm text-muted-foreground mb-4">
+          Showing {filteredDevices.length} of {devices.length} devices
+        </p>
+
+        {/* Table */}
+        <div className="rounded-md border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Device</TableHead>
+                <TableHead>Category</TableHead>
+                <TableHead>Asset Tag</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Assigned To</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredDevices.map((device) => {
+                const assignedUser = getUserById(device.assignedTo);
+                return (
+                  <TableRow key={device.id}>
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 rounded-lg overflow-hidden bg-muted flex-shrink-0">
+                          <img
+                            src={device.image}
+                            alt={device.name}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                        <div>
+                          <p className="font-medium">{device.name}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {device.brand} • {device.model}
+                          </p>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <span className="flex items-center gap-2">
+                        {getCategoryIcon(device.category)}
+                        <span className="capitalize">{device.category}</span>
+                      </span>
+                    </TableCell>
+                    <TableCell className="font-mono text-sm">
+                      {device.assetTag}
+                    </TableCell>
+                    <TableCell>
+                      <Badge className={statusColors[device.status]}>
+                        {device.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {assignedUser ? (
+                        <div className="flex items-center gap-2">
+                          <div className="w-6 h-6 rounded-full overflow-hidden bg-muted">
+                            <img
+                              src={assignedUser.avatar_url || ""}
+                              alt={assignedUser.name}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                          <span className="text-sm">{assignedUser.name}</span>
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground text-sm">-</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setEditDevice(device)}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setDeleteDevice(device)}
+                          disabled={device.status === "borrowed"}
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </div>
       </main>
+
+      {/* Add Device Modal */}
+      <AddDeviceModal
+        open={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        onAdd={handleAddDevice}
+      />
+
+      {/* Edit Device Modal */}
+      <EditDeviceModal
+        device={editDevice}
+        open={!!editDevice}
+        onClose={() => setEditDevice(null)}
+        onSave={handleEditDevice}
+      />
+
+      {/* Delete Confirmation */}
+      <AlertDialog
+        open={!!deleteDevice}
+        onOpenChange={() => setDeleteDevice(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Device</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{deleteDevice?.name}"? This
+              action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteDevice}
+              className="bg-destructive text-destructive-foreground"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

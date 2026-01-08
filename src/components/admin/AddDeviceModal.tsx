@@ -1,246 +1,176 @@
-import React from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-import { Device, DeviceCategory, DeviceStatus } from '@/lib/mockData';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import React, { useState } from "react";
+import type { DeviceCategory, DeviceStatus } from "@/lib/types";
 import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form';
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
-const deviceSchema = z.object({
-  name: z.string().min(2, 'Device name must be at least 2 characters').max(100),
-  brand: z.string().min(1, 'Brand is required').max(50),
-  model: z.string().min(1, 'Model is required').max(100),
-  category: z.enum(['laptop', 'mobile', 'tablet', 'monitor', 'accessories']),
-  assetTag: z.string().min(1, 'Asset tag is required').max(20).regex(/^[A-Z]{2,4}-\d{3,4}$/i, 'Format: ABC-001'),
-  image: z.string().url('Must be a valid URL').optional().or(z.literal('')),
-  os: z.string().max(50).optional(),
-  processor: z.string().max(100).optional(),
-  ram: z.string().max(20).optional(),
-  storage: z.string().max(50).optional(),
-});
-
-type DeviceFormData = z.infer<typeof deviceSchema>;
+// Legacy Device interface
+interface Device {
+  id: string;
+  name: string;
+  category: DeviceCategory;
+  brand: string;
+  model: string;
+  assetTag: string;
+  status: DeviceStatus;
+  assignedTo: string | null;
+  specs: Record<string, string | undefined>;
+  image: string;
+  addedDate: string;
+}
 
 interface AddDeviceModalProps {
   open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onAdd: (device: Omit<Device, 'id'>) => void;
+  onClose: () => void;
+  onAdd: (device: Omit<Device, "id">) => void;
 }
 
-const categories: DeviceCategory[] = ['laptop', 'mobile', 'tablet', 'monitor', 'accessories'];
-
-export const AddDeviceModal: React.FC<AddDeviceModalProps> = ({ open, onOpenChange, onAdd }) => {
-  const form = useForm<DeviceFormData>({
-    resolver: zodResolver(deviceSchema),
-    defaultValues: {
-      name: '',
-      brand: '',
-      model: '',
-      category: 'laptop',
-      assetTag: '',
-      image: '',
-      os: '',
-      processor: '',
-      ram: '',
-      storage: '',
-    },
+export const AddDeviceModal: React.FC<AddDeviceModalProps> = ({
+  open,
+  onClose,
+  onAdd,
+}) => {
+  const [formData, setFormData] = useState({
+    name: "",
+    category: "" as DeviceCategory,
+    brand: "",
+    model: "",
+    assetTag: "",
+    image: "",
   });
 
-  const onSubmit = (data: DeviceFormData) => {
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
     onAdd({
-      name: data.name,
-      brand: data.brand,
-      model: data.model,
-      category: data.category as DeviceCategory,
-      assetTag: data.assetTag,
-      status: 'available',
+      ...formData,
+      status: "available",
       assignedTo: null,
-      image: data.image || 'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=400&h=300&fit=crop',
-      specs: { 
-        os: data.os || '', 
-        processor: data.processor || '', 
-        ram: data.ram || '', 
-        storage: data.storage || '' 
-      },
-      addedDate: new Date().toISOString().split('T')[0],
+      specs: {},
+      addedDate: new Date().toISOString().split("T")[0],
     });
-    form.reset();
-    onOpenChange(false);
-  };
-
-  const handleClose = () => {
-    form.reset();
-    onOpenChange(false);
+    setFormData({
+      name: "",
+      category: "" as DeviceCategory,
+      brand: "",
+      model: "",
+      assetTag: "",
+      image: "",
+    });
   };
 
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-lg">
-        <DialogHeader><DialogTitle>Add New Device</DialogTitle></DialogHeader>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Device Name *</FormLabel>
-                    <FormControl>
-                      <Input placeholder="MacBook Pro 14" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="assetTag"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Asset Tag *</FormLabel>
-                    <FormControl>
-                      <Input placeholder="LAP-001" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="brand"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Brand *</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Apple" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="model"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Model *</FormLabel>
-                    <FormControl>
-                      <Input placeholder="M3 Pro 2023" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="category"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Category *</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {categories.map(c => (
-                          <SelectItem key={c} value={c} className="capitalize">{c}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="image"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Image URL</FormLabel>
-                    <FormControl>
-                      <Input placeholder="https://..." {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Add New Device</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="name">Device Name</Label>
+            <Input
+              id="name"
+              value={formData.name}
+              onChange={(e) =>
+                setFormData({ ...formData, name: e.target.value })
+              }
+              required
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="category">Category</Label>
+            <Select
+              value={formData.category}
+              onValueChange={(value) =>
+                setFormData({ ...formData, category: value as DeviceCategory })
+              }
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select category" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="laptop">💻 Laptop</SelectItem>
+                <SelectItem value="mobile">📱 Mobile</SelectItem>
+                <SelectItem value="tablet">📲 Tablet</SelectItem>
+                <SelectItem value="monitor">🖥️ Monitor</SelectItem>
+                <SelectItem value="accessories">🎧 Accessories</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="brand">Brand</Label>
+              <Input
+                id="brand"
+                value={formData.brand}
+                onChange={(e) =>
+                  setFormData({ ...formData, brand: e.target.value })
+                }
+                required
               />
             </div>
-            
-            <div className="pt-2 border-t">
-              <p className="text-sm font-medium text-muted-foreground mb-3">Specifications (Optional)</p>
-              <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="os"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>OS</FormLabel>
-                      <FormControl>
-                        <Input placeholder="macOS Sonoma" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="processor"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Processor</FormLabel>
-                      <FormControl>
-                        <Input placeholder="M3 Pro" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="ram"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>RAM</FormLabel>
-                      <FormControl>
-                        <Input placeholder="18GB" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="storage"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Storage</FormLabel>
-                      <FormControl>
-                        <Input placeholder="512GB SSD" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="model">Model</Label>
+              <Input
+                id="model"
+                value={formData.model}
+                onChange={(e) =>
+                  setFormData({ ...formData, model: e.target.value })
+                }
+                required
+              />
             </div>
-            
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={handleClose}>Cancel</Button>
-              <Button type="submit">Add Device</Button>
-            </DialogFooter>
-          </form>
-        </Form>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="assetTag">Asset Tag</Label>
+            <Input
+              id="assetTag"
+              value={formData.assetTag}
+              onChange={(e) =>
+                setFormData({ ...formData, assetTag: e.target.value })
+              }
+              placeholder="e.g., LAP-001"
+              required
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="image">Image URL</Label>
+            <Input
+              id="image"
+              type="url"
+              value={formData.image}
+              onChange={(e) =>
+                setFormData({ ...formData, image: e.target.value })
+              }
+              placeholder="https://..."
+            />
+          </div>
+          <div className="flex gap-2 pt-4">
+            <Button
+              type="button"
+              variant="outline"
+              className="flex-1"
+              onClick={onClose}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" className="flex-1">
+              Add Device
+            </Button>
+          </div>
+        </form>
       </DialogContent>
     </Dialog>
   );

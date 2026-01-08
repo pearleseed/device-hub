@@ -1,477 +1,535 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import { UserNavbar } from '@/components/layout/UserNavbar';
-import { BreadcrumbNav } from '@/components/ui/breadcrumb-nav';
-import { DeviceCard } from '@/components/devices/DeviceCard';
-import { DeviceDetailModal } from '@/components/devices/DeviceDetailModal';
-import { devices, Device, DeviceCategory, DeviceStatus } from '@/lib/mockData';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
+import React, { useState, useEffect, useMemo } from "react";
+import { useSearchParams } from "react-router-dom";
+import { UserNavbar } from "@/components/layout/UserNavbar";
+import { BreadcrumbNav } from "@/components/ui/breadcrumb-nav";
+import { DeviceCard } from "@/components/devices/DeviceCard";
+import { DeviceDetailModal } from "@/components/devices/DeviceDetailModal";
+import { DeviceComparisonModal } from "@/components/devices/DeviceComparisonModal";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
-import { cn } from '@/lib/utils';
-import { Search, Laptop, Smartphone, Tablet, Monitor as MonitorIcon, Headphones, LayoutGrid, List, Grid3X3, X, Heart, ArrowUpDown, SortAsc, SortDesc } from 'lucide-react';
-import { useRecentlyViewed } from '@/hooks/use-recently-viewed';
-import { useFavorites } from '@/hooks/use-favorites';
-import { toast } from 'sonner';
-import { SkeletonCard, SkeletonListItem } from '@/components/ui/skeleton-card';
-import { EmptyState } from '@/components/ui/empty-state';
+} from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Separator } from "@/components/ui/separator";
+import { SkeletonDeviceCard } from "@/components/ui/skeleton-card";
+import { EmptyState } from "@/components/ui/empty-state";
+import { equipmentAPI } from "@/lib/api";
+import type { Equipment, DeviceCategory, DeviceStatus } from "@/lib/types";
+import { getCategoryIcon } from "@/lib/types";
+import { useRecentlyViewed } from "@/hooks/use-recently-viewed";
+import { useFavorites } from "@/hooks/use-favorites";
+import {
+  Search,
+  LayoutGrid,
+  List,
+  Scale,
+  X,
+  SlidersHorizontal,
+  Heart,
+  Loader2,
+} from "lucide-react";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 
-const categoryOptions: { value: DeviceCategory | 'all'; label: string; icon: React.ReactNode }[] = [
-  { value: 'all', label: 'All Categories', icon: <LayoutGrid className="h-4 w-4" /> },
-  { value: 'laptop', label: 'Laptops', icon: <Laptop className="h-4 w-4" /> },
-  { value: 'mobile', label: 'Mobile', icon: <Smartphone className="h-4 w-4" /> },
-  { value: 'tablet', label: 'Tablets', icon: <Tablet className="h-4 w-4" /> },
-  { value: 'monitor', label: 'Monitors', icon: <MonitorIcon className="h-4 w-4" /> },
-  { value: 'accessories', label: 'Accessories', icon: <Headphones className="h-4 w-4" /> },
-];
-
-const statusOptions: { value: DeviceStatus | 'all'; label: string }[] = [
-  { value: 'all', label: 'All Status' },
-  { value: 'available', label: 'Available' },
-  { value: 'borrowed', label: 'Borrowed' },
-  { value: 'maintenance', label: 'Maintenance' },
-];
-
-type SortOption = 'name-asc' | 'name-desc' | 'newest' | 'availability' | 'favorites';
-
-const sortOptions: { value: SortOption; label: string; icon: React.ReactNode }[] = [
-  { value: 'name-asc', label: 'Name (A-Z)', icon: <SortAsc className="h-4 w-4" /> },
-  { value: 'name-desc', label: 'Name (Z-A)', icon: <SortDesc className="h-4 w-4" /> },
-  { value: 'newest', label: 'Newest First', icon: <ArrowUpDown className="h-4 w-4" /> },
-  { value: 'availability', label: 'Available First', icon: <ArrowUpDown className="h-4 w-4" /> },
-  { value: 'favorites', label: 'Favorites First', icon: <Heart className="h-4 w-4" /> },
-];
+// Legacy Device type for components that still use the old format
+interface Device {
+  id: string;
+  name: string;
+  category: DeviceCategory;
+  brand: string;
+  model: string;
+  assetTag: string;
+  status: DeviceStatus;
+  assignedTo: string | null;
+  specs: Record<string, string | undefined>;
+  image: string;
+  addedDate: string;
+}
 
 const DeviceCatalog: React.FC = () => {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState<DeviceCategory | 'all'>('all');
-  const [statusFilter, setStatusFilter] = useState<DeviceStatus | 'all'>('all');
-  const [sortBy, setSortBy] = useState<SortOption>('name-asc');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState<
+    DeviceCategory | "all"
+  >("all");
+  const [selectedStatus, setSelectedStatus] = useState<DeviceStatus | "all">(
+    "all",
+  );
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [selectedDevice, setSelectedDevice] = useState<Device | null>(null);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [compareDevices, setCompareDevices] = useState<Device[]>([]);
+  const [showComparison, setShowComparison] = useState(false);
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
+  const [isFiltersOpen, setIsFiltersOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  
-  // Recently viewed tracking
-  const { addToRecentlyViewed } = useRecentlyViewed();
-  
-  // Favorites
-  const { favorites, toggleFavorite, isFavorite, favoritesCount } = useFavorites();
+  const [equipment, setEquipment] = useState<Equipment[]>([]);
 
-  // Simulate initial loading
+  const { addToRecentlyViewed } = useRecentlyViewed();
+  const { favorites, toggleFavorite, isFavorite } = useFavorites();
+
+  // Fetch equipment data
   useEffect(() => {
-    const timer = setTimeout(() => setIsLoading(false), 800);
-    return () => clearTimeout(timer);
+    const fetchEquipment = async () => {
+      setIsLoading(true);
+      try {
+        const response = await equipmentAPI.getAll();
+        if (response.success && response.data) {
+          setEquipment(response.data);
+        }
+      } catch (error) {
+        console.error("Error fetching equipment:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchEquipment();
   }, []);
 
-  const filteredAndSortedDevices = useMemo(() => {
-    let result = devices.filter(device => {
-      const matchesSearch = 
+  // Convert Equipment to Device format for components
+  const devices: Device[] = useMemo(() => {
+    return equipment.map((eq) => ({
+      id: String(eq.id),
+      name: eq.name,
+      category: eq.category,
+      brand: eq.brand,
+      model: eq.model,
+      assetTag: eq.asset_tag,
+      status: eq.status,
+      assignedTo: eq.assigned_to_id ? String(eq.assigned_to_id) : null,
+      specs: eq.specs as Record<string, string | undefined>,
+      image: eq.image_url,
+      addedDate: eq.created_at,
+    }));
+  }, [equipment]);
+
+  // Handle URL parameter for device detail
+  useEffect(() => {
+    const deviceId = searchParams.get("device");
+    if (deviceId) {
+      const device = devices.find((d) => d.id === deviceId);
+      if (device) {
+        setSelectedDevice(device);
+        addToRecentlyViewed(deviceId);
+      }
+    }
+  }, [searchParams, devices, addToRecentlyViewed]);
+
+  const categories: { value: DeviceCategory | "all"; label: string }[] = [
+    { value: "all", label: "All Categories" },
+    { value: "laptop", label: "💻 Laptops" },
+    { value: "mobile", label: "📱 Mobile" },
+    { value: "tablet", label: "📲 Tablets" },
+    { value: "monitor", label: "🖥️ Monitors" },
+    { value: "accessories", label: "🎧 Accessories" },
+  ];
+
+  const statuses: { value: DeviceStatus | "all"; label: string }[] = [
+    { value: "all", label: "All Statuses" },
+    { value: "available", label: "Available" },
+    { value: "borrowed", label: "Borrowed" },
+    { value: "maintenance", label: "Maintenance" },
+  ];
+
+  const filteredDevices = useMemo(() => {
+    return devices.filter((device) => {
+      const matchesSearch =
         device.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         device.brand.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        device.model.toLowerCase().includes(searchQuery.toLowerCase());
-      
-      const matchesCategory = categoryFilter === 'all' || device.category === categoryFilter;
-      const matchesStatus = statusFilter === 'all' || device.status === statusFilter;
-      const matchesFavorites = !showFavoritesOnly || favorites.includes(device.id);
-
-      return matchesSearch && matchesCategory && matchesStatus && matchesFavorites;
+        device.model.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        device.assetTag.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesCategory =
+        selectedCategory === "all" || device.category === selectedCategory;
+      const matchesStatus =
+        selectedStatus === "all" || device.status === selectedStatus;
+      const matchesFavorites = !showFavoritesOnly || isFavorite(device.id);
+      return (
+        matchesSearch && matchesCategory && matchesStatus && matchesFavorites
+      );
     });
+  }, [
+    devices,
+    searchQuery,
+    selectedCategory,
+    selectedStatus,
+    showFavoritesOnly,
+    isFavorite,
+  ]);
 
-    // Sort
-    result.sort((a, b) => {
-      switch (sortBy) {
-        case 'name-asc':
-          return a.name.localeCompare(b.name);
-        case 'name-desc':
-          return b.name.localeCompare(a.name);
-        case 'newest':
-          return new Date(b.addedDate).getTime() - new Date(a.addedDate).getTime();
-        case 'availability':
-          const statusOrder = { available: 0, borrowed: 1, maintenance: 2 };
-          return statusOrder[a.status] - statusOrder[b.status];
-        case 'favorites':
-          const aFav = favorites.includes(a.id) ? 0 : 1;
-          const bFav = favorites.includes(b.id) ? 0 : 1;
-          return aFav - bFav;
-        default:
-          return 0;
-      }
-    });
-
-    return result;
-  }, [searchQuery, categoryFilter, statusFilter, sortBy, showFavoritesOnly, favorites]);
+  const activeFiltersCount = [
+    selectedCategory !== "all",
+    selectedStatus !== "all",
+    showFavoritesOnly,
+  ].filter(Boolean).length;
 
   const handleDeviceClick = (device: Device) => {
-    addToRecentlyViewed(device.id);
+    setSearchParams({ device: device.id });
     setSelectedDevice(device);
-    setModalOpen(true);
+    addToRecentlyViewed(device.id);
   };
 
-  const handleQuickRequest = (device: Device) => {
-    addToRecentlyViewed(device.id);
-    setSelectedDevice(device);
-    setModalOpen(true);
-    toast.info('Quick Request', {
-      description: `Opening request form for ${device.name}`,
+  const handleCloseDetail = () => {
+    setSearchParams({});
+    setSelectedDevice(null);
+  };
+
+  const toggleCompare = (device: Device, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setCompareDevices((prev) => {
+      const isSelected = prev.some((d) => d.id === device.id);
+      if (isSelected) {
+        return prev.filter((d) => d.id !== device.id);
+      } else if (prev.length < 3) {
+        return [...prev, device];
+      }
+      return prev;
     });
   };
 
-  const handleFavoriteToggle = (deviceId: string) => {
-    const wasAdded = !isFavorite(deviceId);
-    toggleFavorite(deviceId);
-    
-    const device = devices.find(d => d.id === deviceId);
-    toast.success(wasAdded ? 'Added to favorites' : 'Removed from favorites', {
-      description: device?.name,
-    });
+  const clearFilters = () => {
+    setSearchQuery("");
+    setSelectedCategory("all");
+    setSelectedStatus("all");
+    setShowFavoritesOnly(false);
   };
 
-  return (
-    <div className="min-h-screen bg-background" id="main-content" tabIndex={-1}>
-      <UserNavbar />
-
-      <div className="container px-4 md:px-6 pt-4">
-        <BreadcrumbNav />
+  const FilterContent = () => (
+    <div className="space-y-6">
+      <div className="space-y-2">
+        <Label>Category</Label>
+        <Select
+          value={selectedCategory}
+          onValueChange={(v) =>
+            setSelectedCategory(v as DeviceCategory | "all")
+          }
+        >
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {categories.map((cat) => (
+              <SelectItem key={cat.value} value={cat.value}>
+                {cat.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
-      {/* Hero Section - Dashboard Style */}
-      <section className="container px-4 md:px-6 py-8">
-        <div className="flex items-center gap-2 mb-1">
-          <Laptop className="h-5 w-5 text-primary" />
-          <span className="text-sm text-muted-foreground">
-            {devices.filter(d => d.status === 'available').length} devices available
-          </span>
+      <div className="space-y-2">
+        <Label>Status</Label>
+        <Select
+          value={selectedStatus}
+          onValueChange={(v) => setSelectedStatus(v as DeviceStatus | "all")}
+        >
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {statuses.map((status) => (
+              <SelectItem key={status.value} value={status.value}>
+                {status.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <Separator />
+
+      <div className="flex items-center space-x-2">
+        <Checkbox
+          id="favorites-filter"
+          checked={showFavoritesOnly}
+          onCheckedChange={(checked) =>
+            setShowFavoritesOnly(checked as boolean)
+          }
+        />
+        <Label
+          htmlFor="favorites-filter"
+          className="text-sm font-normal cursor-pointer flex items-center gap-2"
+        >
+          <Heart className="h-4 w-4" />
+          Show favorites only
+        </Label>
+      </div>
+
+      {activeFiltersCount > 0 && (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={clearFilters}
+          className="w-full"
+        >
+          Clear all filters
+        </Button>
+      )}
+    </div>
+  );
+
+  return (
+    <div className="min-h-screen bg-background">
+      <UserNavbar />
+
+      <main
+        id="main-content"
+        className="container px-4 md:px-6 py-8"
+        tabIndex={-1}
+      >
+        <BreadcrumbNav />
+
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold mb-2">Device Catalog</h1>
+          <p className="text-muted-foreground">
+            Browse and request available devices for your work needs.
+          </p>
         </div>
-        <h1 className="text-2xl md:text-3xl font-bold mb-2">
-          Device Catalog
-        </h1>
-        <p className="text-muted-foreground">
-          Browse and request equipment for your projects.
-        </p>
-      </section>
 
-      {/* Filters - Solid Sticky Header */}
-      <section className="border-b bg-background shadow-sm sticky top-16 z-40">
-        <div className="container px-4 md:px-6 py-3">
-          {/* Main Filter Row */}
-          <div className="flex items-center gap-3">
-            {/* Search */}
-            <div className="relative flex-1 max-w-sm">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                type="search"
-                placeholder="Search devices..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 h-9 bg-background/50"
-              />
-            </div>
+        {/* Search and Filters */}
+        <div className="flex flex-col lg:flex-row gap-4 mb-6">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+            <Input
+              placeholder="Search devices..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10"
+            />
+          </div>
 
-            {/* Category Pills - Inline */}
-            <div className="hidden md:flex items-center gap-1.5 px-1">
-              {categoryOptions.map(option => (
-                <Button
-                  key={option.value}
-                  variant={categoryFilter === option.value ? 'default' : 'ghost'}
-                  size="sm"
-                  onClick={() => setCategoryFilter(option.value)}
-                  className={cn(
-                    "h-8 px-3 text-xs font-medium gap-1.5 rounded-full transition-all",
-                    categoryFilter === option.value 
-                      ? "shadow-sm" 
-                      : "text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  {option.icon}
-                  <span className="hidden lg:inline">{option.label}</span>
-                </Button>
-              ))}
-            </div>
-
-            {/* Mobile Category Dropdown */}
-            <Select value={categoryFilter} onValueChange={(v) => setCategoryFilter(v as DeviceCategory | 'all')}>
-              <SelectTrigger className="md:hidden w-[130px] h-9">
+          {/* Desktop Filters */}
+          <div className="hidden lg:flex gap-2">
+            <Select
+              value={selectedCategory}
+              onValueChange={(v) =>
+                setSelectedCategory(v as DeviceCategory | "all")
+              }
+            >
+              <SelectTrigger className="w-[160px]">
                 <SelectValue placeholder="Category" />
               </SelectTrigger>
               <SelectContent>
-                {categoryOptions.map(option => (
-                  <SelectItem key={option.value} value={option.value}>
-                    <div className="flex items-center gap-2">
-                      {option.icon}
-                      {option.label}
-                    </div>
+                {categories.map((cat) => (
+                  <SelectItem key={cat.value} value={cat.value}>
+                    {cat.label}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
 
-            {/* Divider */}
-            <div className="hidden sm:block h-6 w-px bg-border" />
+            <Select
+              value={selectedStatus}
+              onValueChange={(v) =>
+                setSelectedStatus(v as DeviceStatus | "all")
+              }
+            >
+              <SelectTrigger className="w-[140px]">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                {statuses.map((status) => (
+                  <SelectItem key={status.value} value={status.value}>
+                    {status.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
-            {/* Compact Filters Group */}
-            <div className="flex items-center gap-2">
-              {/* Status Filter */}
-              <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as DeviceStatus | 'all')}>
-                <SelectTrigger className="w-[120px] h-9 text-xs">
-                  <SelectValue placeholder="Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  {statusOptions.map(option => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <Button
+              variant={showFavoritesOnly ? "default" : "outline"}
+              size="icon"
+              onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
+              title="Show favorites only"
+            >
+              <Heart
+                className={`h-4 w-4 ${showFavoritesOnly ? "fill-current" : ""}`}
+              />
+            </Button>
 
-              {/* Sort */}
-              <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortOption)}>
-                <SelectTrigger className="w-[130px] h-9 text-xs">
-                  <ArrowUpDown className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
-                  <SelectValue placeholder="Sort" />
-                </SelectTrigger>
-                <SelectContent>
-                  {sortOptions.map(option => (
-                    <SelectItem key={option.value} value={option.value}>
-                      <div className="flex items-center gap-2">
-                        {option.icon}
-                        {option.label}
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <Separator orientation="vertical" className="h-10" />
 
-            {/* Divider */}
-            <div className="hidden sm:block h-6 w-px bg-border" />
-
-            {/* Action Buttons */}
-            <div className="flex items-center gap-1.5">
-              {/* View Mode Toggle */}
-              <div className="flex items-center rounded-lg border bg-muted/30 p-0.5">
-                <Button
-                  variant={viewMode === 'grid' ? 'secondary' : 'ghost'}
-                  size="icon"
-                  className="h-7 w-7 rounded-md"
-                  onClick={() => setViewMode('grid')}
-                >
-                  <Grid3X3 className="h-3.5 w-3.5" />
-                </Button>
-                <Button
-                  variant={viewMode === 'list' ? 'secondary' : 'ghost'}
-                  size="icon"
-                  className="h-7 w-7 rounded-md"
-                  onClick={() => setViewMode('list')}
-                >
-                  <List className="h-3.5 w-3.5" />
-                </Button>
-              </div>
-
-              {/* Favorites Filter */}
+            <div className="flex gap-1 border rounded-lg p-1">
               <Button
-                variant={showFavoritesOnly ? 'default' : 'ghost'}
-                size="sm"
-                onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
-                className={cn(
-                  "h-8 px-2.5 gap-1.5 rounded-lg",
-                  showFavoritesOnly && "shadow-sm"
-                )}
+                variant={viewMode === "grid" ? "secondary" : "ghost"}
+                size="icon"
+                onClick={() => setViewMode("grid")}
               >
-                <Heart className={cn("h-3.5 w-3.5", showFavoritesOnly && "fill-current")} />
-                {favoritesCount > 0 && (
-                  <span className="text-xs font-medium">{favoritesCount}</span>
-                )}
+                <LayoutGrid className="h-4 w-4" />
+              </Button>
+              <Button
+                variant={viewMode === "list" ? "secondary" : "ghost"}
+                size="icon"
+                onClick={() => setViewMode("list")}
+              >
+                <List className="h-4 w-4" />
               </Button>
             </div>
           </div>
 
-          {/* Active Filters Summary */}
-          {(categoryFilter !== 'all' || statusFilter !== 'all' || searchQuery || showFavoritesOnly) && (
-            <div className="flex items-center gap-2 mt-2.5 pt-2.5 border-t border-dashed">
-              <span className="text-xs text-muted-foreground">Active:</span>
-              <div className="flex items-center gap-1.5 flex-wrap">
-                {searchQuery && (
-                  <Badge variant="secondary" className="h-6 text-xs gap-1 pl-2 pr-1">
-                    "{searchQuery}"
-                    <X 
-                      className="h-3 w-3 cursor-pointer hover:text-destructive" 
-                      onClick={() => setSearchQuery('')}
-                    />
+          {/* Mobile Filter Button */}
+          <Sheet open={isFiltersOpen} onOpenChange={setIsFiltersOpen}>
+            <SheetTrigger asChild>
+              <Button
+                variant="outline"
+                className="lg:hidden flex items-center gap-2"
+              >
+                <SlidersHorizontal className="h-4 w-4" />
+                Filters
+                {activeFiltersCount > 0 && (
+                  <Badge variant="secondary" className="ml-1">
+                    {activeFiltersCount}
                   </Badge>
                 )}
-                {categoryFilter !== 'all' && (
-                  <Badge variant="secondary" className="h-6 text-xs gap-1 pl-2 pr-1">
-                    {categoryOptions.find(c => c.value === categoryFilter)?.label}
-                    <X 
-                      className="h-3 w-3 cursor-pointer hover:text-destructive" 
-                      onClick={() => setCategoryFilter('all')}
-                    />
-                  </Badge>
-                )}
-                {statusFilter !== 'all' && (
-                  <Badge variant="secondary" className="h-6 text-xs gap-1 pl-2 pr-1">
-                    {statusOptions.find(s => s.value === statusFilter)?.label}
-                    <X 
-                      className="h-3 w-3 cursor-pointer hover:text-destructive" 
-                      onClick={() => setStatusFilter('all')}
-                    />
-                  </Badge>
-                )}
-                {showFavoritesOnly && (
-                  <Badge variant="secondary" className="h-6 text-xs gap-1 pl-2 pr-1">
-                    Favorites only
-                    <X 
-                      className="h-3 w-3 cursor-pointer hover:text-destructive" 
-                      onClick={() => setShowFavoritesOnly(false)}
-                    />
-                  </Badge>
-                )}
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
-                  onClick={() => {
-                    setSearchQuery('');
-                    setCategoryFilter('all');
-                    setStatusFilter('all');
-                    setShowFavoritesOnly(false);
-                  }}
-                >
-                  Clear all
-                </Button>
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="right">
+              <SheetHeader>
+                <SheetTitle>Filters</SheetTitle>
+                <SheetDescription>
+                  Filter devices by category, status, and more.
+                </SheetDescription>
+              </SheetHeader>
+              <div className="mt-6">
+                <FilterContent />
               </div>
+            </SheetContent>
+          </Sheet>
+        </div>
+
+        {/* Active Filters Display */}
+        {activeFiltersCount > 0 && (
+          <div className="flex flex-wrap gap-2 mb-4">
+            {selectedCategory !== "all" && (
+              <Badge variant="secondary" className="gap-1">
+                {getCategoryIcon(selectedCategory)} {selectedCategory}
+                <X
+                  className="h-3 w-3 cursor-pointer"
+                  onClick={() => setSelectedCategory("all")}
+                />
+              </Badge>
+            )}
+            {selectedStatus !== "all" && (
+              <Badge variant="secondary" className="gap-1">
+                {selectedStatus}
+                <X
+                  className="h-3 w-3 cursor-pointer"
+                  onClick={() => setSelectedStatus("all")}
+                />
+              </Badge>
+            )}
+            {showFavoritesOnly && (
+              <Badge variant="secondary" className="gap-1">
+                <Heart className="h-3 w-3" /> Favorites
+                <X
+                  className="h-3 w-3 cursor-pointer"
+                  onClick={() => setShowFavoritesOnly(false)}
+                />
+              </Badge>
+            )}
+          </div>
+        )}
+
+        {/* Compare Bar */}
+        {compareDevices.length > 0 && (
+          <div className="sticky top-20 z-40 mb-6 p-4 bg-primary text-primary-foreground rounded-lg flex items-center justify-between shadow-lg">
+            <div className="flex items-center gap-4">
+              <Scale className="h-5 w-5" />
+              <span className="font-medium">
+                {compareDevices.length} device(s) selected for comparison
+              </span>
             </div>
+            <div className="flex gap-2">
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setCompareDevices([])}
+              >
+                Clear
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setShowComparison(true)}
+                disabled={compareDevices.length < 2}
+              >
+                Compare
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Results Count */}
+        <p className="text-sm text-muted-foreground mb-4">
+          {isLoading ? (
+            <span className="flex items-center gap-2">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Loading devices...
+            </span>
+          ) : (
+            `Showing ${filteredDevices.length} of ${devices.length} devices`
           )}
-        </div>
-      </section>
+        </p>
 
-      {/* Device Grid/List */}
-      <section className="container px-4 md:px-6 py-8">
-        <div className="flex items-center justify-between mb-6">
-          <p className="text-muted-foreground">
-            Showing <span className="font-medium text-foreground">{filteredAndSortedDevices.length}</span> devices
-            {showFavoritesOnly && ' (favorites only)'}
-          </p>
-        </div>
-
+        {/* Device Grid/List */}
         {isLoading ? (
-          // Loading Skeletons
-          viewMode === 'grid' ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {Array.from({ length: 8 }).map((_, i) => (
-                <SkeletonCard key={i} />
-              ))}
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <SkeletonListItem key={i} />
-              ))}
-            </div>
-          )
-        ) : filteredAndSortedDevices.length > 0 ? (
-          viewMode === 'grid' ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {filteredAndSortedDevices.map(device => (
-                <div key={device.id} className="relative animate-fade-in">
-                  <DeviceCard 
-                    device={device} 
-                    onClick={handleDeviceClick}
-                    onQuickRequest={handleQuickRequest}
-                    onFavoriteToggle={handleFavoriteToggle}
-                    isFavorite={isFavorite(device.id)}
-                    showQuickRequest={true}
-                  />
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {filteredAndSortedDevices.map(device => (
-                <div 
-                  key={device.id}
-                  className="flex items-center gap-4 p-4 rounded-lg border bg-card cursor-pointer transition-all hover:shadow-md animate-fade-in"
-                  onClick={() => handleDeviceClick(device)}
-                >
-                  {/* Favorite button for list view */}
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleFavoriteToggle(device.id);
-                    }}
-                    className={cn(
-                      "h-8 w-8 rounded-full flex items-center justify-center transition-colors flex-shrink-0",
-                      "hover:bg-muted",
-                      isFavorite(device.id) && "text-red-500"
-                    )}
-                    aria-label={isFavorite(device.id) ? 'Remove from favorites' : 'Add to favorites'}
-                  >
-                    <Heart className={cn("h-4 w-4", isFavorite(device.id) && "fill-current")} />
-                  </button>
-                  
-                  <div className="w-16 h-16 rounded-lg overflow-hidden bg-muted flex-shrink-0">
-                    <img src={device.image} alt={device.name} className="w-full h-full object-cover" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold truncate">{device.name}</h3>
-                    <p className="text-sm text-muted-foreground">{device.brand} • {device.model}</p>
-                  </div>
-                  <div className="hidden sm:block text-sm text-muted-foreground capitalize">
-                    {device.category}
-                  </div>
-                  <div className="hidden md:flex gap-2">
-                    {device.specs.ram && (
-                      <Badge variant="secondary">{device.specs.ram}</Badge>
-                    )}
-                    {device.specs.storage && (
-                      <Badge variant="secondary">{device.specs.storage}</Badge>
-                    )}
-                  </div>
-                  <Badge variant={device.status === 'available' ? 'default' : 'secondary'}>
-                    {device.status}
-                  </Badge>
-                  
-                  {/* Quick Request for list view */}
-                  {device.status === 'available' && (
-                    <Button 
-                      size="sm" 
-                      variant="outline"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleQuickRequest(device);
-                      }}
-                      className="hidden lg:flex gap-1"
-                    >
-                      Quick Request
-                    </Button>
-                  )}
-                </div>
-              ))}
-            </div>
-          )
+          <div
+            className={`grid gap-6 ${viewMode === "grid" ? "sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" : "grid-cols-1"}`}
+          >
+            {[...Array(8)].map((_, i) => (
+              <SkeletonDeviceCard key={i} />
+            ))}
+          </div>
+        ) : filteredDevices.length > 0 ? (
+          <div
+            className={`grid gap-6 ${viewMode === "grid" ? "sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" : "grid-cols-1"}`}
+          >
+            {filteredDevices.map((device) => (
+              <DeviceCard
+                key={device.id}
+                device={device}
+                viewMode={viewMode}
+                onClick={() => handleDeviceClick(device)}
+                onCompare={(e) => toggleCompare(device, e)}
+                isComparing={compareDevices.some((d) => d.id === device.id)}
+                isFavorite={isFavorite(device.id)}
+                onToggleFavorite={() => toggleFavorite(device.id)}
+              />
+            ))}
+          </div>
         ) : (
           <EmptyState
-            type={showFavoritesOnly ? 'no-favorites' : 'no-results'}
-            actionLabel={showFavoritesOnly ? 'View all devices' : undefined}
-            onAction={showFavoritesOnly ? () => setShowFavoritesOnly(false) : undefined}
+            type="no-results"
+            actionLabel="Clear filters"
+            onAction={clearFilters}
           />
         )}
-      </section>
+      </main>
 
       {/* Device Detail Modal */}
-      <DeviceDetailModal 
+      <DeviceDetailModal
         device={selectedDevice}
-        open={modalOpen}
-        onOpenChange={setModalOpen}
+        open={!!selectedDevice}
+        onClose={handleCloseDetail}
+      />
+
+      {/* Comparison Modal */}
+      <DeviceComparisonModal
+        devices={compareDevices}
+        open={showComparison}
+        onClose={() => setShowComparison(false)}
       />
     </div>
   );

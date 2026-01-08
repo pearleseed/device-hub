@@ -1,247 +1,156 @@
-import React, { useState } from 'react';
-import { AdminSidebar } from '@/components/layout/AdminSidebar';
-import { BreadcrumbNav } from '@/components/ui/breadcrumb-nav';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Label } from '@/components/ui/label';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Calendar, LayoutList, Filter, X } from 'lucide-react';
-import { useLanguage } from '@/contexts/LanguageContext';
-import { bookingRequests, devices, DeviceCategory } from '@/lib/mockData';
-import { DeviceCalendarView } from '@/components/calendar/DeviceCalendarView';
-import { DeviceTimelineView } from '@/components/calendar/DeviceTimelineView';
-import { AvailabilitySummary } from '@/components/calendar/AvailabilitySummary';
-import { useToast } from '@/hooks/use-toast';
-
-const categories: { value: DeviceCategory; labelKey: string }[] = [
-  { value: 'laptop', labelKey: 'Laptops' },
-  { value: 'mobile', labelKey: 'Mobile Devices' },
-  { value: 'tablet', labelKey: 'Tablets' },
-  { value: 'monitor', labelKey: 'Monitors' },
-  { value: 'accessories', labelKey: 'Accessories' },
-];
+import React, { useState, useEffect } from "react";
+import { AdminSidebar } from "@/components/layout/AdminSidebar";
+import { BreadcrumbNav } from "@/components/ui/breadcrumb-nav";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { DeviceCalendarView } from "@/components/calendar/DeviceCalendarView";
+import { DeviceTimelineView } from "@/components/calendar/DeviceTimelineView";
+import { AvailabilitySummary } from "@/components/calendar/AvailabilitySummary";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { borrowingAPI } from "@/lib/api";
+import type { DeviceCategory, BookingRequest } from "@/lib/types";
+import { Loader2, CalendarDays, GanttChart, Filter } from "lucide-react";
 
 const AdminCalendar: React.FC = () => {
-  const { t } = useLanguage();
-  const { toast } = useToast();
-  const [activeView, setActiveView] = useState<'calendar' | 'timeline'>('calendar');
-  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
-  const [selectedDevices, setSelectedDevices] = useState<string[]>([]);
-  const [filterOpen, setFilterOpen] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<
+    DeviceCategory | "all"
+  >("all");
+  const [bookings, setBookings] = useState<BookingRequest[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Filter devices by selected categories
-  const filteredDevices = selectedCategories.length > 0
-    ? devices.filter(d => selectedCategories.includes(d.category))
-    : devices;
+  useEffect(() => {
+    const fetchData = async () => {
+      setIsLoading(true);
+      try {
+        const requestsRes = await borrowingAPI.getAll();
 
-  const handleCategoryToggle = (category: string) => {
-    setSelectedCategories(prev =>
-      prev.includes(category)
-        ? prev.filter(c => c !== category)
-        : [...prev, category]
+        if (requestsRes.success && requestsRes.data) {
+          // Convert to BookingRequest format
+          const bookingRequests: BookingRequest[] = requestsRes.data.map(
+            (r) => ({
+              id: String(r.id),
+              deviceId: String(r.equipment_id),
+              userId: String(r.user_id),
+              startDate: r.start_date,
+              endDate: r.end_date,
+              reason: r.reason,
+              status: r.status,
+              createdAt: r.created_at,
+            }),
+          );
+          setBookings(bookingRequests);
+        }
+      } catch (error) {
+        console.error("Error fetching calendar data:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  // Selected categories for timeline filtering
+  const selectedCategories =
+    selectedCategory === "all" ? [] : [selectedCategory];
+
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen bg-background">
+        <AdminSidebar />
+        <main className="flex-1 p-6 lg:p-8 flex items-center justify-center">
+          <div className="flex flex-col items-center gap-3 text-muted-foreground">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <span>Loading calendar...</span>
+          </div>
+        </main>
+      </div>
     );
-    // Reset device selection when category changes
-    setSelectedDevices([]);
-  };
-
-  const handleDeviceToggle = (deviceId: string) => {
-    setSelectedDevices(prev =>
-      prev.includes(deviceId)
-        ? prev.filter(d => d !== deviceId)
-        : [...prev, deviceId]
-    );
-  };
-
-  const handleSelectAllDevices = () => {
-    if (selectedDevices.length === filteredDevices.length) {
-      setSelectedDevices([]);
-    } else {
-      setSelectedDevices(filteredDevices.map(d => d.id));
-    }
-  };
-
-  const handleClearFilters = () => {
-    setSelectedCategories([]);
-    setSelectedDevices([]);
-  };
-
-  const handleApprove = (id: string) => {
-    toast({
-      title: t('requests.approved'),
-      description: `Request ${id} has been approved.`,
-    });
-  };
-
-  const handleReject = (id: string) => {
-    toast({
-      title: t('requests.rejected'),
-      description: `Request ${id} has been rejected.`,
-      variant: 'destructive',
-    });
-  };
-
-  const activeFiltersCount = selectedCategories.length + selectedDevices.length;
+  }
 
   return (
-    <div className="flex min-h-screen bg-background w-full">
+    <div className="flex min-h-screen bg-background">
       <AdminSidebar />
-      
-      <main id="main-content" className="flex-1 p-4 lg:p-6" tabIndex={-1} role="main" aria-label="Calendar management">
+
+      <main
+        id="main-content"
+        className="flex-1 p-6 lg:p-8 overflow-x-hidden"
+        tabIndex={-1}
+      >
         <BreadcrumbNav />
-        <div className="max-w-[1600px] mx-auto space-y-4">
-          {/* Compact Header */}
-          <div className="flex items-center justify-between gap-4 flex-wrap">
-            <div>
-              <h1 className="text-2xl font-bold">{t('calendar.title')}</h1>
-              <p className="text-sm text-muted-foreground">{t('calendar.subtitle')}</p>
-            </div>
-            
-            <div className="flex items-center gap-2">
-              {/* Filter Popover */}
-              <Popover open={filterOpen} onOpenChange={setFilterOpen}>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" size="sm" className="gap-2">
-                    <Filter className="h-4 w-4" />
-                    {t('calendar.filters')}
-                    {activeFiltersCount > 0 && (
-                      <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
-                        {activeFiltersCount}
-                      </Badge>
-                    )}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-72" align="end">
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <span className="font-medium text-sm">{t('calendar.filters')}</span>
-                      {activeFiltersCount > 0 && (
-                        <Button variant="ghost" size="sm" className="h-auto py-1 px-2 text-xs" onClick={handleClearFilters}>
-                          {t('common.clearAll')}
-                        </Button>
-                      )}
-                    </div>
-                    
-                    {/* Categories */}
-                    <div>
-                      <Label className="text-xs font-medium text-muted-foreground mb-2 block">{t('calendar.categories')}</Label>
-                      <div className="grid grid-cols-2 gap-2">
-                        {categories.map(category => (
-                          <div key={category.value} className="flex items-center gap-2">
-                            <Checkbox
-                              id={`cat-${category.value}`}
-                              checked={selectedCategories.includes(category.value)}
-                              onCheckedChange={() => handleCategoryToggle(category.value)}
-                            />
-                            <Label htmlFor={`cat-${category.value}`} className="text-xs cursor-pointer">
-                              {category.labelKey}
-                            </Label>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
 
-                    {/* Devices */}
-                    <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <Label className="text-xs font-medium text-muted-foreground">{t('calendar.devices')}</Label>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-auto py-0.5 px-1.5 text-[10px]"
-                          onClick={handleSelectAllDevices}
-                        >
-                          {selectedDevices.length === filteredDevices.length
-                            ? t('common.deselectAll')
-                            : t('common.selectAll')}
-                        </Button>
-                      </div>
-                      <ScrollArea className="h-[180px]">
-                        <div className="space-y-1.5 pr-2">
-                          {filteredDevices.map(device => (
-                            <div key={device.id} className="flex items-center gap-2">
-                              <Checkbox
-                                id={`device-${device.id}`}
-                                checked={selectedDevices.includes(device.id)}
-                                onCheckedChange={() => handleDeviceToggle(device.id)}
-                              />
-                              <Label htmlFor={`device-${device.id}`} className="text-xs cursor-pointer truncate">
-                                {device.name}
-                              </Label>
-                            </div>
-                          ))}
-                        </div>
-                      </ScrollArea>
-                    </div>
-                  </div>
-                </PopoverContent>
-              </Popover>
-
-              {/* Active Filter Tags */}
-              {activeFiltersCount > 0 && (
-                <div className="hidden sm:flex items-center gap-1">
-                  {selectedCategories.slice(0, 2).map(cat => (
-                    <Badge key={cat} variant="secondary" className="text-xs gap-1">
-                      {categories.find(c => c.value === cat)?.labelKey}
-                      <X className="h-3 w-3 cursor-pointer" onClick={() => handleCategoryToggle(cat)} />
-                    </Badge>
-                  ))}
-                  {selectedCategories.length > 2 && (
-                    <Badge variant="outline" className="text-xs">+{selectedCategories.length - 2}</Badge>
-                  )}
-                </div>
-              )}
-
-              <div className="h-6 w-px bg-border mx-1" />
-
-              {/* View Toggle */}
-              <div className="flex items-center bg-muted rounded-md p-0.5">
-                <Button
-                  variant={activeView === 'calendar' ? 'default' : 'ghost'}
-                  size="sm"
-                  className="h-7 px-2.5 gap-1.5"
-                  onClick={() => setActiveView('calendar')}
-                >
-                  <Calendar className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline text-xs">{t('calendar.calendarView')}</span>
-                </Button>
-                <Button
-                  variant={activeView === 'timeline' ? 'default' : 'ghost'}
-                  size="sm"
-                  className="h-7 px-2.5 gap-1.5"
-                  onClick={() => setActiveView('timeline')}
-                >
-                  <LayoutList className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline text-xs">{t('calendar.timelineView')}</span>
-                </Button>
-              </div>
-            </div>
-          </div>
-
-          {/* Compact Summary */}
-          <AvailabilitySummary />
-
-          {/* Main Content - Full Width */}
+        {/* Header Section */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div>
-            {activeView === 'calendar' ? (
-              <DeviceCalendarView
-                bookings={bookingRequests}
-                selectedDevices={selectedDevices}
-                onApprove={handleApprove}
-                onReject={handleReject}
-              />
-            ) : (
-              <DeviceTimelineView
-                bookings={bookingRequests}
-                selectedDevices={selectedDevices}
-                selectedCategories={selectedCategories}
-                onApprove={handleApprove}
-                onReject={handleReject}
-              />
-            )}
+            <h1 className="text-2xl font-bold flex items-center gap-2">
+              <CalendarDays className="h-6 w-6 text-primary" />
+              Device Calendar
+            </h1>
+            <p className="text-muted-foreground mt-1">
+              View and manage device availability and bookings
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Filter className="h-4 w-4 text-muted-foreground" />
+            <Select
+              value={selectedCategory}
+              onValueChange={(v) =>
+                setSelectedCategory(v as DeviceCategory | "all")
+              }
+            >
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Filter by category" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Categories</SelectItem>
+                <SelectItem value="laptop">💻 Laptops</SelectItem>
+                <SelectItem value="mobile">📱 Mobile</SelectItem>
+                <SelectItem value="tablet">📲 Tablets</SelectItem>
+                <SelectItem value="monitor">🖥️ Monitors</SelectItem>
+                <SelectItem value="accessories">🎧 Accessories</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
+
+        {/* Availability Summary - Self-fetching component */}
+        <div className="mb-6">
+          <AvailabilitySummary />
+        </div>
+
+        {/* Tabs for Calendar/Timeline views */}
+        <Tabs defaultValue="calendar" className="space-y-4">
+          <TabsList className="grid w-full max-w-md grid-cols-2">
+            <TabsTrigger value="calendar" className="flex items-center gap-2">
+              <CalendarDays className="h-4 w-4" />
+              Calendar View
+            </TabsTrigger>
+            <TabsTrigger value="timeline" className="flex items-center gap-2">
+              <GanttChart className="h-4 w-4" />
+              Timeline View
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="calendar" className="mt-4">
+            <DeviceCalendarView
+              bookings={bookings}
+              selectedDevices={[]}
+            />
+          </TabsContent>
+
+          <TabsContent value="timeline" className="mt-4">
+            <DeviceTimelineView
+              bookings={bookings}
+              selectedDevices={[]}
+              selectedCategories={selectedCategories}
+            />
+          </TabsContent>
+        </Tabs>
       </main>
     </div>
   );
