@@ -1,72 +1,76 @@
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { useNotifications, NotificationType } from '@/contexts/NotificationContext';
-import { Button } from '@/components/ui/button';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Badge } from '@/components/ui/badge';
+import React, { useState } from "react";
+import { Link } from "react-router-dom";
+import type { NotificationType } from "@/contexts/NotificationContext";
+import { useNotifications } from "@/contexts/NotificationContext";
+import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Badge } from "@/components/ui/badge";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from '@/components/ui/popover';
-import { 
-  Bell, 
-  Check, 
-  CheckCheck, 
-  Trash2, 
-  AlertTriangle, 
-  CheckCircle, 
-  XCircle, 
-  Package, 
+} from "@/components/ui/popover";
+import {
+  Bell,
+  Check,
+  CheckCheck,
+  Trash2,
+  AlertTriangle,
+  CheckCircle,
+  XCircle,
+  Package,
   Info,
   Sparkles,
   RotateCcw,
-  Clock
-} from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { formatDistanceToNow } from 'date-fns';
+  Clock,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import { formatDistanceToNow } from "date-fns";
 
-const typeConfig: Record<NotificationType, { 
-  icon: React.ElementType; 
-  gradient: string;
-  bgColor: string;
-  label: string;
-}> = {
-  request_approved: { 
-    icon: CheckCircle, 
-    gradient: 'from-emerald-500 to-green-600',
-    bgColor: 'bg-emerald-500/10',
-    label: 'Approved'
+const typeConfig: Record<
+  NotificationType,
+  {
+    icon: React.ElementType;
+    gradient: string;
+    bgColor: string;
+    label: string;
+  }
+> = {
+  request_approved: {
+    icon: CheckCircle,
+    gradient: "from-emerald-500 to-green-600",
+    bgColor: "bg-emerald-500/10",
+    label: "Approved",
   },
-  request_rejected: { 
-    icon: XCircle, 
-    gradient: 'from-red-500 to-rose-600',
-    bgColor: 'bg-red-500/10',
-    label: 'Rejected'
+  request_rejected: {
+    icon: XCircle,
+    gradient: "from-red-500 to-rose-600",
+    bgColor: "bg-red-500/10",
+    label: "Rejected",
   },
-  new_request: { 
-    icon: Package, 
-    gradient: 'from-blue-500 to-indigo-600',
-    bgColor: 'bg-blue-500/10',
-    label: 'New Request'
+  new_request: {
+    icon: Package,
+    gradient: "from-blue-500 to-indigo-600",
+    bgColor: "bg-blue-500/10",
+    label: "New Request",
   },
-  overdue: { 
-    icon: AlertTriangle, 
-    gradient: 'from-amber-500 to-orange-600',
-    bgColor: 'bg-amber-500/10',
-    label: 'Overdue'
+  overdue: {
+    icon: AlertTriangle,
+    gradient: "from-amber-500 to-orange-600",
+    bgColor: "bg-amber-500/10",
+    label: "Overdue",
   },
-  device_returned: { 
-    icon: RotateCcw, 
-    gradient: 'from-slate-500 to-slate-600',
-    bgColor: 'bg-slate-500/10',
-    label: 'Returned'
+  device_returned: {
+    icon: RotateCcw,
+    gradient: "from-slate-500 to-slate-600",
+    bgColor: "bg-slate-500/10",
+    label: "Returned",
   },
-  info: { 
-    icon: Info, 
-    gradient: 'from-sky-500 to-cyan-600',
-    bgColor: 'bg-sky-500/10',
-    label: 'Info'
+  info: {
+    icon: Info,
+    gradient: "from-sky-500 to-cyan-600",
+    bgColor: "bg-sky-500/10",
+    label: "Info",
   },
 };
 
@@ -84,10 +88,10 @@ interface NotificationItemProps {
   onClear: (id: string) => void;
 }
 
-const NotificationItem: React.FC<NotificationItemProps> = ({ 
-  notification, 
-  onMarkAsRead, 
-  onClear 
+const NotificationItem: React.FC<NotificationItemProps> = ({
+  notification,
+  onMarkAsRead,
+  onClear,
 }) => {
   const config = typeConfig[notification.type];
   const Icon = config.icon;
@@ -96,34 +100,44 @@ const NotificationItem: React.FC<NotificationItemProps> = ({
     <div
       className={cn(
         "group relative px-4 py-3 transition-all duration-200 hover:bg-accent/50",
-        !notification.read && "bg-primary/[0.03]"
+        !notification.read && "bg-primary/3",
       )}
     >
       <div className="flex gap-3">
         {/* Icon with gradient background */}
-        <div className={cn(
-          "relative flex-shrink-0 h-10 w-10 rounded-xl flex items-center justify-center",
-          config.bgColor
-        )}>
-          <div className={cn(
-            "absolute inset-0 rounded-xl bg-gradient-to-br opacity-0 group-hover:opacity-100 transition-opacity",
-            config.gradient
-          )} />
-          <Icon className={cn(
-            "h-5 w-5 relative z-10 transition-colors",
-            `text-${config.gradient.split('-')[1]}-600`,
-            "group-hover:text-white"
-          )} />
+        <div
+          className={cn(
+            "relative shrink-0 h-10 w-10 rounded-xl flex items-center justify-center",
+            config.bgColor,
+          )}
+        >
+          <div
+            className={cn(
+              "absolute inset-0 rounded-xl bg-linear-to-br opacity-0 group-hover:opacity-100 transition-opacity",
+              config.gradient,
+            )}
+          />
+          <Icon
+            className={cn(
+              "h-5 w-5 relative z-10 transition-colors",
+              `text-${config.gradient.split("-")[1]}-600`,
+              "group-hover:text-white",
+            )}
+          />
         </div>
-        
+
         {/* Content */}
         <div className="flex-1 min-w-0 space-y-1">
           <div className="flex items-start justify-between gap-2">
             <div className="flex items-center gap-2">
-              <p className={cn(
-                "text-sm font-medium leading-tight",
-                !notification.read ? "text-foreground" : "text-muted-foreground"
-              )}>
+              <p
+                className={cn(
+                  "text-sm font-medium leading-tight",
+                  !notification.read
+                    ? "text-foreground"
+                    : "text-muted-foreground",
+                )}
+              >
                 {notification.title}
               </p>
               {!notification.read && (
@@ -131,11 +145,11 @@ const NotificationItem: React.FC<NotificationItemProps> = ({
               )}
             </div>
           </div>
-          
+
           <p className="text-sm text-muted-foreground/80 line-clamp-2 leading-relaxed">
             {notification.message}
           </p>
-          
+
           <div className="flex items-center gap-3 pt-0.5">
             <span className="flex items-center gap-1 text-xs text-muted-foreground/60">
               <Clock className="h-3 w-3" />
@@ -153,13 +167,15 @@ const NotificationItem: React.FC<NotificationItemProps> = ({
           </div>
         </div>
       </div>
-      
+
       {/* Hover actions */}
-      <div className={cn(
-        "absolute right-3 top-3 flex items-center gap-1",
-        "opacity-0 group-hover:opacity-100 transition-all duration-200",
-        "translate-x-2 group-hover:translate-x-0"
-      )}>
+      <div
+        className={cn(
+          "absolute right-3 top-3 flex items-center gap-1",
+          "opacity-0 group-hover:opacity-100 transition-all duration-200",
+          "translate-x-2 group-hover:translate-x-0",
+        )}
+      >
         {!notification.read && (
           <Button
             variant="ghost"
@@ -197,55 +213,65 @@ const EmptyNotifications: React.FC = () => (
     </div>
     <h4 className="text-sm font-medium text-foreground mb-1">All caught up!</h4>
     <p className="text-xs text-muted-foreground max-w-[200px]">
-      You don't have any notifications right now. We'll let you know when something arrives.
+      You don't have any notifications right now. We'll let you know when
+      something arrives.
     </p>
   </div>
 );
 
 export const NotificationCenter: React.FC = () => {
-  const { notifications, unreadCount, markAsRead, markAllAsRead, clearNotification } = useNotifications();
+  const {
+    notifications,
+    unreadCount,
+    markAsRead,
+    markAllAsRead,
+    clearNotification,
+  } = useNotifications();
   const [isOpen, setIsOpen] = useState(false);
 
-  const unreadNotifications = notifications.filter(n => !n.read);
-  const readNotifications = notifications.filter(n => n.read);
+  const unreadNotifications = notifications.filter((n) => !n.read);
+  const readNotifications = notifications.filter((n) => n.read);
 
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
-        <Button 
-          variant="ghost" 
-          size="icon" 
+        <Button
+          variant="ghost"
+          size="icon"
           className={cn(
             "relative rounded-xl transition-all",
-            isOpen && "bg-accent"
+            isOpen && "bg-accent",
           )}
-          aria-label={`Notifications${unreadCount > 0 ? `, ${unreadCount} unread` : ''}`}
+          aria-label={`Notifications${unreadCount > 0 ? `, ${unreadCount} unread` : ""}`}
           aria-haspopup="true"
         >
-          <Bell className={cn(
-            "h-5 w-5 transition-transform",
-            isOpen && "scale-110"
-          )} aria-hidden="true" />
+          <Bell
+            className={cn(
+              "h-5 w-5 transition-transform",
+              isOpen && "scale-110",
+            )}
+            aria-hidden="true"
+          />
           {unreadCount > 0 && (
-            <span 
+            <span
               className={cn(
                 "absolute -top-0.5 -right-0.5 h-5 w-5 rounded-full",
-                "bg-gradient-to-br from-red-500 to-rose-600",
+                "bg-linear-to-br from-red-500 to-rose-600",
                 "text-white text-xs font-semibold",
                 "flex items-center justify-center",
                 "shadow-lg shadow-red-500/25",
-                "animate-in zoom-in-50 duration-200"
+                "animate-in zoom-in-50 duration-200",
               )}
               aria-hidden="true"
             >
-              {unreadCount > 9 ? '9+' : unreadCount}
+              {unreadCount > 9 ? "9+" : unreadCount}
             </span>
           )}
         </Button>
       </PopoverTrigger>
-      
-      <PopoverContent 
-        className="w-[380px] p-0 rounded-xl shadow-xl border-border/50 overflow-hidden" 
+
+      <PopoverContent
+        className="w-[380px] p-0 rounded-xl shadow-xl border-border/50 overflow-hidden"
         align="end"
         sideOffset={8}
       >
@@ -254,16 +280,19 @@ export const NotificationCenter: React.FC = () => {
           <div className="flex items-center gap-2">
             <h4 className="font-semibold text-sm">Notifications</h4>
             {unreadCount > 0 && (
-              <Badge variant="secondary" className="h-5 px-1.5 text-xs font-medium">
+              <Badge
+                variant="secondary"
+                className="h-5 px-1.5 text-xs font-medium"
+              >
                 {unreadCount} new
               </Badge>
             )}
           </div>
           {unreadCount > 0 && (
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={markAllAsRead} 
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={markAllAsRead}
               className="h-7 text-xs text-muted-foreground hover:text-foreground gap-1.5"
             >
               <CheckCheck className="h-3.5 w-3.5" />
@@ -271,7 +300,7 @@ export const NotificationCenter: React.FC = () => {
             </Button>
           )}
         </div>
-        
+
         {/* Content */}
         <ScrollArea className="max-h-[420px]">
           {notifications.length > 0 ? (
@@ -279,7 +308,7 @@ export const NotificationCenter: React.FC = () => {
               {/* Unread section */}
               {unreadNotifications.length > 0 && (
                 <div>
-                  {unreadNotifications.map(notification => (
+                  {unreadNotifications.map((notification) => (
                     <NotificationItem
                       key={notification.id}
                       notification={notification}
@@ -289,7 +318,7 @@ export const NotificationCenter: React.FC = () => {
                   ))}
                 </div>
               )}
-              
+
               {/* Read section with header */}
               {readNotifications.length > 0 && (
                 <div>
@@ -300,7 +329,7 @@ export const NotificationCenter: React.FC = () => {
                       </span>
                     </div>
                   )}
-                  {readNotifications.map(notification => (
+                  {readNotifications.map((notification) => (
                     <NotificationItem
                       key={notification.id}
                       notification={notification}
@@ -315,12 +344,13 @@ export const NotificationCenter: React.FC = () => {
             <EmptyNotifications />
           )}
         </ScrollArea>
-        
+
         {/* Footer */}
         {notifications.length > 0 && (
           <div className="px-4 py-2.5 border-t bg-muted/20">
             <p className="text-xs text-center text-muted-foreground">
-              Showing {notifications.length} notification{notifications.length !== 1 ? 's' : ''}
+              Showing {notifications.length} notification
+              {notifications.length !== 1 ? "s" : ""}
             </p>
           </div>
         )}

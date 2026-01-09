@@ -1,12 +1,24 @@
-import React from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-import { Device, DeviceCategory, DeviceStatus } from '@/lib/mockData';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import React from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import type { Device, DeviceCategory } from "@/lib/mockData";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import {
   Form,
   FormControl,
@@ -14,15 +26,19 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from '@/components/ui/form';
+} from "@/components/ui/form";
 
 const deviceSchema = z.object({
-  name: z.string().min(2, 'Device name must be at least 2 characters').max(100),
-  brand: z.string().min(1, 'Brand is required').max(50),
-  model: z.string().min(1, 'Model is required').max(100),
-  category: z.enum(['laptop', 'mobile', 'tablet', 'monitor', 'accessories']),
-  assetTag: z.string().min(1, 'Asset tag is required').max(20).regex(/^[A-Z]{2,4}-\d{3,4}$/i, 'Format: ABC-001'),
-  image: z.string().url('Must be a valid URL').optional().or(z.literal('')),
+  name: z.string().min(2, "Device name must be at least 2 characters").max(100),
+  brand: z.string().min(1, "Brand is required").max(50),
+  model: z.string().min(1, "Model is required").max(100),
+  category: z.enum(["laptop", "mobile", "tablet", "monitor", "accessories"]),
+  assetTag: z
+    .string()
+    .min(1, "Asset tag is required")
+    .max(20)
+    .regex(/^[A-Z]{2,4}-\d{3,4}$/i, "Format: ABC-001"),
+  image: z.string().url("Must be a valid URL").optional().or(z.literal("")),
   os: z.string().max(50).optional(),
   processor: z.string().max(100).optional(),
   ram: z.string().max(20).optional(),
@@ -34,25 +50,35 @@ type DeviceFormData = z.infer<typeof deviceSchema>;
 interface AddDeviceModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onAdd: (device: Omit<Device, 'id'>) => void;
+  onAdd: (device: Omit<Device, "id">) => void;
 }
 
-const categories: DeviceCategory[] = ['laptop', 'mobile', 'tablet', 'monitor', 'accessories'];
+const categories: DeviceCategory[] = [
+  "laptop",
+  "mobile",
+  "tablet",
+  "monitor",
+  "accessories",
+];
 
-export const AddDeviceModal: React.FC<AddDeviceModalProps> = ({ open, onOpenChange, onAdd }) => {
+export const AddDeviceModal: React.FC<AddDeviceModalProps> = ({
+  open,
+  onOpenChange,
+  onAdd,
+}) => {
   const form = useForm<DeviceFormData>({
     resolver: zodResolver(deviceSchema),
     defaultValues: {
-      name: '',
-      brand: '',
-      model: '',
-      category: 'laptop',
-      assetTag: '',
-      image: '',
-      os: '',
-      processor: '',
-      ram: '',
-      storage: '',
+      name: "",
+      brand: "",
+      model: "",
+      category: "laptop",
+      assetTag: "",
+      image: "",
+      os: "",
+      processor: "",
+      ram: "",
+      storage: "",
     },
   });
 
@@ -63,16 +89,18 @@ export const AddDeviceModal: React.FC<AddDeviceModalProps> = ({ open, onOpenChan
       model: data.model,
       category: data.category as DeviceCategory,
       assetTag: data.assetTag,
-      status: 'available',
+      status: "available",
       assignedTo: null,
-      image: data.image || 'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=400&h=300&fit=crop',
-      specs: { 
-        os: data.os || '', 
-        processor: data.processor || '', 
-        ram: data.ram || '', 
-        storage: data.storage || '' 
+      image:
+        data.image ||
+        "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=400&h=300&fit=crop",
+      specs: {
+        os: data.os || "",
+        processor: data.processor || "",
+        ram: data.ram || "",
+        storage: data.storage || "",
       },
-      addedDate: new Date().toISOString().split('T')[0],
+      addedDate: new Date().toISOString().split("T")[0],
     });
     form.reset();
     onOpenChange(false);
@@ -86,7 +114,9 @@ export const AddDeviceModal: React.FC<AddDeviceModalProps> = ({ open, onOpenChan
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="max-w-lg">
-        <DialogHeader><DialogTitle>Add New Device</DialogTitle></DialogHeader>
+        <DialogHeader>
+          <DialogTitle>Add New Device</DialogTitle>
+        </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
@@ -148,13 +178,20 @@ export const AddDeviceModal: React.FC<AddDeviceModalProps> = ({ open, onOpenChan
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Category *</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select
+                      onValueChange={field.onChange}
+                      defaultValue={field.value}
+                    >
                       <FormControl>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {categories.map(c => (
-                          <SelectItem key={c} value={c} className="capitalize">{c}</SelectItem>
+                        {categories.map((c) => (
+                          <SelectItem key={c} value={c} className="capitalize">
+                            {c}
+                          </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -176,9 +213,11 @@ export const AddDeviceModal: React.FC<AddDeviceModalProps> = ({ open, onOpenChan
                 )}
               />
             </div>
-            
+
             <div className="pt-2 border-t">
-              <p className="text-sm font-medium text-muted-foreground mb-3">Specifications (Optional)</p>
+              <p className="text-sm font-medium text-muted-foreground mb-3">
+                Specifications (Optional)
+              </p>
               <div className="grid grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
@@ -234,9 +273,11 @@ export const AddDeviceModal: React.FC<AddDeviceModalProps> = ({ open, onOpenChan
                 />
               </div>
             </div>
-            
+
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={handleClose}>Cancel</Button>
+              <Button type="button" variant="outline" onClick={handleClose}>
+                Cancel
+              </Button>
               <Button type="submit">Add Device</Button>
             </DialogFooter>
           </form>

@@ -1,0 +1,157 @@
+SET FOREIGN_KEY_CHECKS = 0;
+
+-- Device Hub Database Schema
+-- MySQL 8.0+
+
+-- Drop tables if they exist (in reverse order of dependencies)
+DROP TABLE IF EXISTS return_requests;
+DROP TABLE IF EXISTS borrow_requests;
+DROP TABLE IF EXISTS devices;
+DROP TABLE IF EXISTS users;
+DROP TABLE IF EXISTS departments;
+
+SET FOREIGN_KEY_CHECKS = 1;
+
+-- Create Departments table
+CREATE TABLE departments (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(100) NOT NULL,
+    code VARCHAR(20) NOT NULL UNIQUE,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_departments_code (code)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Create Users table
+CREATE TABLE users (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(100) NOT NULL,
+    email VARCHAR(255) NOT NULL UNIQUE,
+    password_hash VARCHAR(255) NOT NULL,
+    department_id INT NOT NULL,
+    role ENUM('admin', 'user') NOT NULL DEFAULT 'user',
+    avatar_url VARCHAR(500),
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (department_id) REFERENCES departments(id) ON DELETE RESTRICT,
+    INDEX idx_users_email (email),
+    INDEX idx_users_department (department_id),
+    INDEX idx_users_role (role)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Create Devices table
+CREATE TABLE devices (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(200) NOT NULL,
+    asset_tag VARCHAR(50) NOT NULL UNIQUE,
+    category ENUM('laptop', 'mobile', 'tablet', 'monitor', 'accessories') NOT NULL,
+    brand VARCHAR(100) NOT NULL,
+    model VARCHAR(200) NOT NULL,
+    status ENUM('available', 'borrowed', 'maintenance') NOT NULL DEFAULT 'available',
+    department_id INT NOT NULL,
+    purchase_price DECIMAL(10, 2) NOT NULL,
+    purchase_date DATE NOT NULL,
+    specs_json JSON,
+    image_url VARCHAR(500),
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (department_id) REFERENCES departments(id) ON DELETE RESTRICT,
+    INDEX idx_devices_asset_tag (asset_tag),
+    INDEX idx_devices_category (category),
+    INDEX idx_devices_status (status),
+    INDEX idx_devices_department (department_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Create Borrow Requests table
+CREATE TABLE borrow_requests (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    device_id INT NOT NULL,
+    user_id INT NOT NULL,
+    approved_by INT,
+    start_date DATE NOT NULL,
+    end_date DATE NOT NULL,
+    reason TEXT NOT NULL,
+    status ENUM('pending', 'approved', 'active', 'returned', 'rejected') NOT NULL DEFAULT 'pending',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (device_id) REFERENCES devices(id) ON DELETE RESTRICT,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE RESTRICT,
+    FOREIGN KEY (approved_by) REFERENCES users(id) ON DELETE SET NULL,
+    INDEX idx_borrow_device (device_id),
+    INDEX idx_borrow_user (user_id),
+    INDEX idx_borrow_status (status),
+    INDEX idx_borrow_dates (start_date, end_date),
+    CONSTRAINT chk_dates CHECK (end_date >= start_date)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Create Return Requests table
+CREATE TABLE return_requests (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    borrow_request_id INT NOT NULL UNIQUE,
+    return_date DATE NOT NULL,
+    device_condition ENUM('excellent', 'good', 'fair', 'damaged') NOT NULL DEFAULT 'good',
+    notes TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (borrow_request_id) REFERENCES borrow_requests(id) ON DELETE RESTRICT,
+    INDEX idx_return_borrow (borrow_request_id),
+    INDEX idx_return_date (return_date),
+    INDEX idx_return_condition (device_condition)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Create views for common queries
+
+-- View: Devices with department info and current borrower
+CREATE OR REPLACE VIEW v_device_details AS
+SELECT 
+    d.*,
+    dept.name AS department_name,
+    dept.code AS department_code,
+    br.user_id AS assigned_to_id,
+    u.name AS assigned_to_name
+FROM devices d
+LEFT JOIN departments dept ON d.department_id = dept.id
+LEFT JOIN borrow_requests br ON d.id = br.device_id AND br.status = 'active'
+LEFT JOIN users u ON br.user_id = u.id;
+
+-- View: Borrow requests with full details
+CREATE OR REPLACE VIEW v_borrow_details AS
+SELECT 
+    br.*,
+    d.name AS device_name,
+    d.asset_tag AS device_asset_tag,
+    d.image_url AS device_image,
+    d.category AS device_category,
+    u.name AS user_name,
+    u.email AS user_email,
+    approver.name AS approved_by_name
+FROM borrow_requests br
+LEFT JOIN devices d ON br.device_id = d.id
+LEFT JOIN users u ON br.user_id = u.id
+LEFT JOIN users approver ON br.approved_by = approver.id;
+
+-- View: Users with department info (without password)
+CREATE OR REPLACE VIEW v_users_public AS
+SELECT 
+    u.id,
+    u.name,
+    u.email,
+    u.department_id,
+    d.name AS department_name,
+    u.role,
+    u.avatar_url,
+    u.created_at
+FROM users u
+LEFT JOIN departments d ON u.department_id = d.id;
+
+-- View: Return requests with details
+CREATE OR REPLACE VIEW v_return_details AS
+SELECT 
+    rr.*,
+    br.device_id,
+    br.user_id,
+    br.start_date,
+    br.end_date,
+    d.name AS device_name,
+    d.asset_tag AS device_asset_tag,
+    u.name AS user_name
+FROM return_requests rr
+LEFT JOIN borrow_requests br ON rr.borrow_request_id = br.id
+LEFT JOIN devices d ON br.device_id = d.id
+LEFT JOIN users u ON br.user_id = u.id;

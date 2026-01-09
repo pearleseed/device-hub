@@ -1,12 +1,24 @@
-import React, { useEffect } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-import { Device, DeviceCategory, DeviceStatus } from '@/lib/mockData';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import React, { useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import type { Device, DeviceCategory, DeviceStatus } from "@/lib/mockData";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import {
   Form,
   FormControl,
@@ -14,16 +26,16 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from '@/components/ui/form';
+} from "@/components/ui/form";
 
 const deviceSchema = z.object({
-  name: z.string().min(2, 'Device name must be at least 2 characters').max(100),
-  brand: z.string().min(1, 'Brand is required').max(50),
-  model: z.string().min(1, 'Model is required').max(100),
-  category: z.enum(['laptop', 'mobile', 'tablet', 'monitor', 'accessories']),
-  status: z.enum(['available', 'borrowed', 'maintenance']),
-  assetTag: z.string().min(1, 'Asset tag is required').max(20),
-  image: z.string().url('Must be a valid URL').optional().or(z.literal('')),
+  name: z.string().min(2, "Device name must be at least 2 characters").max(100),
+  brand: z.string().min(1, "Brand is required").max(50),
+  model: z.string().min(1, "Model is required").max(100),
+  category: z.enum(["laptop", "mobile", "tablet", "monitor", "accessories"]),
+  status: z.enum(["available", "borrowed", "maintenance"]),
+  assetTag: z.string().min(1, "Asset tag is required").max(20),
+  image: z.string().url("Must be a valid URL").optional().or(z.literal("")),
   os: z.string().max(50).optional(),
   processor: z.string().max(100).optional(),
   ram: z.string().max(20).optional(),
@@ -39,24 +51,35 @@ interface EditDeviceModalProps {
   onSave: (device: Device) => void;
 }
 
-const categories: DeviceCategory[] = ['laptop', 'mobile', 'tablet', 'monitor', 'accessories'];
-const statuses: DeviceStatus[] = ['available', 'borrowed', 'maintenance'];
+const categories: DeviceCategory[] = [
+  "laptop",
+  "mobile",
+  "tablet",
+  "monitor",
+  "accessories",
+];
+const statuses: DeviceStatus[] = ["available", "borrowed", "maintenance"];
 
-export const EditDeviceModal: React.FC<EditDeviceModalProps> = ({ open, onOpenChange, device, onSave }) => {
+export const EditDeviceModal: React.FC<EditDeviceModalProps> = ({
+  open,
+  onOpenChange,
+  device,
+  onSave,
+}) => {
   const form = useForm<DeviceFormData>({
     resolver: zodResolver(deviceSchema),
     defaultValues: {
-      name: '',
-      brand: '',
-      model: '',
-      category: 'laptop',
-      status: 'available',
-      assetTag: '',
-      image: '',
-      os: '',
-      processor: '',
-      ram: '',
-      storage: '',
+      name: "",
+      brand: "",
+      model: "",
+      category: "laptop",
+      status: "available",
+      assetTag: "",
+      image: "",
+      os: "",
+      processor: "",
+      ram: "",
+      storage: "",
     },
   });
 
@@ -81,7 +104,7 @@ export const EditDeviceModal: React.FC<EditDeviceModalProps> = ({ open, onOpenCh
 
   const onSubmit = (data: DeviceFormData) => {
     if (!device) return;
-    
+
     onSave({
       ...device,
       name: data.name,
@@ -91,11 +114,11 @@ export const EditDeviceModal: React.FC<EditDeviceModalProps> = ({ open, onOpenCh
       status: data.status as DeviceStatus,
       assetTag: data.assetTag,
       image: data.image || device.image,
-      specs: { 
-        os: data.os || '', 
-        processor: data.processor || '', 
-        ram: data.ram || '', 
-        storage: data.storage || '' 
+      specs: {
+        os: data.os || "",
+        processor: data.processor || "",
+        ram: data.ram || "",
+        storage: data.storage || "",
       },
     });
     onOpenChange(false);
@@ -111,7 +134,9 @@ export const EditDeviceModal: React.FC<EditDeviceModalProps> = ({ open, onOpenCh
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="max-w-lg">
-        <DialogHeader><DialogTitle>Edit Device</DialogTitle></DialogHeader>
+        <DialogHeader>
+          <DialogTitle>Edit Device</DialogTitle>
+        </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
@@ -175,11 +200,15 @@ export const EditDeviceModal: React.FC<EditDeviceModalProps> = ({ open, onOpenCh
                     <FormLabel>Category *</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {categories.map(c => (
-                          <SelectItem key={c} value={c} className="capitalize">{c}</SelectItem>
+                        {categories.map((c) => (
+                          <SelectItem key={c} value={c} className="capitalize">
+                            {c}
+                          </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -195,11 +224,15 @@ export const EditDeviceModal: React.FC<EditDeviceModalProps> = ({ open, onOpenCh
                     <FormLabel>Status *</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {statuses.map(s => (
-                          <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>
+                        {statuses.map((s) => (
+                          <SelectItem key={s} value={s} className="capitalize">
+                            {s}
+                          </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -208,7 +241,7 @@ export const EditDeviceModal: React.FC<EditDeviceModalProps> = ({ open, onOpenCh
                 )}
               />
             </div>
-            
+
             <FormField
               control={form.control}
               name="image"
@@ -222,9 +255,11 @@ export const EditDeviceModal: React.FC<EditDeviceModalProps> = ({ open, onOpenCh
                 </FormItem>
               )}
             />
-            
+
             <div className="pt-2 border-t">
-              <p className="text-sm font-medium text-muted-foreground mb-3">Specifications</p>
+              <p className="text-sm font-medium text-muted-foreground mb-3">
+                Specifications
+              </p>
               <div className="grid grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
@@ -280,9 +315,11 @@ export const EditDeviceModal: React.FC<EditDeviceModalProps> = ({ open, onOpenCh
                 />
               </div>
             </div>
-            
+
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={handleClose}>Cancel</Button>
+              <Button type="button" variant="outline" onClick={handleClose}>
+                Cancel
+              </Button>
               <Button type="submit">Save Changes</Button>
             </DialogFooter>
           </form>

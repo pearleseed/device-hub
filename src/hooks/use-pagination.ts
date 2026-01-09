@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo } from "react";
 
 interface UsePaginationOptions {
   totalItems: number;
@@ -34,7 +34,7 @@ export function usePagination<T = unknown>({
   const [pageSize, setPageSizeState] = useState(initialPageSize);
 
   const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
-  
+
   // Ensure current page is valid when total changes
   const validCurrentPage = Math.min(currentPage, totalPages);
   if (validCurrentPage !== currentPage) {
@@ -77,7 +77,7 @@ export function usePagination<T = unknown>({
   const pageNumbers = useMemo(() => {
     const pages: number[] = [];
     const maxVisiblePages = 5;
-    
+
     if (totalPages <= maxVisiblePages) {
       for (let i = 1; i <= totalPages; i++) {
         pages.push(i);
@@ -85,28 +85,28 @@ export function usePagination<T = unknown>({
     } else {
       // Always show first page
       pages.push(1);
-      
+
       // Calculate range around current page
-      let start = Math.max(2, validCurrentPage - 1);
-      let end = Math.min(totalPages - 1, validCurrentPage + 1);
-      
+      const start = Math.max(2, validCurrentPage - 1);
+      const end = Math.min(totalPages - 1, validCurrentPage + 1);
+
       // Add ellipsis indicator (-1) if needed
       if (start > 2) {
         pages.push(-1); // Ellipsis
       }
-      
+
       for (let i = start; i <= end; i++) {
         pages.push(i);
       }
-      
+
       if (end < totalPages - 1) {
         pages.push(-1); // Ellipsis
       }
-      
+
       // Always show last page
       pages.push(totalPages);
     }
-    
+
     return pages;
   }, [totalPages, validCurrentPage]);
 

@@ -1,38 +1,105 @@
 import * as React from "react";
-import * as ScrollAreaPrimitive from "@radix-ui/react-scroll-area";
 
 import { cn } from "@/lib/utils";
 
-const ScrollArea = React.forwardRef<
-  React.ElementRef<typeof ScrollAreaPrimitive.Root>,
-  React.ComponentPropsWithoutRef<typeof ScrollAreaPrimitive.Root>
->(({ className, children, ...props }, ref) => (
-  <ScrollAreaPrimitive.Root ref={ref} className={cn("relative overflow-hidden", className)} {...props}>
-    <ScrollAreaPrimitive.Viewport className="h-full w-full rounded-[inherit]">{children}</ScrollAreaPrimitive.Viewport>
-    <ScrollBar />
-    <ScrollAreaPrimitive.Corner />
-  </ScrollAreaPrimitive.Root>
-));
-ScrollArea.displayName = ScrollAreaPrimitive.Root.displayName;
+// Native scroll area implementation optimized for React 19
+// Uses modern ref as prop pattern instead of forwardRef
 
-const ScrollBar = React.forwardRef<
-  React.ElementRef<typeof ScrollAreaPrimitive.ScrollAreaScrollbar>,
-  React.ComponentPropsWithoutRef<typeof ScrollAreaPrimitive.ScrollAreaScrollbar>
->(({ className, orientation = "vertical", ...props }, ref) => (
-  <ScrollAreaPrimitive.ScrollAreaScrollbar
-    ref={ref}
-    orientation={orientation}
-    className={cn(
-      "flex touch-none select-none transition-colors",
-      orientation === "vertical" && "h-full w-2.5 border-l border-l-transparent p-[1px]",
-      orientation === "horizontal" && "h-2.5 flex-col border-t border-t-transparent p-[1px]",
-      className,
-    )}
-    {...props}
-  >
-    <ScrollAreaPrimitive.ScrollAreaThumb className="relative flex-1 rounded-full bg-border" />
-  </ScrollAreaPrimitive.ScrollAreaScrollbar>
-));
-ScrollBar.displayName = ScrollAreaPrimitive.ScrollAreaScrollbar.displayName;
+interface ScrollAreaProps extends React.HTMLAttributes<HTMLDivElement> {
+  type?: "auto" | "always" | "scroll" | "hover";
+  scrollHideDelay?: number;
+  dir?: "ltr" | "rtl";
+  asChild?: boolean;
+  ref?: React.Ref<HTMLDivElement>;
+}
 
-export { ScrollArea, ScrollBar };
+function ScrollArea({ className, children, ref, ...props }: ScrollAreaProps) {
+  return (
+    <div
+      ref={ref}
+      className={cn(
+        "relative overflow-auto",
+        // Custom scrollbar styling with smooth transitions
+        "[&::-webkit-scrollbar]:w-2.5 [&::-webkit-scrollbar]:h-2.5",
+        "[&::-webkit-scrollbar-track]:bg-transparent",
+        "[&::-webkit-scrollbar-thumb]:bg-border [&::-webkit-scrollbar-thumb]:rounded-full",
+        "[&::-webkit-scrollbar-thumb:hover]:bg-muted-foreground/40",
+        "[&::-webkit-scrollbar-corner]:bg-transparent",
+        // Firefox scrollbar styling
+        "scrollbar-thin scrollbar-track-transparent scrollbar-thumb-border",
+        className,
+      )}
+      {...props}
+    >
+      {children}
+    </div>
+  );
+}
+ScrollArea.displayName = "ScrollArea";
+
+// Viewport is just a pass-through div
+interface ViewportProps extends React.HTMLAttributes<HTMLDivElement> {
+  asChild?: boolean;
+  ref?: React.Ref<HTMLDivElement>;
+}
+
+function ScrollAreaViewport({
+  className,
+  children,
+  ref,
+  ...props
+}: ViewportProps) {
+  return (
+    <div ref={ref} className={cn("h-full w-full", className)} {...props}>
+      {children}
+    </div>
+  );
+}
+ScrollAreaViewport.displayName = "ScrollAreaViewport";
+
+interface ScrollBarProps extends React.HTMLAttributes<HTMLDivElement> {
+  orientation?: "vertical" | "horizontal";
+  forceMount?: boolean;
+  asChild?: boolean;
+  ref?: React.Ref<HTMLDivElement>;
+}
+
+// ScrollBar is a no-op since we use native scrollbars
+function ScrollAreaScrollbar({ ref, ...props }: ScrollBarProps) {
+  return <div ref={ref} {...props} style={{ display: "none" }} />;
+}
+ScrollAreaScrollbar.displayName = "ScrollAreaScrollbar";
+
+// Thumb is a no-op
+interface ThumbProps extends React.HTMLAttributes<HTMLDivElement> {
+  asChild?: boolean;
+  ref?: React.Ref<HTMLDivElement>;
+}
+
+function ScrollAreaThumb({ ref, ...props }: ThumbProps) {
+  return <div ref={ref} {...props} style={{ display: "none" }} />;
+}
+ScrollAreaThumb.displayName = "ScrollAreaThumb";
+
+// Corner is a no-op
+interface CornerProps extends React.HTMLAttributes<HTMLDivElement> {
+  asChild?: boolean;
+  ref?: React.Ref<HTMLDivElement>;
+}
+
+function ScrollAreaCorner({ ref, ...props }: CornerProps) {
+  return <div ref={ref} {...props} style={{ display: "none" }} />;
+}
+ScrollAreaCorner.displayName = "ScrollAreaCorner";
+
+// Legacy exports for app's usage
+const ScrollBar = ScrollAreaScrollbar;
+
+export {
+  ScrollArea,
+  ScrollBar,
+  ScrollAreaViewport,
+  ScrollAreaScrollbar,
+  ScrollAreaThumb,
+  ScrollAreaCorner,
+};

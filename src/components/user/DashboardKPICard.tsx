@@ -1,7 +1,7 @@
-import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { cn } from '@/lib/utils';
-import { LucideIcon } from 'lucide-react';
+import React from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
+import type { LucideIcon } from "lucide-react";
 
 interface DashboardKPICardProps {
   title: string;
@@ -10,7 +10,7 @@ interface DashboardKPICardProps {
   icon: LucideIcon;
   onClick?: () => void;
   className?: string;
-  accentColor?: 'default' | 'success' | 'warning' | 'info';
+  accentColor?: "default" | "success" | "warning" | "info";
 }
 
 export const DashboardKPICard: React.FC<DashboardKPICardProps> = ({
@@ -20,15 +20,15 @@ export const DashboardKPICard: React.FC<DashboardKPICardProps> = ({
   icon: Icon,
   onClick,
   className,
-  accentColor = 'default',
+  accentColor = "default",
 }) => {
   const isClickable = !!onClick;
 
   const accentStyles = {
-    default: 'border-l-muted-foreground/20',
-    success: 'border-l-green-500',
-    warning: 'border-l-yellow-500',
-    info: 'border-l-blue-500',
+    default: "border-l-muted-foreground/20",
+    success: "border-l-green-500",
+    warning: "border-l-yellow-500",
+    info: "border-l-blue-500",
   };
 
   return (
@@ -36,14 +36,15 @@ export const DashboardKPICard: React.FC<DashboardKPICardProps> = ({
       className={cn(
         "border-l-4 transition-all duration-200",
         accentStyles[accentColor],
-        isClickable && "cursor-pointer hover:shadow-md hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-primary",
-        className
+        isClickable &&
+          "cursor-pointer hover:shadow-md hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-primary",
+        className,
       )}
       onClick={onClick}
       tabIndex={isClickable ? 0 : undefined}
-      role={isClickable ? 'button' : undefined}
+      role={isClickable ? "button" : undefined}
       onKeyDown={(e) => {
-        if (isClickable && (e.key === 'Enter' || e.key === ' ')) {
+        if (isClickable && (e.key === "Enter" || e.key === " ")) {
           e.preventDefault();
           onClick?.();
         }

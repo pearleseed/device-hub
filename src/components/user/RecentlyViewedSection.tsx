@@ -1,11 +1,12 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
-import { getDeviceById, Device } from '@/lib/mockData';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { StatusBadge } from '@/components/ui/status-badge';
-import { Eye, X, ArrowRight } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import React from "react";
+import { Link } from "react-router-dom";
+import type { Device } from "@/lib/mockData";
+import { getDeviceById } from "@/lib/mockData";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { Eye, X, ArrowRight } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface RecentlyViewedSectionProps {
   deviceIds: string[];
@@ -21,7 +22,7 @@ export const RecentlyViewedSection: React.FC<RecentlyViewedSectionProps> = ({
   className,
 }) => {
   const devices = deviceIds
-    .map(id => getDeviceById(id))
+    .map((id) => getDeviceById(id))
     .filter((d): d is Device => d !== undefined);
 
   if (devices.length === 0) return null;
@@ -45,13 +46,13 @@ export const RecentlyViewedSection: React.FC<RecentlyViewedSectionProps> = ({
       </CardHeader>
       <CardContent>
         <div className="flex gap-4 overflow-x-auto pb-2 -mx-2 px-2 scrollbar-thin">
-          {devices.map(device => (
+          {devices.map((device) => (
             <div
               key={device.id}
-              className="flex-shrink-0 w-36 cursor-pointer group"
+              className="shrink-0 w-36 cursor-pointer group"
               onClick={() => onDeviceClick?.(device)}
               onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
+                if (e.key === "Enter" || e.key === " ") {
                   e.preventDefault();
                   onDeviceClick?.(device);
                 }
@@ -60,7 +61,7 @@ export const RecentlyViewedSection: React.FC<RecentlyViewedSectionProps> = ({
               role="button"
               aria-label={`View ${device.name}`}
             >
-              <div className="aspect-[4/3] rounded-lg overflow-hidden bg-muted mb-2 relative">
+              <div className="aspect-4/3 rounded-lg overflow-hidden bg-muted mb-2 relative">
                 <img
                   src={device.image}
                   alt={device.name}
@@ -68,17 +69,22 @@ export const RecentlyViewedSection: React.FC<RecentlyViewedSectionProps> = ({
                   loading="lazy"
                 />
                 <div className="absolute top-2 left-2">
-                  <StatusBadge status={device.status} className="scale-75 origin-top-left" />
+                  <StatusBadge
+                    status={device.status}
+                    className="scale-75 origin-top-left"
+                  />
                 </div>
               </div>
               <h4 className="text-sm font-medium truncate group-hover:text-primary transition-colors">
                 {device.name}
               </h4>
-              <p className="text-xs text-muted-foreground truncate">{device.brand}</p>
+              <p className="text-xs text-muted-foreground truncate">
+                {device.brand}
+              </p>
             </div>
           ))}
         </div>
-        
+
         <Button asChild variant="ghost" size="sm" className="mt-3 w-full">
           <Link to="/catalog">
             Browse Full Catalog

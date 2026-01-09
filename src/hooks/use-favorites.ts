@@ -1,10 +1,10 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from "react";
 
-const STORAGE_KEY = 'favorite-devices';
+const STORAGE_KEY = "favorite-devices";
 
 export function useFavorites() {
   const [favorites, setFavorites] = useState<string[]>(() => {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       const stored = localStorage.getItem(STORAGE_KEY);
       return stored ? JSON.parse(stored) : [];
     }
@@ -16,17 +16,20 @@ export function useFavorites() {
   }, [favorites]);
 
   const toggleFavorite = useCallback((deviceId: string) => {
-    setFavorites(prev => {
+    setFavorites((prev) => {
       if (prev.includes(deviceId)) {
-        return prev.filter(id => id !== deviceId);
+        return prev.filter((id) => id !== deviceId);
       }
       return [...prev, deviceId];
     });
   }, []);
 
-  const isFavorite = useCallback((deviceId: string) => {
-    return favorites.includes(deviceId);
-  }, [favorites]);
+  const isFavorite = useCallback(
+    (deviceId: string) => {
+      return favorites.includes(deviceId);
+    },
+    [favorites],
+  );
 
   const clearFavorites = useCallback(() => {
     setFavorites([]);

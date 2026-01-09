@@ -1,11 +1,11 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from "react";
 
-const STORAGE_KEY = 'recently-viewed-devices';
+const STORAGE_KEY = "recently-viewed-devices";
 const MAX_ITEMS = 6;
 
 export function useRecentlyViewed() {
   const [recentlyViewed, setRecentlyViewed] = useState<string[]>(() => {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       const stored = localStorage.getItem(STORAGE_KEY);
       return stored ? JSON.parse(stored) : [];
     }
@@ -17,8 +17,8 @@ export function useRecentlyViewed() {
   }, [recentlyViewed]);
 
   const addToRecentlyViewed = useCallback((deviceId: string) => {
-    setRecentlyViewed(prev => {
-      const filtered = prev.filter(id => id !== deviceId);
+    setRecentlyViewed((prev) => {
+      const filtered = prev.filter((id) => id !== deviceId);
       return [deviceId, ...filtered].slice(0, MAX_ITEMS);
     });
   }, []);
