@@ -1,21 +1,11 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
+import { Link } from "react-router-dom";
 import { AdminSidebar } from "@/components/layout/AdminSidebar";
 import { BreadcrumbNav } from "@/components/ui/breadcrumb-nav";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { OverdueAlertsBanner } from "@/components/alerts/OverdueAlertsBanner";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
-import {
-  devices,
-  users,
-  getDevicesByStatus,
-  getRequestsByStatus,
-} from "@/lib/mockData";
+import { useAdminDashboardData, useRefreshData } from "@/hooks/use-data-cache";
 import { useOverdueAlerts } from "@/hooks/use-overdue-alerts";
 import { cn } from "@/lib/utils";
 import {
@@ -24,72 +14,40 @@ import {
   Users,
   TrendingUp,
   Clock,
-  CalendarIcon,
   RefreshCw,
+  ArrowRight,
+  BarChart3,
 } from "lucide-react";
 import { StatsCard } from "@/components/ui/stats-card";
-import {
-  PieChart,
-  Pie,
-  Cell,
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  Legend,
-} from "recharts";
-import { format, subDays, startOfMonth, endOfMonth } from "date-fns";
-import type { DateRange } from "react-day-picker";
+import { format } from "date-fns";
 
 const AdminDashboard: React.FC = () => {
   const { totalOverdue } = useOverdueAlerts();
   const [lastUpdated, setLastUpdated] = useState(new Date());
-  const [isRefreshing, setIsRefreshing] = useState(false);
+  
+  // Use cached data
+  const { devices, users, requests: bookingRequests, isLoading, isFetching } = useAdminDashboardData();
+  const { refreshAll } = useRefreshData();
 
-  // Date range for chart
-  const [dateRange, setDateRange] = useState<DateRange | undefined>({
-    from: subDays(new Date(), 180),
-    to: new Date(),
-  });
+  const availableDevices = useMemo(() => 
+    devices.filter(d => d.status === "available").length, [devices]);
+  const borrowedDevices = useMemo(() => 
+    devices.filter(d => d.status === "borrowed").length, [devices]);
+  const maintenanceDevices = useMemo(() => 
+    devices.filter(d => d.status === "maintenance").length, [devices]);
+  const pendingRequests = useMemo(() => 
+    bookingRequests.filter(r => r.status === "pending").length, [bookingRequests]);
+  const activeRequests = useMemo(() => 
+    bookingRequests.filter(r => r.status === "active").length, [bookingRequests]);
 
-  const availableDevices = getDevicesByStatus("available").length;
-  const borrowedDevices = getDevicesByStatus("borrowed").length;
-  const maintenanceDevices = getDevicesByStatus("maintenance").length;
-  const pendingRequests = getRequestsByStatus("pending").length;
-
-  const pieData = [
-    {
-      name: "Available",
-      value: availableDevices,
-      color: "hsl(var(--chart-2))",
-    },
-    { name: "Borrowed", value: borrowedDevices, color: "hsl(var(--chart-1))" },
-    {
-      name: "Maintenance",
-      value: maintenanceDevices,
-      color: "hsl(var(--chart-4))",
-    },
-  ];
-
-  // Generate trend data based on date range
-  const trendData = [
-    { month: "Jan", requests: 12, returns: 10 },
-    { month: "Feb", requests: 19, returns: 15 },
-    { month: "Mar", requests: 15, returns: 18 },
-    { month: "Apr", requests: 22, returns: 20 },
-    { month: "May", requests: 18, returns: 16 },
-    { month: "Jun", requests: 25, returns: 22 },
-  ];
+  // Recent activity (mock data for quick view)
+  const recentRequests = useMemo(() => [...bookingRequests]
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .slice(0, 5), [bookingRequests]);
 
   const handleRefresh = async () => {
-    setIsRefreshing(true);
-    // Simulate refresh
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    refreshAll();
     setLastUpdated(new Date());
-    setIsRefreshing(false);
   };
 
   return (
@@ -120,10 +78,10 @@ const AdminDashboard: React.FC = () => {
               variant="outline"
               size="sm"
               onClick={handleRefresh}
-              disabled={isRefreshing}
+              disabled={isFetching}
             >
               <RefreshCw
-                className={cn("h-4 w-4 mr-2", isRefreshing && "animate-spin")}
+                className={cn("h-4 w-4 mr-2", isFetching && "animate-spin")}
               />
               Refresh
             </Button>
@@ -177,149 +135,83 @@ const AdminDashboard: React.FC = () => {
           />
         </div>
 
-        {/* Charts */}
+        {/* Quick Actions & Recent Activity */}
         <div className="grid gap-6 md:grid-cols-2">
+          {/* Quick Summary */}
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle>Usage Trends</CardTitle>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" size="sm" className="h-8">
-                    <CalendarIcon className="h-4 w-4 mr-2" />
-                    {dateRange?.from ? (
-                      dateRange.to ? (
-                        <>
-                          {format(dateRange.from, "MMM d")} -{" "}
-                          {format(dateRange.to, "MMM d, yyyy")}
-                        </>
-                      ) : (
-                        format(dateRange.from, "MMM d, yyyy")
-                      )
-                    ) : (
-                      "Pick a date range"
-                    )}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="end">
-                  <Calendar
-                    mode="range"
-                    selected={dateRange}
-                    onSelect={setDateRange}
-                    numberOfMonths={2}
-                    defaultMonth={subDays(new Date(), 30)}
-                  />
-                  <div className="flex gap-2 p-3 border-t">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="flex-1"
-                      onClick={() =>
-                        setDateRange({
-                          from: subDays(new Date(), 7),
-                          to: new Date(),
-                        })
-                      }
-                    >
-                      Last 7 days
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="flex-1"
-                      onClick={() =>
-                        setDateRange({
-                          from: subDays(new Date(), 30),
-                          to: new Date(),
-                        })
-                      }
-                    >
-                      Last 30 days
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="flex-1"
-                      onClick={() =>
-                        setDateRange({
-                          from: startOfMonth(new Date()),
-                          to: endOfMonth(new Date()),
-                        })
-                      }
-                    >
-                      This month
-                    </Button>
-                  </div>
-                </PopoverContent>
-              </Popover>
+              <CardTitle>Quick Summary</CardTitle>
+              <Link to="/admin/analytics">
+                <Button variant="outline" size="sm">
+                  <BarChart3 className="h-4 w-4 mr-2" />
+                  View Analytics
+                  <ArrowRight className="h-4 w-4 ml-2" />
+                </Button>
+              </Link>
             </CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={250}>
-                <LineChart data={trendData}>
-                  <CartesianGrid
-                    strokeDasharray="3 3"
-                    className="stroke-muted"
-                  />
-                  <XAxis dataKey="month" className="text-xs" />
-                  <YAxis className="text-xs" />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "hsl(var(--card))",
-                      border: "1px solid hsl(var(--border))",
-                      borderRadius: "8px",
-                    }}
-                  />
-                  <Legend />
-                  <Line
-                    type="monotone"
-                    dataKey="requests"
-                    stroke="hsl(var(--primary))"
-                    strokeWidth={2}
-                    name="Requests"
-                    dot={{ fill: "hsl(var(--primary))" }}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="returns"
-                    stroke="hsl(var(--chart-2))"
-                    strokeWidth={2}
-                    name="Returns"
-                    dot={{ fill: "hsl(var(--chart-2))" }}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                  <span className="text-sm font-medium">Device Utilization</span>
+                  <span className="text-lg font-bold">
+                    {Math.round((borrowedDevices / devices.length) * 100)}%
+                  </span>
+                </div>
+                <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                  <span className="text-sm font-medium">Available Devices</span>
+                  <span className="text-lg font-bold text-green-600">{availableDevices}</span>
+                </div>
+                <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                  <span className="text-sm font-medium">In Maintenance</span>
+                  <span className="text-lg font-bold text-yellow-600">{maintenanceDevices}</span>
+                </div>
+                <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                  <span className="text-sm font-medium">Active Loans</span>
+                  <span className="text-lg font-bold text-blue-600">{activeRequests}</span>
+                </div>
+              </div>
             </CardContent>
           </Card>
+
+          {/* Recent Requests */}
           <Card>
-            <CardHeader>
-              <CardTitle>Device Distribution</CardTitle>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle>Recent Requests</CardTitle>
+              <Link to="/admin/requests">
+                <Button variant="outline" size="sm">
+                  View All
+                  <ArrowRight className="h-4 w-4 ml-2" />
+                </Button>
+              </Link>
             </CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={250}>
-                <PieChart>
-                  <Pie
-                    data={pieData}
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={80}
-                    innerRadius={50}
-                    dataKey="value"
-                    label={({ name, value }) => `${name}: ${value}`}
-                    labelLine={{ stroke: "hsl(var(--muted-foreground))" }}
+              <div className="space-y-3">
+                {recentRequests.map((request) => (
+                  <div
+                    key={request.id}
+                    className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"
                   >
-                    {pieData.map((entry, index) => (
-                      <Cell key={index} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "hsl(var(--card))",
-                      border: "1px solid hsl(var(--border))",
-                      borderRadius: "8px",
-                    }}
-                  />
-                  <Legend />
-                </PieChart>
-              </ResponsiveContainer>
+                    <div>
+                      <p className="text-sm font-medium">Request #{request.id}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {format(new Date(request.createdAt), "MMM d, yyyy")}
+                      </p>
+                    </div>
+                    <span
+                      className={cn(
+                        "text-xs font-medium px-2 py-1 rounded-full capitalize",
+                        request.status === "pending" && "bg-yellow-100 text-yellow-800",
+                        request.status === "approved" && "bg-blue-100 text-blue-800",
+                        request.status === "active" && "bg-green-100 text-green-800",
+                        request.status === "returned" && "bg-gray-100 text-gray-800",
+                        request.status === "rejected" && "bg-red-100 text-red-800"
+                      )}
+                    >
+                      {request.status}
+                    </span>
+                  </div>
+                ))}
+              </div>
             </CardContent>
           </Card>
         </div>

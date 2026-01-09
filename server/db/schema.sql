@@ -28,13 +28,16 @@ CREATE TABLE users (
     email VARCHAR(255) NOT NULL UNIQUE,
     password_hash VARCHAR(255) NOT NULL,
     department_id INT NOT NULL,
-    role ENUM('admin', 'user') NOT NULL DEFAULT 'user',
+    role ENUM('superuser', 'admin', 'user') NOT NULL DEFAULT 'user',
     avatar_url VARCHAR(500),
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    last_login_at DATETIME,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (department_id) REFERENCES departments(id) ON DELETE RESTRICT,
     INDEX idx_users_email (email),
     INDEX idx_users_department (department_id),
-    INDEX idx_users_role (role)
+    INDEX idx_users_role (role),
+    INDEX idx_users_active (is_active)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Create Devices table
@@ -95,6 +98,27 @@ CREATE TABLE return_requests (
     INDEX idx_return_condition (device_condition)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Create Renewal Requests table
+CREATE TABLE renewal_requests (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    borrow_request_id INT NOT NULL,
+    user_id INT NOT NULL,
+    current_end_date DATE NOT NULL,
+    requested_end_date DATE NOT NULL,
+    reason TEXT NOT NULL,
+    status ENUM('pending', 'approved', 'rejected') NOT NULL DEFAULT 'pending',
+    reviewed_by INT,
+    reviewed_at DATETIME,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (borrow_request_id) REFERENCES borrow_requests(id) ON DELETE RESTRICT,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE RESTRICT,
+    FOREIGN KEY (reviewed_by) REFERENCES users(id) ON DELETE SET NULL,
+    INDEX idx_renewal_borrow (borrow_request_id),
+    INDEX idx_renewal_user (user_id),
+    INDEX idx_renewal_status (status),
+    CONSTRAINT chk_renewal_dates CHECK (requested_end_date > current_end_date)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- Create views for common queries
 
 -- View: Devices with department info and current borrower
@@ -136,6 +160,8 @@ SELECT
     d.name AS department_name,
     u.role,
     u.avatar_url,
+    u.is_active,
+    u.last_login_at,
     u.created_at
 FROM users u
 LEFT JOIN departments d ON u.department_id = d.id;
@@ -155,3 +181,21 @@ FROM return_requests rr
 LEFT JOIN borrow_requests br ON rr.borrow_request_id = br.id
 LEFT JOIN devices d ON br.device_id = d.id
 LEFT JOIN users u ON br.user_id = u.id;
+
+-- View: Renewal requests with details
+CREATE OR REPLACE VIEW v_renewal_details AS
+SELECT 
+    renew.*,
+    br.device_id,
+    br.start_date AS borrow_start_date,
+    d.name AS device_name,
+    d.asset_tag AS device_asset_tag,
+    d.image_url AS device_image,
+    u.name AS user_name,
+    u.email AS user_email,
+    reviewer.name AS reviewed_by_name
+FROM renewal_requests renew
+LEFT JOIN borrow_requests br ON renew.borrow_request_id = br.id
+LEFT JOIN devices d ON br.device_id = d.id
+LEFT JOIN users u ON renew.user_id = u.id
+LEFT JOIN users reviewer ON renew.reviewed_by = reviewer.id;

@@ -169,7 +169,12 @@ export async function authenticateRequest(
   return verifyToken(token);
 }
 
-// Check if user has admin role
+// Check if user has admin role (includes superuser)
 export function requireAdmin(payload: JWTPayload | null): boolean {
-  return payload?.role === "admin";
+  return payload?.role === "admin" || payload?.role === "superuser";
+}
+
+// Check if user has superuser role
+export function requireSuperuser(payload: JWTPayload | null): boolean {
+  return payload?.role === "superuser";
 }

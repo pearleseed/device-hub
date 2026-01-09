@@ -57,7 +57,7 @@ export const OverdueAlertsBanner: React.FC<OverdueAlertsBannerProps> = ({
             asChild
             className="text-red-500 hover:text-red-600"
           >
-            <Link to="/admin/requests">
+            <Link to="/admin/requests?tab=borrow">
               {t("overdue.viewAll")} <ArrowRight className="ml-1 h-4 w-4" />
             </Link>
           </Button>
@@ -75,7 +75,7 @@ export const OverdueAlertsBanner: React.FC<OverdueAlertsBannerProps> = ({
           <Badge variant="destructive">{totalOverdue}</Badge>
         </div>
         <Button variant="outline" size="sm" asChild>
-          <Link to="/admin/requests">
+          <Link to="/admin/requests?tab=borrow">
             {t("overdue.viewAll")} <ArrowRight className="ml-2 h-4 w-4" />
           </Link>
         </Button>

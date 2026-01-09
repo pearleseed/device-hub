@@ -4,7 +4,17 @@ import { departmentsRoutes } from "./routes/departments";
 import { devicesRoutes } from "./routes/devices";
 import { borrowRoutes } from "./routes/borrow";
 import { returnsRoutes } from "./routes/returns";
+import { renewalsRoutes } from "./routes/renewals";
+import { notificationsRoutes } from "./routes/notifications";
+import { slashCommandsRoutes } from "./routes/slash-commands";
 import { closeConnection, getPoolStatus, logDbConfig } from "./db/connection";
+import {
+  initializeNotificationService,
+  shutdownNotificationService,
+  validateConfig,
+  startSessionCleanup,
+  stopSessionCleanup,
+} from "./mattermost";
 
 const PORT = process.env.PORT || 3001;
 const CORS_ORIGIN = process.env.CORS_ORIGIN || "http://localhost:8080";
@@ -64,6 +74,10 @@ async function gracefulShutdown(signal: string): Promise<void> {
   console.log(`\nReceived ${signal}, shutting down gracefully...`);
 
   try {
+    // Shutdown Mattermost services
+    shutdownNotificationService();
+    stopSessionCleanup();
+    
     // Close database connections
     await closeConnection();
     console.log("All connections closed successfully");
@@ -222,6 +236,8 @@ function registerRoutes(): void {
   addRoute("GET", "/api/users", usersRoutes.getAll);
   addRoute("GET", "/api/users/:id", usersRoutes.getById);
   addRoute("PUT", "/api/users/:id", usersRoutes.update);
+  addRoute("PATCH", "/api/users/:id/password", usersRoutes.resetPassword);
+  addRoute("PATCH", "/api/users/:id/status", usersRoutes.toggleStatus);
   addRoute("DELETE", "/api/users/:id", usersRoutes.delete);
 
   // Departments routes
@@ -256,6 +272,27 @@ function registerRoutes(): void {
   addRoute("GET", "/api/returns", returnsRoutes.getAll);
   addRoute("GET", "/api/returns/:id", returnsRoutes.getById);
   addRoute("POST", "/api/returns", returnsRoutes.create);
+
+  // Renewal request routes
+  addRoute("GET", "/api/renewals", renewalsRoutes.getAll);
+  addRoute("GET", "/api/renewals/:id", renewalsRoutes.getById);
+  addRoute("POST", "/api/renewals", renewalsRoutes.create);
+  addRoute("PATCH", "/api/renewals/:id/status", renewalsRoutes.updateStatus);
+  addRoute("GET", "/api/renewals/borrow/:borrowId", renewalsRoutes.getByBorrowRequest);
+  addRoute("GET", "/api/renewals/status/:status", renewalsRoutes.getByStatus);
+
+  // Notification routes (Mattermost)
+  addRoute("POST", "/api/notifications/send", notificationsRoutes.send);
+  addRoute("GET", "/api/notifications/status", notificationsRoutes.status);
+  addRoute("GET", "/api/notifications/users", notificationsRoutes.users);
+  addRoute("GET", "/api/notifications/idempotency", notificationsRoutes.idempotency);
+  addRoute("POST", "/api/notifications/initialize", notificationsRoutes.initialize);
+
+  // Mattermost Slash Commands routes
+  addRoute("POST", "/api/mattermost/command", slashCommandsRoutes.command);
+  addRoute("POST", "/api/mattermost/interactive", slashCommandsRoutes.interactive);
+  addRoute("POST", "/api/mattermost/text-input", slashCommandsRoutes.textInput);
+  addRoute("GET", "/api/mattermost/sessions", slashCommandsRoutes.sessions);
 }
 
 // Initialize routes
@@ -323,3 +360,21 @@ const server = Bun.serve({
 // Log startup info
 console.log(`🚀 Server running at http://localhost:${server.port}`);
 logDbConfig();
+
+// Initialize Mattermost notification service (if configured)
+const mattermostConfig = validateConfig();
+if (mattermostConfig.valid) {
+  initializeNotificationService().then((success) => {
+    if (success) {
+      console.log("📬 Mattermost notification service ready");
+    }
+  });
+  // Start session cleanup for slash commands
+  startSessionCleanup();
+  console.log("💬 Mattermost slash commands ready");
+} else {
+  console.log(
+    `⚠️  Mattermost not configured (missing: ${mattermostConfig.missing.join(", ")})`
+  );
+  console.log("   Set environment variables to enable notifications");
+}

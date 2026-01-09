@@ -58,6 +58,17 @@ export const authRoutes = {
         );
       }
 
+      // Check if user account is active
+      if (!user.is_active) {
+        return jsonResponse(
+          { success: false, error: "Your account has been locked. Please contact an administrator." },
+          403,
+        );
+      }
+
+      // Update last login timestamp
+      await db`UPDATE users SET last_login_at = NOW() WHERE id = ${user.id}`;
+
       // Generate JWT token
       const token = await generateToken(user.id, user.email, user.role);
 

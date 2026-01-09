@@ -22,11 +22,13 @@ import {
   Package,
   Menu,
   X,
+  ArrowLeftRight,
 } from "lucide-react";
 
 const navLinks = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/catalog", label: "Catalog", icon: Package },
+  { to: "/loans", label: "Loans", icon: ArrowLeftRight },
 ];
 
 export const UserNavbar: React.FC = () => {

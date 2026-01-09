@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import type { NotificationType } from "@/contexts/NotificationContext";
-import { useNotifications } from "@/contexts/NotificationContext";
+import { useNotifications, getNotificationLink } from "@/contexts/NotificationContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
@@ -86,15 +87,20 @@ interface NotificationItemProps {
   };
   onMarkAsRead: (id: string) => void;
   onClear: (id: string) => void;
+  isAdmin: boolean;
 }
 
 const NotificationItem: React.FC<NotificationItemProps> = ({
   notification,
   onMarkAsRead,
   onClear,
+  isAdmin,
 }) => {
   const config = typeConfig[notification.type];
   const Icon = config.icon;
+  
+  // Get the correct link based on notification type and user role
+  const link = notification.link || getNotificationLink(notification.type, isAdmin);
 
   return (
     <div
@@ -155,9 +161,9 @@ const NotificationItem: React.FC<NotificationItemProps> = ({
               <Clock className="h-3 w-3" />
               {formatDistanceToNow(notification.timestamp, { addSuffix: true })}
             </span>
-            {notification.link && (
+            {link && (
               <Link
-                to={notification.link}
+                to={link}
                 onClick={() => onMarkAsRead(notification.id)}
                 className="text-xs font-medium text-primary hover:text-primary/80 transition-colors"
               >
@@ -226,11 +232,17 @@ export const NotificationCenter: React.FC = () => {
     markAsRead,
     markAllAsRead,
     clearNotification,
+    getNotificationsForRole,
   } = useNotifications();
+  const { isAdmin } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
 
-  const unreadNotifications = notifications.filter((n) => !n.read);
-  const readNotifications = notifications.filter((n) => n.read);
+  // Filter notifications based on user role
+  const roleFilteredNotifications = getNotificationsForRole(isAdmin);
+  const roleUnreadCount = roleFilteredNotifications.filter((n) => !n.read).length;
+
+  const unreadNotifications = roleFilteredNotifications.filter((n) => !n.read);
+  const readNotifications = roleFilteredNotifications.filter((n) => n.read);
 
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
@@ -242,7 +254,7 @@ export const NotificationCenter: React.FC = () => {
             "relative rounded-xl transition-all",
             isOpen && "bg-accent",
           )}
-          aria-label={`Notifications${unreadCount > 0 ? `, ${unreadCount} unread` : ""}`}
+          aria-label={`Notifications${roleUnreadCount > 0 ? `, ${roleUnreadCount} unread` : ""}`}
           aria-haspopup="true"
         >
           <Bell
@@ -252,7 +264,7 @@ export const NotificationCenter: React.FC = () => {
             )}
             aria-hidden="true"
           />
-          {unreadCount > 0 && (
+          {roleUnreadCount > 0 && (
             <span
               className={cn(
                 "absolute -top-0.5 -right-0.5 h-5 w-5 rounded-full",
@@ -264,7 +276,7 @@ export const NotificationCenter: React.FC = () => {
               )}
               aria-hidden="true"
             >
-              {unreadCount > 9 ? "9+" : unreadCount}
+              {roleUnreadCount > 9 ? "9+" : roleUnreadCount}
             </span>
           )}
         </Button>
@@ -279,16 +291,16 @@ export const NotificationCenter: React.FC = () => {
         <div className="flex items-center justify-between px-4 py-3 border-b bg-muted/30">
           <div className="flex items-center gap-2">
             <h4 className="font-semibold text-sm">Notifications</h4>
-            {unreadCount > 0 && (
+            {roleUnreadCount > 0 && (
               <Badge
                 variant="secondary"
                 className="h-5 px-1.5 text-xs font-medium"
               >
-                {unreadCount} new
+                {roleUnreadCount} new
               </Badge>
             )}
           </div>
-          {unreadCount > 0 && (
+          {roleUnreadCount > 0 && (
             <Button
               variant="ghost"
               size="sm"
@@ -303,7 +315,7 @@ export const NotificationCenter: React.FC = () => {
 
         {/* Content */}
         <ScrollArea className="max-h-[420px]">
-          {notifications.length > 0 ? (
+          {roleFilteredNotifications.length > 0 ? (
             <div className="divide-y divide-border/50">
               {/* Unread section */}
               {unreadNotifications.length > 0 && (
@@ -314,6 +326,7 @@ export const NotificationCenter: React.FC = () => {
                       notification={notification}
                       onMarkAsRead={markAsRead}
                       onClear={clearNotification}
+                      isAdmin={isAdmin}
                     />
                   ))}
                 </div>
@@ -335,6 +348,7 @@ export const NotificationCenter: React.FC = () => {
                       notification={notification}
                       onMarkAsRead={markAsRead}
                       onClear={clearNotification}
+                      isAdmin={isAdmin}
                     />
                   ))}
                 </div>
@@ -346,11 +360,11 @@ export const NotificationCenter: React.FC = () => {
         </ScrollArea>
 
         {/* Footer */}
-        {notifications.length > 0 && (
+        {roleFilteredNotifications.length > 0 && (
           <div className="px-4 py-2.5 border-t bg-muted/20">
             <p className="text-xs text-center text-muted-foreground">
-              Showing {notifications.length} notification
-              {notifications.length !== 1 ? "s" : ""}
+              Showing {roleFilteredNotifications.length} notification
+              {roleFilteredNotifications.length !== 1 ? "s" : ""}
             </p>
           </div>
         )}

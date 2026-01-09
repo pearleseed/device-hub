@@ -7,13 +7,15 @@ export type DeviceCategory =
   | "tablet"
   | "monitor"
   | "accessories";
-export type UserRole = "admin" | "user";
+export type UserRole = "superuser" | "admin" | "user";
 export type RequestStatus =
   | "pending"
   | "approved"
   | "active"
   | "returned"
   | "rejected";
+
+export type RenewalStatus = "pending" | "approved" | "rejected";
 
 export interface Device {
   id: string;
@@ -34,6 +36,8 @@ export interface Device {
   };
   image: string;
   addedDate: string;
+  purchasePrice: number;
+  purchaseDate: string;
 }
 
 export interface User {
@@ -43,6 +47,9 @@ export interface User {
   department: string;
   role: UserRole;
   avatar: string;
+  isActive: boolean;
+  lastLoginAt?: string;
+  createdAt?: string;
 }
 
 export interface BookingRequest {
@@ -53,6 +60,19 @@ export interface BookingRequest {
   endDate: string;
   reason: string;
   status: RequestStatus;
+  createdAt: string;
+}
+
+export interface RenewalRequest {
+  id: string;
+  borrowRequestId: string;
+  userId: string;
+  currentEndDate: string;
+  requestedEndDate: string;
+  reason: string;
+  status: RenewalStatus;
+  reviewedBy: string | null;
+  reviewedAt: string | null;
   createdAt: string;
 }
 
@@ -77,6 +97,8 @@ export const devices: Device[] = [
     image:
       "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=400&h=300&fit=crop",
     addedDate: "2024-01-15",
+    purchasePrice: 2499.00,
+    purchaseDate: "2024-01-10",
   },
   {
     id: "2",
@@ -98,6 +120,8 @@ export const devices: Device[] = [
     image:
       "https://images.unsplash.com/photo-1588872657578-7efd1f1555ed?w=400&h=300&fit=crop",
     addedDate: "2024-02-10",
+    purchasePrice: 1849.00,
+    purchaseDate: "2024-02-05",
   },
   {
     id: "3",
@@ -119,6 +143,8 @@ export const devices: Device[] = [
     image:
       "https://images.unsplash.com/photo-1592750475338-74b7b21085ab?w=400&h=300&fit=crop",
     addedDate: "2024-01-20",
+    purchasePrice: 1199.00,
+    purchaseDate: "2024-01-15",
   },
   {
     id: "4",
@@ -140,6 +166,8 @@ export const devices: Device[] = [
     image:
       "https://images.unsplash.com/photo-1610945415295-d9bbf067e59c?w=400&h=300&fit=crop",
     addedDate: "2024-02-05",
+    purchasePrice: 1299.99,
+    purchaseDate: "2024-02-01",
   },
   {
     id: "5",
@@ -161,6 +189,8 @@ export const devices: Device[] = [
     image:
       "https://images.unsplash.com/photo-1544244015-0df4b3ffc6b0?w=400&h=300&fit=crop",
     addedDate: "2024-01-25",
+    purchasePrice: 1099.00,
+    purchaseDate: "2024-01-20",
   },
   {
     id: "6",
@@ -178,6 +208,8 @@ export const devices: Device[] = [
     image:
       "https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?w=400&h=300&fit=crop",
     addedDate: "2024-02-01",
+    purchasePrice: 649.99,
+    purchaseDate: "2024-01-28",
   },
   {
     id: "7",
@@ -199,6 +231,8 @@ export const devices: Device[] = [
     image:
       "https://images.unsplash.com/photo-1593642632559-0c6d3fc62b89?w=400&h=300&fit=crop",
     addedDate: "2024-02-15",
+    purchasePrice: 1999.00,
+    purchaseDate: "2024-02-10",
   },
   {
     id: "8",
@@ -220,6 +254,8 @@ export const devices: Device[] = [
     image:
       "https://images.unsplash.com/photo-1598327105666-5b89351aff97?w=400&h=300&fit=crop",
     addedDate: "2024-02-20",
+    purchasePrice: 999.00,
+    purchaseDate: "2024-02-15",
   },
   {
     id: "9",
@@ -241,6 +277,8 @@ export const devices: Device[] = [
     image:
       "https://images.unsplash.com/photo-1611186871348-b1ce696e52c9?w=400&h=300&fit=crop",
     addedDate: "2024-01-10",
+    purchasePrice: 1199.00,
+    purchaseDate: "2024-01-05",
   },
   {
     id: "10",
@@ -258,6 +296,8 @@ export const devices: Device[] = [
     image:
       "https://images.unsplash.com/photo-1586210579191-33b45e38fa2c?w=400&h=300&fit=crop",
     addedDate: "2024-02-08",
+    purchasePrice: 799.99,
+    purchaseDate: "2024-02-03",
   },
   {
     id: "11",
@@ -272,6 +312,8 @@ export const devices: Device[] = [
     image:
       "https://images.unsplash.com/photo-1587829741301-dc798b83add3?w=400&h=300&fit=crop",
     addedDate: "2024-01-05",
+    purchasePrice: 199.00,
+    purchaseDate: "2024-01-02",
   },
   {
     id: "12",
@@ -286,6 +328,8 @@ export const devices: Device[] = [
     image:
       "https://images.unsplash.com/photo-1600294037681-c80b4cb5b434?w=400&h=300&fit=crop",
     addedDate: "2024-01-12",
+    purchasePrice: 249.00,
+    purchaseDate: "2024-01-08",
   },
 ];
 
@@ -295,9 +339,12 @@ export const users: User[] = [
     name: "Alex Johnson",
     email: "alex.johnson@admin.company.com",
     department: "IT",
-    role: "admin",
+    role: "superuser",
     avatar:
       "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=face",
+    isActive: true,
+    lastLoginAt: "2026-01-09T08:30:00Z",
+    createdAt: "2023-06-15T10:00:00Z",
   },
   {
     id: "2",
@@ -307,6 +354,9 @@ export const users: User[] = [
     role: "user",
     avatar:
       "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop&crop=face",
+    isActive: true,
+    lastLoginAt: "2026-01-08T14:20:00Z",
+    createdAt: "2023-08-20T09:00:00Z",
   },
   {
     id: "3",
@@ -316,6 +366,9 @@ export const users: User[] = [
     role: "user",
     avatar:
       "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop&crop=face",
+    isActive: true,
+    lastLoginAt: "2026-01-07T16:45:00Z",
+    createdAt: "2023-09-10T11:00:00Z",
   },
   {
     id: "4",
@@ -325,6 +378,9 @@ export const users: User[] = [
     role: "user",
     avatar:
       "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&h=100&fit=crop&crop=face",
+    isActive: true,
+    lastLoginAt: "2026-01-09T09:15:00Z",
+    createdAt: "2023-07-05T08:00:00Z",
   },
   {
     id: "5",
@@ -334,6 +390,48 @@ export const users: User[] = [
     role: "admin",
     avatar:
       "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&h=100&fit=crop&crop=face",
+    isActive: true,
+    lastLoginAt: "2026-01-08T10:00:00Z",
+    createdAt: "2023-06-20T12:00:00Z",
+  },
+  {
+    id: "6",
+    name: "Lisa Thompson",
+    email: "lisa.thompson@company.com",
+    department: "HR",
+    role: "user",
+    avatar:
+      "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop&crop=face",
+    isActive: false,
+    lastLoginAt: "2025-12-15T11:30:00Z",
+    createdAt: "2024-01-10T09:00:00Z",
+  },
+];
+
+export const renewalRequests: RenewalRequest[] = [
+  {
+    id: "1",
+    borrowRequestId: "2",
+    userId: "2",
+    currentEndDate: "2025-12-25",
+    requestedEndDate: "2026-01-15",
+    reason: "Project deadline extended, need the laptop for additional testing",
+    status: "pending",
+    reviewedBy: null,
+    reviewedAt: null,
+    createdAt: "2025-12-20",
+  },
+  {
+    id: "2",
+    borrowRequestId: "4",
+    userId: "3",
+    currentEndDate: "2026-01-02",
+    requestedEndDate: "2026-01-20",
+    reason: "Design project extended by client, need monitor for presentations",
+    status: "pending",
+    reviewedBy: null,
+    reviewedAt: null,
+    createdAt: "2025-12-28",
   },
 ];
 
@@ -428,6 +526,12 @@ export const getRequestsByStatus = (status: RequestStatus): BookingRequest[] =>
 
 export const getRequestsByUser = (userId: string): BookingRequest[] =>
   bookingRequests.filter((r) => r.userId === userId);
+
+export const getRenewalsByStatus = (status: RenewalStatus): RenewalRequest[] =>
+  renewalRequests.filter((r) => r.status === status);
+
+export const getRenewalsByBorrowRequest = (borrowRequestId: string): RenewalRequest[] =>
+  renewalRequests.filter((r) => r.borrowRequestId === borrowRequestId);
 
 export const getCategoryIcon = (category: DeviceCategory): string => {
   const icons: Record<DeviceCategory, string> = {

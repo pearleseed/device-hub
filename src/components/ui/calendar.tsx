@@ -7,6 +7,7 @@ import { buttonVariants } from "@/components/ui/button";
 
 export type CalendarProps = React.ComponentProps<typeof DayPicker> & {
   fullWidth?: boolean;
+  variant?: "default" | "modern" | "minimal";
 };
 
 function Calendar({
@@ -14,60 +15,107 @@ function Calendar({
   classNames,
   showOutsideDays = true,
   fullWidth = false,
+  variant = "default",
   ...props
 }: CalendarProps) {
   // Use responsive sizing when fullWidth is enabled
-  const cellSize = fullWidth ? "flex-1 min-w-[40px] aspect-square" : "h-9 w-9";
+  const cellSize = fullWidth ? "flex-1 min-w-[44px] aspect-square" : "h-10 w-10";
   const buttonSize = fullWidth
-    ? "h-full w-full min-h-[40px] p-0 font-normal aria-selected:opacity-100"
-    : "h-9 w-9 p-0 font-normal aria-selected:opacity-100";
+    ? "h-full w-full min-h-[44px] p-0 font-normal aria-selected:opacity-100"
+    : "h-10 w-10 p-0 font-normal aria-selected:opacity-100";
+
+  const isModern = variant === "modern";
+  const isMinimal = variant === "minimal";
 
   return (
     <DayPicker
       showOutsideDays={showOutsideDays}
-      className={cn("p-3", fullWidth && "w-full", className)}
+      className={cn(
+        "p-4",
+        fullWidth && "w-full",
+        isModern && "bg-linear-to-br from-card via-card to-muted/30 rounded-2xl shadow-lg border border-border/50",
+        isMinimal && "bg-transparent",
+        className
+      )}
       classNames={{
         months: cn(
-          "flex flex-col sm:flex-row gap-4",
+          "flex flex-col sm:flex-row gap-6",
           fullWidth && "w-full justify-center",
         ),
-        month: cn("flex flex-col gap-4", fullWidth && "w-full"),
-        month_caption: "flex justify-center pt-1 relative items-center h-10",
-        caption_label: "text-sm font-medium",
+        month: cn("flex flex-col gap-5", fullWidth && "w-full"),
+        month_caption: cn(
+          "flex justify-center pt-1 relative items-center h-12",
+          isModern && "mb-2"
+        ),
+        caption_label: cn(
+          "text-sm font-semibold tracking-wide",
+          isModern && "text-base bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text"
+        ),
         nav: "flex items-center gap-1",
         button_previous: cn(
-          buttonVariants({ variant: "outline" }),
-          "h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100 absolute left-1",
+          buttonVariants({ variant: isModern ? "ghost" : "outline" }),
+          "h-8 w-8 bg-transparent p-0 opacity-60 hover:opacity-100 absolute left-1",
+          isModern && "rounded-xl hover:bg-muted/80 transition-all duration-200"
         ),
         button_next: cn(
-          buttonVariants({ variant: "outline" }),
-          "h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100 absolute right-1",
+          buttonVariants({ variant: isModern ? "ghost" : "outline" }),
+          "h-8 w-8 bg-transparent p-0 opacity-60 hover:opacity-100 absolute right-1",
+          isModern && "rounded-xl hover:bg-muted/80 transition-all duration-200"
         ),
         month_grid: "w-full border-collapse",
-        weekdays: "flex w-full",
-        weekday: cn(
-          "text-muted-foreground rounded-md font-normal text-[0.8rem]",
-          fullWidth ? "flex-1 min-w-[40px] text-center py-2" : "w-9",
+        weekdays: cn(
+          "flex w-full",
+          isModern && "border-b border-border/30 pb-3 mb-2"
         ),
-        week: "flex w-full mt-2",
+        weekday: cn(
+          "text-muted-foreground font-medium text-[0.75rem] uppercase tracking-wider",
+          fullWidth ? "flex-1 min-w-[44px] text-center py-2" : "w-10 text-center",
+          isModern && "text-xs"
+        ),
+        week: cn(
+          "flex w-full",
+          isModern ? "mt-1" : "mt-2"
+        ),
         day: cn(
-          "text-center text-sm p-0 relative [&:has([aria-selected].day-range-end)]:rounded-r-md [&:has([aria-selected].day-outside)]:bg-accent/50 [&:has([aria-selected])]:bg-accent first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20",
+          "text-center text-sm p-0.5 relative",
+          "[&:has([aria-selected].day-range-end)]:rounded-r-xl",
+          "[&:has([aria-selected].day-outside)]:bg-accent/50",
+          "[&:has([aria-selected])]:bg-accent",
+          "first:[&:has([aria-selected])]:rounded-l-xl",
+          "last:[&:has([aria-selected])]:rounded-r-xl",
+          "focus-within:relative focus-within:z-20",
           cellSize,
         ),
         day_button: cn(
           buttonVariants({ variant: "ghost" }),
           buttonSize,
-          "rounded-full hover:rounded-full focus:rounded-full",
+          "rounded-xl hover:rounded-xl focus:rounded-xl transition-all duration-200",
+          isModern && "hover:bg-primary/10 hover:text-primary font-medium"
         ),
         range_end: "day-range-end",
-        selected:
-          "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground rounded-full",
-        today: "bg-accent text-accent-foreground",
-        outside:
-          "day-outside text-muted-foreground opacity-50 aria-selected:bg-accent/50 aria-selected:text-muted-foreground aria-selected:opacity-30",
-        disabled: "text-muted-foreground opacity-50",
-        range_middle:
+        selected: cn(
+          "bg-primary text-primary-foreground",
+          "hover:bg-primary hover:text-primary-foreground",
+          "focus:bg-primary focus:text-primary-foreground",
+          "rounded-xl shadow-md",
+          isModern && "shadow-primary/25"
+        ),
+        today: cn(
+          "relative",
+          isModern
+            ? "bg-gradient-to-br from-primary/15 to-primary/5 text-primary font-semibold rounded-xl ring-1 ring-primary/30"
+            : "bg-accent text-accent-foreground rounded-xl"
+        ),
+        outside: cn(
+          "day-outside text-muted-foreground/40",
+          "aria-selected:bg-accent/50 aria-selected:text-muted-foreground aria-selected:opacity-30",
+          isModern && "opacity-30"
+        ),
+        disabled: "text-muted-foreground opacity-30 cursor-not-allowed",
+        range_middle: cn(
           "aria-selected:bg-accent aria-selected:text-accent-foreground",
+          isModern && "aria-selected:bg-primary/10"
+        ),
         hidden: "invisible",
         ...classNames,
       }}

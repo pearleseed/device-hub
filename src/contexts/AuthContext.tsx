@@ -30,11 +30,13 @@ interface AuthContextType {
   ) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
   isAdmin: boolean;
+  isSuperuser: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // Available departments for registration
+// eslint-disable-next-line react-refresh/only-export-components
 export const departments = [
   "Engineering",
   "Design",
@@ -194,7 +196,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     setUser(null);
   }, []);
 
-  const isAdmin = user?.role === "admin";
+  const isSuperuser = user?.role === "superuser";
+  const isAdmin = user?.role === "admin" || isSuperuser;
 
   return (
     <AuthContext.Provider
@@ -205,6 +208,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         register,
         logout,
         isAdmin,
+        isSuperuser,
       }}
     >
       {children}
@@ -212,6 +216,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   );
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);
   if (context === undefined) {

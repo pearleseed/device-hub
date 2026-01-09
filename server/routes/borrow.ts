@@ -1,5 +1,6 @@
 import { db } from "../db/connection";
 import { authenticateRequest, requireAdmin } from "../middleware/auth";
+import { triggerBorrowNotification } from "../mattermost";
 import type {
   BorrowRequest,
   BorrowRequestWithDetails,
@@ -322,6 +323,14 @@ export const borrowRoutes = {
       const updatedRequests = await db<BorrowRequestWithDetails>`
         SELECT * FROM v_borrow_details WHERE id = ${id}
       `;
+
+      // Trigger Mattermost notification for approved/active status
+      if (status === "approved" || status === "active") {
+        // Fire and forget - don't block the response
+        triggerBorrowNotification(id).catch((err) => {
+          console.error("Failed to send borrow notification:", err);
+        });
+      }
 
       return jsonResponse({
         success: true,

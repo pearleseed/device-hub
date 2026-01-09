@@ -12,6 +12,7 @@ interface Translations {
 const translations: Translations = {
   // Navigation
   "nav.dashboard": { en: "Dashboard", ja: "ダッシュボード" },
+  "nav.analytics": { en: "Analytics", ja: "分析" },
   "nav.inventory": { en: "Inventory", ja: "在庫管理" },
   "nav.calendar": { en: "Calendar", ja: "カレンダー" },
   "nav.requests": { en: "Requests", ja: "リクエスト" },
@@ -948,6 +949,7 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({
   );
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useLanguage = (): LanguageContextType => {
   const context = useContext(LanguageContext);
   if (context === undefined) {

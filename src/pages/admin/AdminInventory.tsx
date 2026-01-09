@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { AdminSidebar } from "@/components/layout/AdminSidebar";
 import { BreadcrumbNav } from "@/components/ui/breadcrumb-nav";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,7 +13,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import type { Device } from "@/lib/mockData";
-import { devices as initialDevices, getUserById } from "@/lib/mockData";
+import { getUserById } from "@/lib/mockData";
+import { useDevices, useRefreshData } from "@/hooks/use-data-cache";
 import { exportToCSV, deviceExportColumns } from "@/lib/exportUtils";
 import {
   Plus,
@@ -22,14 +23,23 @@ import {
   Trash2,
   Download,
   Undo2,
+  DollarSign,
+  Calendar,
 } from "lucide-react";
+import { format } from "date-fns";
 import { AddDeviceModal } from "@/components/admin/AddDeviceModal";
 import { EditDeviceModal } from "@/components/admin/EditDeviceModal";
 import { useToast } from "@/hooks/use-toast";
 
 const AdminInventory: React.FC = () => {
   const { toast } = useToast();
-  const [devices, setDevices] = useState<Device[]>(initialDevices);
+  const { data: cachedDevices = [], isLoading } = useDevices();
+  const { refreshDevices } = useRefreshData();
+  
+  // Local state for optimistic updates
+  const [localDevices, setLocalDevices] = useState<Device[] | null>(null);
+  const devices = localDevices ?? cachedDevices;
+  
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [selectedDevice, setSelectedDevice] = useState<Device | null>(null);
@@ -40,7 +50,7 @@ const AdminInventory: React.FC = () => {
       ...newDevice,
       id: String(devices.length + 1),
     };
-    setDevices([...devices, device]);
+    setLocalDevices([...devices, device]);
     toast({
       title: "Device added",
       description: `${device.name} has been added to inventory.`,
@@ -48,7 +58,7 @@ const AdminInventory: React.FC = () => {
   };
 
   const handleEditDevice = (updatedDevice: Device) => {
-    setDevices(
+    setLocalDevices(
       devices.map((d) => (d.id === updatedDevice.id ? updatedDevice : d)),
     );
     toast({
@@ -59,7 +69,7 @@ const AdminInventory: React.FC = () => {
 
   const handleDeleteDevice = (device: Device) => {
     const deletedDevice = device;
-    setDevices(devices.filter((d) => d.id !== device.id));
+    setLocalDevices(devices.filter((d) => d.id !== device.id));
 
     toast({
       title: "Device deleted",
@@ -69,7 +79,7 @@ const AdminInventory: React.FC = () => {
           variant="outline"
           size="sm"
           onClick={() => {
-            setDevices((prev) => [...prev, deletedDevice]);
+            setLocalDevices((prev) => prev ? [...prev, deletedDevice] : [deletedDevice]);
             toast({
               title: "Restored",
               description: `${deletedDevice.name} has been restored.`,
@@ -173,6 +183,26 @@ const AdminInventory: React.FC = () => {
           : null;
         return assignedUser?.name || "—";
       },
+    },
+    {
+      key: "purchasePrice",
+      header: "Purchase Price",
+      sortable: true,
+      render: (device) => (
+        <span className="font-medium">
+          ${device.purchasePrice?.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || "—"}
+        </span>
+      ),
+    },
+    {
+      key: "purchaseDate",
+      header: "Purchase Date",
+      sortable: true,
+      render: (device) => (
+        <span className="text-muted-foreground">
+          {device.purchaseDate ? format(new Date(device.purchaseDate), "MMM d, yyyy") : "—"}
+        </span>
+      ),
     },
     {
       key: "actions",

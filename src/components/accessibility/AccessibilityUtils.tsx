@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
-import { useToast } from "@/hooks/use-toast";
 
 // Hook to announce messages to screen readers
+// eslint-disable-next-line react-refresh/only-export-components
 export const useAnnounce = () => {
   const announce = (
     message: string,
@@ -50,6 +50,7 @@ export const LiveRegion: React.FC<LiveRegionProps> = ({
 };
 
 // Hook for keyboard navigation
+// eslint-disable-next-line react-refresh/only-export-components
 export const useKeyboardNavigation = (
   items: HTMLElement[] | null,
   options?: {

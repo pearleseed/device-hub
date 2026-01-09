@@ -1,4 +1,5 @@
 import React from "react";
+import { Link } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { LucideIcon } from "lucide-react";
@@ -103,9 +104,9 @@ export const StatsCard: React.FC<StatsCardProps> = ({
 
   if (href) {
     return (
-      <a href={href} className="block">
+      <Link to={href} className="block">
         {content}
-      </a>
+      </Link>
     );
   }
 

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { AdminSidebar } from "@/components/layout/AdminSidebar";
 import { BreadcrumbNav } from "@/components/ui/breadcrumb-nav";
 import { Button } from "@/components/ui/button";
@@ -14,7 +14,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Calendar, LayoutList, Filter, X } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import type { DeviceCategory } from "@/lib/mockData";
-import { bookingRequests, devices } from "@/lib/mockData";
+import { useDevices, useBookingRequests } from "@/hooks/use-data-cache";
 import { DeviceCalendarView } from "@/components/calendar/DeviceCalendarView";
 import { DeviceTimelineView } from "@/components/calendar/DeviceTimelineView";
 import { AvailabilitySummary } from "@/components/calendar/AvailabilitySummary";
@@ -38,11 +38,16 @@ const AdminCalendar: React.FC = () => {
   const [selectedDevices, setSelectedDevices] = useState<string[]>([]);
   const [filterOpen, setFilterOpen] = useState(false);
 
+  // Use cached data
+  const { data: devices = [], isLoading: devicesLoading } = useDevices();
+  const { data: bookingRequests = [], isLoading: requestsLoading } = useBookingRequests();
+
   // Filter devices by selected categories
-  const filteredDevices =
+  const filteredDevices = useMemo(() =>
     selectedCategories.length > 0
       ? devices.filter((d) => selectedCategories.includes(d.category))
-      : devices;
+      : devices,
+    [devices, selectedCategories]);
 
   const handleCategoryToggle = (category: string) => {
     setSelectedCategories((prev) =>

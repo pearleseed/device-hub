@@ -39,6 +39,8 @@ const deviceSchema = z.object({
     .max(20)
     .regex(/^[A-Z]{2,4}-\d{3,4}$/i, "Format: ABC-001"),
   image: z.string().url("Must be a valid URL").optional().or(z.literal("")),
+  purchasePrice: z.coerce.number().min(0, "Price must be positive"),
+  purchaseDate: z.string().min(1, "Purchase date is required"),
   os: z.string().max(50).optional(),
   processor: z.string().max(100).optional(),
   ram: z.string().max(20).optional(),
@@ -75,6 +77,8 @@ export const AddDeviceModal: React.FC<AddDeviceModalProps> = ({
       category: "laptop",
       assetTag: "",
       image: "",
+      purchasePrice: 0,
+      purchaseDate: new Date().toISOString().split("T")[0],
       os: "",
       processor: "",
       ram: "",
@@ -101,6 +105,8 @@ export const AddDeviceModal: React.FC<AddDeviceModalProps> = ({
         storage: data.storage || "",
       },
       addedDate: new Date().toISOString().split("T")[0],
+      purchasePrice: data.purchasePrice,
+      purchaseDate: data.purchaseDate,
     });
     form.reset();
     onOpenChange(false);
@@ -207,6 +213,32 @@ export const AddDeviceModal: React.FC<AddDeviceModalProps> = ({
                     <FormLabel>Image URL</FormLabel>
                     <FormControl>
                       <Input placeholder="https://..." {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="purchasePrice"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Purchase Price *</FormLabel>
+                    <FormControl>
+                      <Input type="number" step="0.01" min="0" placeholder="0.00" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="purchaseDate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Purchase Date *</FormLabel>
+                    <FormControl>
+                      <Input type="date" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

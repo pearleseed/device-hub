@@ -66,6 +66,8 @@ export const deviceExportColumns = [
   { key: "model" as const, header: "Model" },
   { key: "category" as const, header: "Category" },
   { key: "status" as const, header: "Status" },
+  { key: "purchasePrice" as const, header: "Purchase Price" },
+  { key: "purchaseDate" as const, header: "Purchase Date" },
   { key: "addedDate" as const, header: "Added Date" },
 ];
 

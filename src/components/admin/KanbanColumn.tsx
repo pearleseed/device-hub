@@ -73,7 +73,7 @@ export const KanbanColumn: React.FC<KanbanColumnProps> = ({
       </div>
 
       {/* Cards container - scrollable for many requests */}
-      <div className="space-y-2 flex-1 overflow-y-auto max-h-[calc(100vh-280px)] pr-1 scrollbar-thin">
+      <div className="space-y-3 flex-1 overflow-y-auto max-h-[calc(100vh-280px)] px-1 pt-1 pb-1 scrollbar-thin">
         {children}
       </div>
 

@@ -5,6 +5,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import { NotificationCenter } from "@/components/notifications/NotificationCenter";
 import { LanguageToggle } from "@/components/ui/language-toggle";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
@@ -18,12 +19,16 @@ import {
   CalendarDays,
   PanelLeftClose,
   PanelLeft,
+  BarChart3,
+  Crown,
+  ShieldCheck,
 } from "lucide-react";
 
 const SIDEBAR_COLLAPSED_KEY = "admin-sidebar-collapsed";
 
 const navItems = [
   { icon: LayoutDashboard, labelKey: "nav.dashboard", path: "/admin" },
+  { icon: BarChart3, labelKey: "nav.analytics", path: "/admin/analytics" },
   { icon: Package, labelKey: "nav.inventory", path: "/admin/inventory" },
   { icon: CalendarDays, labelKey: "nav.calendar", path: "/admin/calendar" },
   { icon: ClipboardList, labelKey: "nav.requests", path: "/admin/requests" },
@@ -181,9 +186,22 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
           {!collapsed && (
             <div className="min-w-0">
               <p className="text-sm font-medium truncate">{user?.name}</p>
-              <p className="text-xs text-sidebar-foreground/60 truncate">
-                {t("users.admin")}
-              </p>
+              <Badge 
+                variant={user?.role === "superuser" ? "default" : "secondary"}
+                className="mt-1 gap-1 text-[10px] py-0"
+              >
+                {user?.role === "superuser" ? (
+                  <>
+                    <Crown className="h-3 w-3" />
+                    Superuser
+                  </>
+                ) : (
+                  <>
+                    <ShieldCheck className="h-3 w-3" />
+                    {t("users.admin")}
+                  </>
+                )}
+              </Badge>
             </div>
           )}
         </div>

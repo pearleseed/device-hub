@@ -4,12 +4,14 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { differenceInDays, format } from "date-fns";
-import { RotateCcw, Calendar } from "lucide-react";
+import { RotateCcw, Calendar, CalendarClock } from "lucide-react";
 
 interface ActiveLoanCardProps {
   loan: BookingRequest;
   device: Device;
   onReturn?: (loanId: string) => void;
+  onRequestRenewal?: (loan: BookingRequest) => void;
+  hasPendingRenewal?: boolean;
   className?: string;
 }
 
@@ -17,6 +19,8 @@ export const ActiveLoanCard: React.FC<ActiveLoanCardProps> = ({
   loan,
   device,
   onReturn,
+  onRequestRenewal,
+  hasPendingRenewal = false,
   className,
 }) => {
   const daysRemaining = differenceInDays(new Date(loan.endDate), new Date());
@@ -75,16 +79,30 @@ export const ActiveLoanCard: React.FC<ActiveLoanCardProps> = ({
           </span>
         </div>
 
-        {/* Return Button */}
-        <Button
-          variant="outline"
-          size="sm"
-          className="mt-3 h-8"
-          onClick={() => onReturn?.(loan.id)}
-        >
-          <RotateCcw className="h-3 w-3 mr-1" />
-          Return Device
-        </Button>
+        {/* Action Buttons */}
+        <div className="flex gap-2 mt-3">
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8"
+            onClick={() => onReturn?.(loan.id)}
+          >
+            <RotateCcw className="h-3 w-3 mr-1" />
+            Return
+          </Button>
+          {onRequestRenewal && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8"
+              onClick={() => onRequestRenewal(loan)}
+              disabled={hasPendingRenewal}
+            >
+              <CalendarClock className="h-3 w-3 mr-1" />
+              {hasPendingRenewal ? "Renewal Pending" : "Request Renewal"}
+            </Button>
+          )}
+        </div>
       </div>
     </div>
   );

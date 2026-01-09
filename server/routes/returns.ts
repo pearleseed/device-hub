@@ -1,5 +1,6 @@
 import { db } from "../db/connection";
 import { authenticateRequest, requireAdmin } from "../middleware/auth";
+import { triggerReturnNotification } from "../mattermost";
 import type {
   ReturnRequest,
   ReturnRequestWithDetails,
@@ -203,6 +204,14 @@ export const returnsRoutes = {
       const newReturns = await db<ReturnRequestWithDetails>`
         SELECT * FROM v_return_details WHERE borrow_request_id = ${borrow_request_id}
       `;
+
+      // Trigger Mattermost notification for return confirmation
+      if (newReturns[0]) {
+        // Fire and forget - don't block the response
+        triggerReturnNotification(newReturns[0].id).catch((err) => {
+          console.error("Failed to send return notification:", err);
+        });
+      }
 
       return jsonResponse(
         {

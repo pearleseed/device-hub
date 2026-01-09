@@ -1,13 +1,13 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { UserNavbar } from "@/components/layout/UserNavbar";
 import { BreadcrumbNav } from "@/components/ui/breadcrumb-nav";
 import { DeviceCard } from "@/components/devices/DeviceCard";
 import type { Device, DeviceCategory, DeviceStatus } from "@/lib/mockData";
-import { devices } from "@/lib/mockData";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { useDevices } from "@/hooks/use-data-cache";
 import {
   Select,
   SelectContent,
@@ -123,7 +123,9 @@ const DeviceCatalog: React.FC = () => {
   const [sortBy, setSortBy] = useState<SortOption>("name-asc");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+
+  // Use cached devices data
+  const { data: devices = [], isLoading } = useDevices();
 
   // Recently viewed tracking
   const { addToRecentlyViewed } = useRecentlyViewed();
@@ -131,12 +133,6 @@ const DeviceCatalog: React.FC = () => {
   // Favorites
   const { favorites, toggleFavorite, isFavorite, favoritesCount } =
     useFavorites();
-
-  // Simulate initial loading
-  useEffect(() => {
-    const timer = setTimeout(() => setIsLoading(false), 800);
-    return () => clearTimeout(timer);
-  }, []);
 
   const filteredAndSortedDevices = useMemo(() => {
     const result = devices.filter((device) => {
@@ -184,6 +180,7 @@ const DeviceCatalog: React.FC = () => {
 
     return result;
   }, [
+    devices,
     searchQuery,
     categoryFilter,
     statusFilter,

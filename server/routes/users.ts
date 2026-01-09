@@ -1,5 +1,5 @@
 import { db } from "../db/connection";
-import { authenticateRequest, requireAdmin } from "../middleware/auth";
+import { authenticateRequest, requireAdmin, hashPassword } from "../middleware/auth";
 import type { UserPublic } from "../types";
 
 // JSON response helper
@@ -163,9 +163,9 @@ export const usersRoutes = {
         return jsonResponse({ success: false, error: "Unauthorized" }, 401);
       }
 
-      // Only admins can delete users
-      if (!requireAdmin(payload)) {
-        return jsonResponse({ success: false, error: "Forbidden" }, 403);
+      // Only superusers can delete users
+      if (payload.role !== "superuser") {
+        return jsonResponse({ success: false, error: "Forbidden - Superuser access required" }, 403);
       }
 
       const id = parseInt(params.id);
@@ -202,6 +202,115 @@ export const usersRoutes = {
       console.error("Delete user error:", error);
       return jsonResponse(
         { success: false, error: "Failed to delete user" },
+        500,
+      );
+    }
+  },
+
+  // PATCH /api/users/:id/password
+  async resetPassword(
+    request: Request,
+    params: Record<string, string>,
+  ): Promise<Response> {
+    try {
+      const payload = await authenticateRequest(request);
+      if (!payload) {
+        return jsonResponse({ success: false, error: "Unauthorized" }, 401);
+      }
+
+      // Only superusers can reset passwords
+      if (payload.role !== "superuser") {
+        return jsonResponse({ success: false, error: "Forbidden - Superuser access required" }, 403);
+      }
+
+      const id = parseInt(params.id);
+      if (isNaN(id)) {
+        return jsonResponse({ success: false, error: "Invalid user ID" }, 400);
+      }
+
+      const body = await request.json();
+      const { password } = body as { password: string };
+
+      if (!password || password.length < 6) {
+        return jsonResponse(
+          { success: false, error: "Password must be at least 6 characters" },
+          400,
+        );
+      }
+
+      // Hash the new password
+      const password_hash = await hashPassword(password);
+
+      await db`UPDATE users SET password_hash = ${password_hash} WHERE id = ${id}`;
+
+      return jsonResponse({
+        success: true,
+        message: "Password reset successfully",
+      });
+    } catch (error) {
+      console.error("Reset password error:", error);
+      return jsonResponse(
+        { success: false, error: "Failed to reset password" },
+        500,
+      );
+    }
+  },
+
+  // PATCH /api/users/:id/status
+  async toggleStatus(
+    request: Request,
+    params: Record<string, string>,
+  ): Promise<Response> {
+    try {
+      const payload = await authenticateRequest(request);
+      if (!payload) {
+        return jsonResponse({ success: false, error: "Unauthorized" }, 401);
+      }
+
+      // Only superusers can toggle user status
+      if (payload.role !== "superuser") {
+        return jsonResponse({ success: false, error: "Forbidden - Superuser access required" }, 403);
+      }
+
+      const id = parseInt(params.id);
+      if (isNaN(id)) {
+        return jsonResponse({ success: false, error: "Invalid user ID" }, 400);
+      }
+
+      // Prevent self-locking
+      if (payload.userId === id) {
+        return jsonResponse(
+          { success: false, error: "Cannot change your own account status" },
+          400,
+        );
+      }
+
+      const body = await request.json();
+      const { is_active } = body as { is_active: boolean };
+
+      if (typeof is_active !== "boolean") {
+        return jsonResponse(
+          { success: false, error: "is_active must be a boolean" },
+          400,
+        );
+      }
+
+      await db`UPDATE users SET is_active = ${is_active} WHERE id = ${id}`;
+
+      const updatedUsers = await db<
+        UserPublic[]
+      >`SELECT * FROM v_users_public WHERE id = ${id}`;
+      const updatedUser = updatedUsers[0];
+
+      return jsonResponse({
+        success: true,
+        data: updatedUser,
+        message: is_active ? "User account unlocked" : "User account locked",
+      });
+    } catch (error) {
+      console.error("Toggle status error:", error);
+      return jsonResponse(
+        { success: false, error: "Failed to toggle user status" },
         500,
       );
     }

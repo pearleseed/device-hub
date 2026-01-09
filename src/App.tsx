@@ -13,14 +13,26 @@ import UserDashboard from "./pages/user/UserDashboard";
 import DeviceCatalog from "./pages/user/DeviceCatalog";
 import DeviceDetail from "./pages/user/DeviceDetail";
 import UserProfile from "./pages/user/UserProfile";
+import LoanManagement from "./pages/user/LoanManagement";
 import AdminDashboard from "./pages/admin/AdminDashboard";
+import AdminAnalytics from "./pages/admin/AdminAnalytics";
 import AdminInventory from "./pages/admin/AdminInventory";
 import AdminCalendar from "./pages/admin/AdminCalendar";
 import AdminRequests from "./pages/admin/AdminRequests";
 import AdminUsers from "./pages/admin/AdminUsers";
 import NotFound from "./pages/NotFound";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000, // 5 minutes - data considered fresh
+      gcTime: 10 * 60 * 1000, // 10 minutes - garbage collection time
+      refetchOnWindowFocus: false, // Don't refetch on window focus
+      refetchOnMount: false, // Don't refetch on component mount if data is fresh
+      retry: 1, // Only retry once on failure
+    },
+  },
+});
 
 const ProtectedRoute: React.FC<{
   children: React.ReactNode;
@@ -81,12 +93,28 @@ const AppRoutes = () => {
           </ProtectedRoute>
         }
       />
+      <Route
+        path="/loans"
+        element={
+          <ProtectedRoute>
+            <LoanManagement />
+          </ProtectedRoute>
+        }
+      />
 
       <Route
         path="/admin"
         element={
           <ProtectedRoute adminOnly>
             <AdminDashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/analytics"
+        element={
+          <ProtectedRoute adminOnly>
+            <AdminAnalytics />
           </ProtectedRoute>
         }
       />

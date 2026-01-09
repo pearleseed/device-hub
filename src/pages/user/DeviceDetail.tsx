@@ -1,28 +1,25 @@
 import React, { useState, useMemo } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { format, differenceInDays } from "date-fns";
+import { format, differenceInDays, addDays, startOfDay, isBefore, isAfter, isSameDay, eachDayOfInterval, startOfMonth, endOfMonth, getDay, addMonths, subMonths, isToday } from "date-fns";
 import { UserNavbar } from "@/components/layout/UserNavbar";
 import { BreadcrumbNav } from "@/components/ui/breadcrumb-nav";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import {
-  devices,
-  getDeviceById,
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import {
   getUserById,
   getCategoryIcon,
-  type Device,
 } from "@/lib/mockData";
+import { useDevice, useDevices } from "@/hooks/use-data-cache";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useFavorites } from "@/hooks/use-favorites";
@@ -43,9 +40,271 @@ import {
   Share2,
   Info,
   Package,
+  ChevronLeft,
+  ChevronRight,
+  ChevronDown,
+  CalendarDays,
+  X,
 } from "lucide-react";
 
 type PageStep = "details" | "confirm" | "success";
+
+const weekDays = ["S", "M", "T", "W", "T", "F", "S"];
+
+// Compact collapsible calendar component for date range selection
+interface CompactDateRangeCalendarProps {
+  dateRange: DateRange | undefined;
+  onDateRangeChange: (range: DateRange | undefined) => void;
+  disabledBefore?: Date;
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
+}
+
+const CompactDateRangeCalendar: React.FC<CompactDateRangeCalendarProps> = ({
+  dateRange,
+  onDateRangeChange,
+  disabledBefore = new Date(),
+  isOpen,
+  onOpenChange,
+}) => {
+  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [hoverDate, setHoverDate] = useState<Date | null>(null);
+
+  const calendarDays = useMemo(() => {
+    const monthStart = startOfMonth(currentMonth);
+    const monthEnd = endOfMonth(currentMonth);
+    const days = eachDayOfInterval({ start: monthStart, end: monthEnd });
+    const startPadding = getDay(monthStart);
+    const paddingDays: (Date | null)[] = Array(startPadding).fill(null);
+    return [...paddingDays, ...days];
+  }, [currentMonth]);
+
+  const handlePrevMonth = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setCurrentMonth(subMonths(currentMonth, 1));
+  };
+  
+  const handleNextMonth = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setCurrentMonth(addMonths(currentMonth, 1));
+  };
+
+  const isDisabled = (date: Date) => {
+    return isBefore(startOfDay(date), startOfDay(disabledBefore));
+  };
+
+  const isInRange = (date: Date) => {
+    if (!dateRange?.from) return false;
+    const end = dateRange.to || hoverDate;
+    if (!end) return false;
+    return (isAfter(date, dateRange.from) || isSameDay(date, dateRange.from)) &&
+           (isBefore(date, end) || isSameDay(date, end));
+  };
+
+  const isRangeStart = (date: Date) => {
+    return dateRange?.from && isSameDay(date, dateRange.from);
+  };
+
+  const isRangeEnd = (date: Date) => {
+    return dateRange?.to && isSameDay(date, dateRange.to);
+  };
+
+  const handleDateClick = (date: Date) => {
+    if (isDisabled(date)) return;
+
+    if (!dateRange?.from || dateRange.to) {
+      // Start new selection
+      onDateRangeChange({ from: date, to: undefined });
+    } else {
+      // Complete selection
+      if (isBefore(date, dateRange.from)) {
+        onDateRangeChange({ from: date, to: dateRange.from });
+      } else {
+        onDateRangeChange({ from: dateRange.from, to: date });
+      }
+      // Close calendar after selection is complete
+      onOpenChange(false);
+    }
+  };
+
+  const loanDuration = dateRange?.from && dateRange?.to
+    ? differenceInDays(dateRange.to, dateRange.from) + 1
+    : 0;
+
+  const handleClear = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onDateRangeChange(undefined);
+  };
+
+  return (
+    <Collapsible open={isOpen} onOpenChange={onOpenChange}>
+      <CollapsibleTrigger asChild>
+        <button
+          type="button"
+          className={cn(
+            "w-full flex items-center justify-between p-3 rounded-xl border transition-all duration-200",
+            "hover:border-primary/50 hover:bg-muted/30",
+            "focus:outline-none focus:ring-2 focus:ring-primary/30 focus:ring-offset-1",
+            isOpen 
+              ? "border-primary/50 bg-primary/5" 
+              : "border-border bg-card",
+            dateRange?.from && dateRange?.to && "border-emerald-500/50 bg-emerald-50/50 dark:bg-emerald-950/20"
+          )}
+        >
+          <div className="flex items-center gap-3">
+            <div className={cn(
+              "p-2 rounded-lg transition-colors",
+              dateRange?.from && dateRange?.to 
+                ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                : "bg-muted text-muted-foreground"
+            )}>
+              <CalendarDays className="h-4 w-4" />
+            </div>
+            <div className="text-left">
+              {dateRange?.from ? (
+                <>
+                  <p className="text-sm font-medium">
+                    {format(dateRange.from, "MMM d")}
+                    {dateRange.to && (
+                      <>
+                        <span className="text-muted-foreground mx-1">→</span>
+                        {format(dateRange.to, "MMM d, yyyy")}
+                      </>
+                    )}
+                    {!dateRange.to && (
+                      <span className="text-muted-foreground ml-1">
+                        – Select end date
+                      </span>
+                    )}
+                  </p>
+                  {loanDuration > 0 && (
+                    <p className="text-xs text-muted-foreground">
+                      {loanDuration} day{loanDuration !== 1 ? "s" : ""} selected
+                    </p>
+                  )}
+                </>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Click to select dates
+                </p>
+              )}
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            {dateRange?.from && (
+              <button
+                type="button"
+                onClick={handleClear}
+                className="p-1 rounded-md hover:bg-muted transition-colors"
+              >
+                <X className="h-3.5 w-3.5 text-muted-foreground" />
+              </button>
+            )}
+            <ChevronDown className={cn(
+              "h-4 w-4 text-muted-foreground transition-transform duration-200",
+              isOpen && "rotate-180"
+            )} />
+          </div>
+        </button>
+      </CollapsibleTrigger>
+      
+      <CollapsibleContent className="overflow-hidden data-[state=open]:animate-accordion-down data-[state=closed]:animate-accordion-up">
+        <div className="mt-3 bg-card rounded-xl border border-border/50 shadow-lg overflow-hidden">
+          {/* Header */}
+          <div className="flex items-center justify-between px-3 py-2 border-b border-border/30 bg-muted/20">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 rounded-md"
+              onClick={handlePrevMonth}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <span className="font-semibold text-sm">{format(currentMonth, "MMM yyyy")}</span>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 rounded-md"
+              onClick={handleNextMonth}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+
+          {/* Calendar Grid */}
+          <div className="p-2">
+            {/* Week days header */}
+            <div className="grid grid-cols-7 mb-1">
+              {weekDays.map((day, i) => (
+                <div
+                  key={i}
+                  className="py-1.5 text-center text-[10px] font-semibold text-muted-foreground"
+                >
+                  {day}
+                </div>
+              ))}
+            </div>
+
+            {/* Days grid */}
+            <div className="grid grid-cols-7 gap-0.5">
+              {calendarDays.map((day, index) => {
+                if (!day) {
+                  return <div key={`empty-${index}`} className="aspect-square" />;
+                }
+
+                const disabled = isDisabled(day);
+                const inRange = isInRange(day);
+                const rangeStart = isRangeStart(day);
+                const rangeEnd = isRangeEnd(day);
+                const isTodayDate = isToday(day);
+
+                return (
+                  <button
+                    key={day.toISOString()}
+                    type="button"
+                    onClick={() => handleDateClick(day)}
+                    onMouseEnter={() => {
+                      if (dateRange?.from && !dateRange.to) {
+                        setHoverDate(day);
+                      }
+                    }}
+                    onMouseLeave={() => setHoverDate(null)}
+                    disabled={disabled}
+                    className={cn(
+                      "aspect-square text-xs font-medium transition-all duration-150",
+                      "flex items-center justify-center",
+                      "focus:outline-none focus:ring-1 focus:ring-primary/30",
+                      disabled && "opacity-30 cursor-not-allowed",
+                      !disabled && "hover:bg-muted/80 cursor-pointer",
+                      inRange && !rangeStart && !rangeEnd && "bg-primary/10",
+                      rangeStart && "bg-primary text-primary-foreground rounded-l-md",
+                      rangeEnd && "bg-primary text-primary-foreground rounded-r-md",
+                      rangeStart && rangeEnd && "rounded-md",
+                      isTodayDate && !rangeStart && !rangeEnd && "ring-1 ring-primary/50 font-bold"
+                    )}
+                  >
+                    {format(day, "d")}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Hint */}
+          <div className="px-3 py-2 border-t border-border/30 bg-muted/10">
+            <p className="text-[10px] text-muted-foreground text-center">
+              {!dateRange?.from 
+                ? "Select start date" 
+                : !dateRange?.to 
+                  ? "Now select end date"
+                  : "Date range selected ✓"}
+            </p>
+          </div>
+        </div>
+      </CollapsibleContent>
+    </Collapsible>
+  );
+};
 
 const DeviceDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -57,8 +316,10 @@ const DeviceDetail: React.FC = () => {
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const [reason, setReason] = useState("");
   const [step, setStep] = useState<PageStep>("details");
+  const [calendarOpen, setCalendarOpen] = useState(false);
 
-  const device = id ? getDeviceById(id) : undefined;
+  const { data: device, isLoading } = useDevice(id);
+  const { data: allDevices = [] } = useDevices();
 
   // Track view
   React.useEffect(() => {
@@ -74,15 +335,15 @@ const DeviceDetail: React.FC = () => {
   // Get similar devices
   const similarDevices = useMemo(() => {
     if (!device) return [];
-    return devices
+    return allDevices
       .filter(
         (d) =>
           d.category === device.category &&
           d.id !== device.id &&
-          d.status === "available",
+          d.status === "available"
       )
       .slice(0, 4);
-  }, [device]);
+  }, [device, allDevices]);
 
   if (!device) {
     return (
@@ -153,9 +414,9 @@ const DeviceDetail: React.FC = () => {
 
   const handleQuickDateSelect = (days: number) => {
     const from = new Date();
-    const to = new Date();
-    to.setDate(to.getDate() + days);
+    const to = addDays(from, days);
     setDateRange({ from, to });
+    setCalendarOpen(false);
   };
 
   const handleFavoriteToggle = () => {
@@ -398,7 +659,7 @@ const DeviceDetail: React.FC = () => {
                   <Heart
                     className={cn(
                       "h-5 w-5",
-                      isFavorite(device.id) && "fill-red-500 text-red-500",
+                      isFavorite(device.id) && "fill-red-500 text-red-500"
                     )}
                   />
                 </Button>
@@ -551,117 +812,77 @@ const DeviceDetail: React.FC = () => {
           {/* Right Column - Booking Form */}
           <div className="lg:col-span-1">
             <div className="sticky top-20">
-              <Card>
-                <CardHeader>
-                  <CardTitle>
+              <Card className="overflow-hidden border-0 shadow-xl shadow-black/5">
+                <CardHeader className="bg-linear-to-br from-card to-muted/30 border-b border-border/30 py-4">
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <CalendarDays className="h-5 w-5 text-primary" />
                     {device.status === "available"
                       ? "Request this Device"
                       : "Device Unavailable"}
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="p-4">
                   {device.status === "available" ? (
-                    <div className="space-y-5">
+                    <div className="space-y-4">
                       {/* Quick Date Presets */}
                       <div>
-                        <Label className="text-sm text-muted-foreground">
+                        <Label className="text-xs text-muted-foreground mb-2 block">
                           Quick select
                         </Label>
-                        <div className="flex flex-wrap gap-2 mt-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleQuickDateSelect(7)}
-                          >
-                            1 Week
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleQuickDateSelect(14)}
-                          >
-                            2 Weeks
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleQuickDateSelect(30)}
-                          >
-                            1 Month
-                          </Button>
+                        <div className="flex flex-wrap gap-1.5">
+                          {[
+                            { label: "1 Week", days: 7 },
+                            { label: "2 Weeks", days: 14 },
+                            { label: "1 Month", days: 30 },
+                          ].map((preset) => (
+                            <Button
+                              key={preset.days}
+                              variant="outline"
+                              size="sm"
+                              className={cn(
+                                "rounded-lg h-8 text-xs transition-all",
+                                loanDuration === preset.days && "bg-primary/10 border-primary/50"
+                              )}
+                              onClick={() => handleQuickDateSelect(preset.days)}
+                            >
+                              {preset.label}
+                            </Button>
+                          ))}
                         </div>
                       </div>
 
                       <Separator />
 
-                      {/* Date Range Picker */}
+                      {/* Collapsible Date Range Calendar */}
                       <div className="space-y-2">
-                        <Label>Select Date Range</Label>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <Button
-                              variant="outline"
-                              className={cn(
-                                "w-full justify-start text-left font-normal h-auto py-3",
-                                !dateRange && "text-muted-foreground",
-                              )}
-                            >
-                              <CalendarIcon className="mr-2 h-4 w-4 shrink-0" />
-                              <div className="flex-1">
-                                {dateRange?.from ? (
-                                  dateRange.to ? (
-                                    <div>
-                                      <p className="font-medium">
-                                        {format(dateRange.from, "MMM d")} –{" "}
-                                        {format(dateRange.to, "MMM d, yyyy")}
-                                      </p>
-                                      {loanDuration > 0 && (
-                                        <p className="text-xs text-muted-foreground">
-                                          {loanDuration} day
-                                          {loanDuration !== 1 ? "s" : ""}
-                                        </p>
-                                      )}
-                                    </div>
-                                  ) : (
-                                    format(dateRange.from, "MMM d, yyyy")
-                                  )
-                                ) : (
-                                  <span>Select start and end dates</span>
-                                )}
-                              </div>
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0" align="start">
-                            <Calendar
-                              mode="range"
-                              selected={dateRange}
-                              onSelect={setDateRange}
-                              disabled={(date) => date < new Date()}
-                              numberOfMonths={1}
-                              initialFocus
-                              className="p-3 pointer-events-auto"
-                            />
-                          </PopoverContent>
-                        </Popover>
+                        <Label className="text-xs font-medium">Select Date Range</Label>
+                        <CompactDateRangeCalendar
+                          dateRange={dateRange}
+                          onDateRangeChange={setDateRange}
+                          disabledBefore={new Date()}
+                          isOpen={calendarOpen}
+                          onOpenChange={setCalendarOpen}
+                        />
                       </div>
 
                       {/* Reason */}
                       <div className="space-y-2">
-                        <Label htmlFor="reason">Reason for Request</Label>
+                        <Label htmlFor="reason" className="text-xs font-medium">Reason for Request</Label>
                         <Textarea
                           id="reason"
                           placeholder="Please describe why you need this device..."
                           value={reason}
                           onChange={(e) => setReason(e.target.value)}
-                          rows={4}
-                          className="resize-none"
+                          rows={3}
+                          className="resize-none rounded-xl text-sm"
                         />
                       </div>
 
                       <Button
                         onClick={handleProceedToConfirm}
-                        className="w-full"
+                        className="w-full rounded-xl h-11"
                         size="lg"
+                        disabled={!dateRange?.from || !dateRange?.to || !reason.trim()}
                       >
                         Review Request
                         <ArrowRight className="h-4 w-4 ml-2" />

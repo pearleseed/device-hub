@@ -63,7 +63,8 @@ export const useOverdueAlerts = () => {
             type: "overdue",
             title: "Overdue Return Alert",
             message: `${item.device.name} is ${item.daysOverdue} day${item.daysOverdue > 1 ? "s" : ""} overdue (assigned to ${item.user.name})`,
-            link: "/admin/requests",
+            link: "/admin/requests?tab=borrow",
+            audience: "admin",
           });
         }
 

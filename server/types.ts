@@ -1,6 +1,6 @@
 // Shared TypeScript types for the backend
 
-export type UserRole = "admin" | "user";
+export type UserRole = "superuser" | "admin" | "user";
 export type DeviceStatus = "available" | "borrowed" | "maintenance";
 export type DeviceCategory =
   | "laptop"
@@ -15,6 +15,7 @@ export type RequestStatus =
   | "returned"
   | "rejected";
 export type DeviceCondition = "excellent" | "good" | "fair" | "damaged";
+export type RenewalStatus = "pending" | "approved" | "rejected";
 
 export interface Department {
   id: number;
@@ -31,6 +32,8 @@ export interface User {
   department_id: number;
   role: UserRole;
   avatar_url: string | null;
+  is_active: boolean;
+  last_login_at: Date | null;
   created_at: Date;
 }
 
@@ -42,6 +45,8 @@ export interface UserPublic {
   department_name?: string;
   role: UserRole;
   avatar_url: string | null;
+  is_active: boolean;
+  last_login_at: Date | null;
   created_at: Date;
 }
 
@@ -107,6 +112,30 @@ export interface ReturnRequestWithDetails extends ReturnRequest {
   user_name?: string;
 }
 
+export interface RenewalRequest {
+  id: number;
+  borrow_request_id: number;
+  user_id: number;
+  current_end_date: Date;
+  requested_end_date: Date;
+  reason: string;
+  status: RenewalStatus;
+  reviewed_by: number | null;
+  reviewed_at: Date | null;
+  created_at: Date;
+}
+
+export interface RenewalRequestWithDetails extends RenewalRequest {
+  device_id?: number;
+  borrow_start_date?: Date;
+  device_name?: string;
+  device_asset_tag?: string;
+  device_image?: string;
+  user_name?: string;
+  user_email?: string;
+  reviewed_by_name?: string;
+}
+
 // API Request/Response types
 export interface LoginRequest {
   email: string;
@@ -138,6 +167,12 @@ export interface CreateReturnRequest {
   borrow_request_id: number;
   condition: DeviceCondition;
   notes?: string;
+}
+
+export interface CreateRenewalRequest {
+  borrow_request_id: number;
+  requested_end_date: string;
+  reason: string;
 }
 
 export interface CreateDeviceRequest {
