@@ -1,0 +1,563 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300..700&display=swap");
+
+@import "tailwindcss";
+
+/* Device Management System Design System
+   Style: Modern SaaS, Clean Minimalism, "Linear-like"
+   Tailwind CSS v4 Configuration - Optimized for latest patterns
+*/
+
+/* Custom theme values for Tailwind v4 */
+@theme {
+  /* Font family - Using variable font */
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+
+  /* Border radius */
+  --radius-lg: 0.75rem;
+  --radius-md: calc(0.75rem - 2px);
+  --radius-sm: calc(0.75rem - 4px);
+  --radius-xl: 1rem;
+  --radius-2xl: 1.25rem;
+
+  /* Container */
+  --container-2xl: 1400px;
+
+  /* Custom colors using CSS variables */
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+
+  /* Sidebar colors */
+  --color-sidebar: hsl(var(--sidebar-background));
+  --color-sidebar-foreground: hsl(var(--sidebar-foreground));
+  --color-sidebar-primary: hsl(var(--sidebar-primary));
+  --color-sidebar-primary-foreground: hsl(var(--sidebar-primary-foreground));
+  --color-sidebar-accent: hsl(var(--sidebar-accent));
+  --color-sidebar-accent-foreground: hsl(var(--sidebar-accent-foreground));
+  --color-sidebar-border: hsl(var(--sidebar-border));
+  --color-sidebar-ring: hsl(var(--sidebar-ring));
+
+  /* Status colors */
+  --color-status-available: hsl(var(--status-available));
+  --color-status-available-foreground: hsl(var(--status-available-foreground));
+  --color-status-borrowed: hsl(var(--status-borrowed));
+  --color-status-borrowed-foreground: hsl(var(--status-borrowed-foreground));
+  --color-status-maintenance: hsl(var(--status-maintenance));
+  --color-status-maintenance-foreground: hsl(
+    var(--status-maintenance-foreground)
+  );
+
+  /* Chart colors */
+  --color-chart-1: hsl(var(--chart-1));
+  --color-chart-2: hsl(var(--chart-2));
+  --color-chart-3: hsl(var(--chart-3));
+  --color-chart-4: hsl(var(--chart-4));
+  --color-chart-5: hsl(var(--chart-5));
+
+  /* Custom shadows - Optimized for modern displays */
+  --shadow-soft:
+    0 2px 8px -2px rgba(0, 0, 0, 0.05), 0 4px 16px -4px rgba(0, 0, 0, 0.1);
+  --shadow-medium:
+    0 4px 12px -2px rgba(0, 0, 0, 0.08), 0 8px 24px -4px rgba(0, 0, 0, 0.12);
+  --shadow-elevated:
+    0 8px 24px -4px rgba(0, 0, 0, 0.1), 0 16px 48px -8px rgba(0, 0, 0, 0.15);
+  --shadow-glow: 0 0 20px -5px rgba(0, 0, 0, 0.1);
+
+  /* Modern easing functions */
+  --ease-spring: cubic-bezier(0.37, 0, 0.63, 1);
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out-circ: cubic-bezier(0.85, 0, 0.15, 1);
+
+  /* Animations */
+  --animate-accordion-down: accordion-down 0.2s var(--ease-out-expo);
+  --animate-accordion-up: accordion-up 0.2s var(--ease-out-expo);
+  --animate-fade-in: fade-in 0.3s var(--ease-out-expo);
+  --animate-slide-up: slide-up 0.4s var(--ease-out-expo);
+  --animate-scale-in: scale-in 0.2s var(--ease-out-expo);
+
+  @keyframes accordion-down {
+    from {
+      height: 0;
+      opacity: 0;
+    }
+    to {
+      height: var(--radix-accordion-content-height);
+      opacity: 1;
+    }
+  }
+
+  @keyframes accordion-up {
+    from {
+      height: var(--radix-accordion-content-height);
+      opacity: 1;
+    }
+    to {
+      height: 0;
+      opacity: 0;
+    }
+  }
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes slide-up {
+    from {
+      opacity: 0;
+      transform: translateY(16px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes scale-in {
+    from {
+      opacity: 0;
+      transform: scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  @keyframes caret-blink {
+    0%,
+    70%,
+    100% {
+      opacity: 1;
+    }
+    20%,
+    50% {
+      opacity: 0;
+    }
+  }
+}
+
+/* Dark mode variant for Tailwind v4 */
+@variant dark (&:where(.dark, .dark *));
+
+/* CSS Variables - Light Mode (base) */
+:root {
+  /* Deep Navy Blue Primary - Professional */
+  --background: 210 40% 98%;
+  --foreground: 222 47% 11%;
+
+  --card: 0 0% 100%;
+  --card-foreground: 222 47% 11%;
+
+  --popover: 0 0% 100%;
+  --popover-foreground: 222 47% 11%;
+
+  --primary: 222 47% 11%;
+  --primary-foreground: 210 40% 98%;
+
+  --secondary: 210 40% 96%;
+  --secondary-foreground: 222 47% 11%;
+
+  --muted: 210 40% 96%;
+  --muted-foreground: 215 16% 47%;
+
+  --accent: 210 40% 96%;
+  --accent-foreground: 222 47% 11%;
+
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 210 40% 98%;
+
+  --border: 214 32% 91%;
+  --input: 214 32% 91%;
+  --ring: 222 47% 11%;
+
+  --radius: 0.75rem;
+
+  /* Focus ring for accessibility */
+  --focus-ring: 222 47% 40%;
+  --focus-ring-offset: 210 40% 98%;
+
+  /* Status Colors */
+  --status-available: 142 71% 45%;
+  --status-available-foreground: 0 0% 100%;
+  --status-borrowed: 25 95% 53%;
+  --status-borrowed-foreground: 0 0% 100%;
+  --status-maintenance: 215 16% 47%;
+  --status-maintenance-foreground: 0 0% 100%;
+
+  /* Sidebar - Dark Theme */
+  --sidebar-background: 222 47% 11%;
+  --sidebar-foreground: 210 40% 96%;
+  --sidebar-primary: 210 40% 98%;
+  --sidebar-primary-foreground: 222 47% 11%;
+  --sidebar-accent: 222 47% 18%;
+  --sidebar-accent-foreground: 210 40% 96%;
+  --sidebar-border: 222 47% 18%;
+  --sidebar-ring: 210 40% 98%;
+
+  /* Chart Colors */
+  --chart-1: 222 47% 11%;
+  --chart-2: 142 71% 45%;
+  --chart-3: 25 95% 53%;
+  --chart-4: 215 16% 47%;
+  --chart-5: 262 83% 58%;
+
+  /* Login Hero Panel - Light Mode */
+  --login-hero-bg-from: 222 47% 11%;
+  --login-hero-bg-via: 222 47% 11%;
+  --login-hero-bg-to: 222 47% 9%;
+  --login-hero-text: 210 40% 98%;
+  --login-hero-text-muted: 210 40% 80%;
+  --login-hero-glow: 0 0% 100% / 0.05;
+  --login-hero-icon-bg: 0 0% 100% / 0.1;
+  --login-hero-icon-border: 0 0% 100% / 0.2;
+}
+
+/* CSS Variables - Dark Mode */
+.dark {
+  /* Brighter background for better readability */
+  --background: 222 47% 9%;
+  --foreground: 210 40% 98%;
+
+  /* Cards with better contrast against background */
+  --card: 222 47% 13%;
+  --card-foreground: 210 40% 98%;
+
+  --popover: 222 47% 13%;
+  --popover-foreground: 210 40% 98%;
+
+  --primary: 210 40% 98%;
+  --primary-foreground: 222 47% 11%;
+
+  /* Brighter secondary elements */
+  --secondary: 222 47% 18%;
+  --secondary-foreground: 210 40% 98%;
+
+  --muted: 222 47% 18%;
+  /* Brighter muted text for better readability */
+  --muted-foreground: 215 25% 72%;
+
+  --accent: 222 47% 18%;
+  --accent-foreground: 210 40% 98%;
+
+  --destructive: 0 63% 40%;
+  --destructive-foreground: 210 40% 98%;
+
+  /* Better visible borders */
+  --border: 222 47% 22%;
+  --input: 222 47% 22%;
+  --ring: 210 40% 80%;
+
+  /* Focus ring for accessibility - Dark mode */
+  --focus-ring: 210 40% 70%;
+  --focus-ring-offset: 222 47% 9%;
+
+  /* Status Colors - Dark Mode - Slightly brighter */
+  --status-available: 142 71% 50%;
+  --status-available-foreground: 0 0% 100%;
+  --status-borrowed: 25 95% 58%;
+  --status-borrowed-foreground: 0 0% 100%;
+  --status-maintenance: 215 20% 55%;
+  --status-maintenance-foreground: 0 0% 100%;
+
+  /* Sidebar with better contrast */
+  --sidebar-background: 222 47% 7%;
+  --sidebar-foreground: 210 40% 96%;
+  --sidebar-primary: 210 40% 98%;
+  --sidebar-primary-foreground: 222 47% 11%;
+  --sidebar-accent: 222 47% 15%;
+  --sidebar-accent-foreground: 210 40% 96%;
+  --sidebar-border: 222 47% 16%;
+  --sidebar-ring: 210 40% 98%;
+
+  /* Login Hero Panel - Dark Mode */
+  --login-hero-bg-from: 222 47% 7%;
+  --login-hero-bg-via: 222 47% 10%;
+  --login-hero-bg-to: 222 47% 7%;
+  --login-hero-text: 210 40% 96%;
+  --login-hero-text-muted: 215 20% 65%;
+  --login-hero-glow: 222 47% 50% / 0.1;
+  --login-hero-icon-bg: 222 47% 50% / 0.2;
+  --login-hero-icon-border: 222 47% 50% / 0.3;
+}
+
+/* Base styles */
+@layer base {
+  * {
+    @apply border-border;
+    /* Hide scrollbars while maintaining scroll functionality */
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE and Edge */
+  }
+
+  *::-webkit-scrollbar {
+    display: none; /* Chrome, Safari, Opera */
+  }
+
+  /* Theme transition styles - applied during theme changes */
+  html.theme-transitioning,
+  html.theme-transitioning *,
+  html.theme-transitioning *::before,
+  html.theme-transitioning *::after {
+    transition:
+      background-color 300ms ease-out,
+      border-color 300ms ease-out,
+      color 200ms ease-out,
+      fill 200ms ease-out,
+      stroke 200ms ease-out,
+      box-shadow 300ms ease-out !important;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+
+  /* Container centering fix */
+  .container {
+    width: 100%;
+    max-width: 1400px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply font-semibold tracking-tight;
+  }
+
+  /* Focus States for Accessibility */
+  :focus-visible {
+    @apply outline-none ring-2 ring-offset-2;
+    --tw-ring-color: hsl(var(--focus-ring));
+    --tw-ring-offset-color: hsl(var(--focus-ring-offset));
+  }
+
+  /* Ensure focus is visible on all interactive elements */
+  a:focus-visible,
+  button:focus-visible,
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible,
+  [tabindex]:focus-visible {
+    @apply outline-none ring-2 ring-offset-2;
+    --tw-ring-color: hsl(var(--focus-ring));
+    --tw-ring-offset-color: hsl(var(--focus-ring-offset));
+  }
+
+  /* Remove default outline but keep for non-mouse users */
+  :focus:not(:focus-visible) {
+    outline: none;
+  }
+}
+
+@layer components {
+  /* Skip to Content Link - Accessibility */
+  .skip-to-content {
+    @apply fixed top-0 left-0 z-100 px-4 py-2 text-sm font-medium;
+    @apply bg-primary text-primary-foreground rounded-br-lg;
+    @apply transform -translate-y-full transition-transform duration-200;
+    @apply focus:translate-y-0;
+  }
+
+  /* Screen reader only text */
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
+  }
+
+  /* Focus trap indicator for modals */
+  .focus-trap-indicator {
+    @apply absolute inset-0 pointer-events-none;
+    @apply ring-2 ring-inset ring-primary/20 rounded-lg;
+  }
+}
+
+@layer utilities {
+  .glass-effect {
+    @apply backdrop-blur-lg bg-white/80 border border-white/20;
+  }
+
+  /* Login hero panel with CSS variable-based theming for smooth transitions */
+  .login-hero-panel {
+    background: linear-gradient(
+      to bottom right,
+      hsl(var(--login-hero-bg-from)),
+      hsl(var(--login-hero-bg-via)),
+      hsl(var(--login-hero-bg-to))
+    );
+  }
+
+  .login-hero-text {
+    color: hsl(var(--login-hero-text));
+  }
+
+  .login-hero-text-muted {
+    color: hsl(var(--login-hero-text-muted));
+  }
+
+  .login-hero-glow {
+    background-color: hsl(var(--login-hero-glow));
+  }
+
+  .login-hero-icon-bg {
+    background-color: hsl(var(--login-hero-icon-bg));
+    border-color: hsl(var(--login-hero-icon-border));
+  }
+
+  /* Shimmer animation for loading skeletons */
+  .animate-shimmer {
+    background: linear-gradient(
+      90deg,
+      hsl(var(--muted)) 0%,
+      hsl(var(--muted-foreground) / 0.1) 50%,
+      hsl(var(--muted)) 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.5s ease-in-out infinite;
+  }
+
+  /* Success pulse animation */
+  .animate-success-pulse {
+    animation: success-pulse 0.6s ease-out;
+  }
+
+  /* Confetti-like celebration effect */
+  .animate-celebrate {
+    animation: celebrate 0.5s ease-out;
+  }
+}
+
+/* Custom keyframes (outside @theme for complex animations) */
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+@keyframes success-pulse {
+  0% {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes celebrate {
+  0% {
+    transform: scale(0) rotate(-180deg);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.2) rotate(10deg);
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  :root {
+    --border: 222 47% 30%;
+    --muted-foreground: 222 47% 30%;
+  }
+}
+
+/* Reduced Motion Support */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  /* Disable specific animations */
+  .animate-spin,
+  .animate-pulse,
+  .animate-bounce,
+  .animate-ping {
+    animation: none !important;
+  }
+
+  /* Disable hover transforms */
+  .hover\:-translate-y-1:hover,
+  .hover\:scale-105:hover,
+  .group-hover\:scale-105 {
+    transform: none !important;
+  }
+}
+
+/* Print styles for accessibility */
+@media print {
+  .no-print,
+  [aria-hidden="true"] {
+    display: none !important;
+  }
+
+  body {
+    background: white !important;
+    color: black !important;
+  }
+
+  a[href]::after {
+    content: " (" attr(href) ")";
+  }
+}
+
+/* Sidebar tooltip z-index fix - ensure tooltips appear above main content */
+[data-radix-popper-content-wrapper] {
+  z-index: 9999 !important;
+}
