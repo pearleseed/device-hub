@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useMemo, memo, useCallback } from "react";
 import { Link } from "react-router-dom";
 import type { DeviceWithDepartment } from "@/types/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,23 +15,19 @@ interface RecentlyViewedSectionProps {
   className?: string;
 }
 
-export const RecentlyViewedSection: React.FC<RecentlyViewedSectionProps> = ({
-  deviceIds,
-  onClear,
-  onDeviceClick,
-  className,
+export const RecentlyViewedSection: React.FC<RecentlyViewedSectionProps> = memo(({
+  deviceIds, onClear, onDeviceClick, className,
 }) => {
   const { data: allDevices = [] } = useDevices();
 
-  const deviceMap = useMemo(() => {
-    return new Map(allDevices.map((d) => [String(d.id), d]));
-  }, [allDevices]);
-
   const devices = useMemo(() => {
-    return deviceIds
-      .map((id) => deviceMap.get(id))
-      .filter((d): d is DeviceWithDepartment => d !== undefined);
-  }, [deviceIds, deviceMap]);
+    const deviceMap = new Map(allDevices.map((d) => [String(d.id), d]));
+    return deviceIds.map((id) => deviceMap.get(id)).filter((d): d is DeviceWithDepartment => !!d);
+  }, [deviceIds, allDevices]);
+
+  const handleKeyDown = useCallback((e: React.KeyboardEvent, device: DeviceWithDepartment) => {
+    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onDeviceClick?.(device); }
+  }, [onDeviceClick]);
 
   if (devices.length === 0) return null;
 
@@ -42,14 +38,8 @@ export const RecentlyViewedSection: React.FC<RecentlyViewedSectionProps> = ({
           <Eye className="h-4 w-4 text-muted-foreground" />
           <CardTitle className="text-base">Recently Viewed</CardTitle>
         </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onClear}
-          className="text-muted-foreground hover:text-foreground h-8"
-        >
-          <X className="h-3 w-3 mr-1" />
-          Clear
+        <Button variant="ghost" size="sm" onClick={onClear} className="text-muted-foreground hover:text-foreground h-8">
+          <X className="h-3 w-3 mr-1" />Clear
         </Button>
       </CardHeader>
       <CardContent>
@@ -59,51 +49,31 @@ export const RecentlyViewedSection: React.FC<RecentlyViewedSectionProps> = ({
               key={device.id}
               className="shrink-0 w-36 cursor-pointer group"
               onClick={() => onDeviceClick?.(device)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  onDeviceClick?.(device);
-                }
-              }}
+              onKeyDown={(e) => handleKeyDown(e, device)}
               tabIndex={0}
               role="button"
               aria-label={`View ${device.name}`}
             >
               <div className="aspect-4/3 rounded-lg overflow-hidden bg-muted mb-2 relative">
                 <img
-                  src={getDeviceThumbnailUrl(
-                    device.image_thumbnail_url,
-                    device.image_url,
-                    device.category,
-                  )}
+                  src={getDeviceThumbnailUrl(device.image_thumbnail_url, device.image_url, device.category)}
                   alt={device.name}
                   className="w-full h-full object-cover transition-transform group-hover:scale-105"
                   loading="lazy"
                 />
                 <div className="absolute top-2 left-2">
-                  <StatusBadge
-                    status={device.status}
-                    className="scale-75 origin-top-left"
-                  />
+                  <StatusBadge status={device.status} className="scale-75 origin-top-left" />
                 </div>
               </div>
-              <h4 className="text-sm font-medium truncate group-hover:text-primary transition-colors">
-                {device.name}
-              </h4>
-              <p className="text-xs text-muted-foreground truncate">
-                {device.brand}
-              </p>
+              <h4 className="text-sm font-medium truncate group-hover:text-primary transition-colors">{device.name}</h4>
+              <p className="text-xs text-muted-foreground truncate">{device.brand}</p>
             </div>
           ))}
         </div>
-
         <Button asChild variant="ghost" size="sm" className="mt-3 w-full">
-          <Link to="/catalog">
-            Browse Full Catalog
-            <ArrowRight className="h-3 w-3 ml-1" />
-          </Link>
+          <Link to="/catalog">Browse Full Catalog<ArrowRight className="h-3 w-3 ml-1" /></Link>
         </Button>
       </CardContent>
     </Card>
   );
-};
+});

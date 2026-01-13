@@ -32,6 +32,7 @@ import {
 } from "lucide-react";
 import { cn, getDeviceImageUrl, getDeviceThumbnailUrl } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { useCreateBorrowRequest } from "@/hooks/use-api-mutations";
 import type { DateRange } from "react-day-picker";
 
 interface DeviceDetailModalProps {
@@ -61,6 +62,10 @@ export const DeviceDetailModal: React.FC<DeviceDetailModalProps> = ({
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const [reason, setReason] = useState("");
   const [step, setStep] = useState<ModalStep>("details");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Mutation hook for creating borrow request
+  const createBorrowRequest = useCreateBorrowRequest();
 
   if (!device) return null;
 
@@ -88,8 +93,26 @@ export const DeviceDetailModal: React.FC<DeviceDetailModalProps> = ({
     setStep("confirm");
   };
 
-  const handleConfirmRequest = () => {
-    setStep("success");
+  const handleConfirmRequest = async () => {
+    if (!device || !dateRange?.from || !dateRange?.to) return;
+    
+    setIsSubmitting(true);
+    
+    try {
+      await createBorrowRequest.mutateAsync({
+        device_id: device.id,
+        start_date: format(dateRange.from, "yyyy-MM-dd"),
+        end_date: format(dateRange.to, "yyyy-MM-dd"),
+        reason: reason.trim(),
+      });
+      
+      setStep("success");
+    } catch (error) {
+      // Error is already handled by the mutation hook's onError
+      console.error("Failed to submit borrow request:", error);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleClose = () => {
@@ -221,12 +244,22 @@ export const DeviceDetailModal: React.FC<DeviceDetailModalProps> = ({
               variant="outline"
               onClick={() => setStep("details")}
               className="flex-1"
+              disabled={isSubmitting}
             >
               Back
             </Button>
-            <Button onClick={handleConfirmRequest} className="flex-1">
-              <Sparkles className="h-4 w-4 mr-2" />
-              Submit Request
+            <Button onClick={handleConfirmRequest} className="flex-1" disabled={isSubmitting}>
+              {isSubmitting ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                  Submitting...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="h-4 w-4 mr-2" />
+                  Submit Request
+                </>
+              )}
             </Button>
           </div>
         </DialogContent>

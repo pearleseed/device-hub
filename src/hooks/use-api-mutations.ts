@@ -139,8 +139,10 @@ export function useCreateBorrowRequest(): UseMutationResult<
     mutationFn: (data: CreateBorrowRequest) =>
       apiClient.post<BorrowRequestWithDetails>("/api/borrow", data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.borrowRequests.all });
-      queryClient.invalidateQueries({ queryKey: queryKeys.devices.all });
+      // Invalidate all borrow request queries including user-specific ones
+      queryClient.invalidateQueries({ queryKey: ["borrowRequests"] });
+      // Invalidate all device queries (including filtered ones)
+      queryClient.invalidateQueries({ queryKey: ["devices"] });
       handleMutationSuccess("Borrow request submitted successfully");
     },
     onError: (error: Error) => {
@@ -165,11 +167,10 @@ export function useUpdateBorrowStatus(): UseMutationResult<
         status,
       }),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.borrowRequests.all });
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.borrowRequests.detail(variables.id),
-      });
-      queryClient.invalidateQueries({ queryKey: queryKeys.devices.all });
+      // Invalidate all borrow request queries
+      queryClient.invalidateQueries({ queryKey: ["borrowRequests"] });
+      // Invalidate all device queries
+      queryClient.invalidateQueries({ queryKey: ["devices"] });
       handleMutationSuccess(`Borrow request ${variables.status} successfully`);
     },
     onError: (error: Error) => {
@@ -203,6 +204,32 @@ export function useCreateReturnRequest(): UseMutationResult<
     },
     onError: (error: Error) => {
       handleMutationError(error, "Create Return Request");
+    },
+  });
+}
+
+/**
+ * Update return request condition (admin only)
+ */
+export function useUpdateReturnCondition(): UseMutationResult<
+  ReturnRequestWithDetails,
+  Error,
+  { id: number; condition: "excellent" | "good" | "fair" | "damaged" }
+> {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, condition }: { id: number; condition: "excellent" | "good" | "fair" | "damaged" }) =>
+      apiClient.patch<ReturnRequestWithDetails>(`/api/returns/${id}/condition`, {
+        condition,
+      }),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.returns.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.devices.all });
+      handleMutationSuccess(`Return condition updated to ${variables.condition}`);
+    },
+    onError: (error: Error) => {
+      handleMutationError(error, "Update Return Condition");
     },
   });
 }
@@ -269,6 +296,37 @@ export function useUpdateRenewalStatus(): UseMutationResult<
 // ============================================================================
 // User Mutations
 // ============================================================================
+
+/**
+ * Create a new user (admin only)
+ */
+export interface CreateUserRequest {
+  name: string;
+  email: string;
+  password: string;
+  department_id: number;
+  role?: "user" | "admin" | "superuser";
+}
+
+export function useCreateUser(): UseMutationResult<
+  UserPublic,
+  Error,
+  CreateUserRequest
+> {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: CreateUserRequest) =>
+      apiClient.post<UserPublic>("/api/users", data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.users.all });
+      handleMutationSuccess("User created successfully");
+    },
+    onError: (error: Error) => {
+      handleMutationError(error, "Create User");
+    },
+  });
+}
 
 /**
  * Update user profile/details

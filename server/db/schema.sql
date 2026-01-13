@@ -146,11 +146,15 @@ SELECT
     dept.name AS department_name,
     dept.code AS department_code,
     br.user_id AS assigned_to_id,
-    u.name AS assigned_to_name
+    u.name AS assigned_to_name,
+    u.avatar_url AS assigned_to_avatar,
+    u.department_id AS assigned_to_department_id,
+    user_dept.name AS assigned_to_department_name
 FROM devices d
 LEFT JOIN departments dept ON d.department_id = dept.id
 LEFT JOIN borrow_requests br ON d.id = br.device_id AND br.status = 'active'
-LEFT JOIN users u ON br.user_id = u.id;
+LEFT JOIN users u ON br.user_id = u.id
+LEFT JOIN departments user_dept ON u.department_id = user_dept.id;
 
 -- View: Borrow requests with full details
 CREATE OR REPLACE VIEW v_borrow_details AS

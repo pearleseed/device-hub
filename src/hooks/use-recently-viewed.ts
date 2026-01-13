@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 
 const STORAGE_KEY = "recently-viewed-devices";
 const MAX_ITEMS = 6;
@@ -28,9 +28,9 @@ export function useRecentlyViewed() {
     localStorage.removeItem(STORAGE_KEY);
   }, []);
 
-  return {
+  return useMemo(() => ({
     recentlyViewed,
     addToRecentlyViewed,
     clearRecentlyViewed,
-  };
+  }), [recentlyViewed, addToRecentlyViewed, clearRecentlyViewed]);
 }

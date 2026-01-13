@@ -46,11 +46,17 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({
   // Memoize current translations for performance
   const currentTranslations = useMemo(() => translations[language], [language]);
 
-  // Persist language preference
+  // Persist language preference and update HTML lang attribute
   const setLanguage = useCallback((lang: Language) => {
     setLanguageState(lang);
     localStorage.setItem(LANGUAGE_STORAGE_KEY, lang);
+    document.documentElement.lang = lang;
   }, []);
+
+  // Set initial HTML lang attribute
+  useEffect(() => {
+    document.documentElement.lang = language;
+  }, [language]);
 
   // Translation function with optional parameter interpolation
   const t = useCallback(

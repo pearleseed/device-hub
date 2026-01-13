@@ -1,414 +1,204 @@
 import { db } from "../db/connection";
-import {
-  authenticateRequest,
-  requireAdmin,
-  hashPassword,
-} from "../middleware/auth";
+import { hashPassword, requireAdmin } from "../middleware/auth";
 import { auditLogger } from "../services/audit-logger";
+import { json, ok, created, err, notFound, forbidden, parseId, withAuth, withAdmin, withSuperuser } from "./_helpers";
 import type { UserPublic } from "../types";
 
-// JSON response helper
-function jsonResponse(data: unknown, status = 200): Response {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: { "Content-Type": "application/json" },
-  });
-}
-
 export const usersRoutes = {
-  // GET /api/users
   async getAll(request: Request): Promise<Response> {
-    try {
-      const payload = await authenticateRequest(request);
-      if (!payload) {
-        return jsonResponse({ success: false, error: "Unauthorized" }, 401);
+    return withAdmin(request, async () => {
+      try {
+        const users = await db<UserPublic[]>`SELECT * FROM v_users_public ORDER BY name`;
+        return ok(users);
+      } catch (e) {
+        console.error("Get users error:", e);
+        return err("Failed to get users", 500);
       }
-
-      // Only admins can list all users
-      if (!requireAdmin(payload)) {
-        return jsonResponse({ success: false, error: "Forbidden" }, 403);
-      }
-
-      const users = await db<
-        UserPublic[]
-      >`SELECT * FROM v_users_public ORDER BY name`;
-      return jsonResponse({ success: true, data: users });
-    } catch (error) {
-      console.error("Get users error:", error);
-      return jsonResponse(
-        { success: false, error: "Failed to get users" },
-        500,
-      );
-    }
+    });
   },
 
-  // GET /api/users/:id
-  async getById(
-    request: Request,
-    params: Record<string, string>,
-  ): Promise<Response> {
-    try {
-      const payload = await authenticateRequest(request);
-      if (!payload) {
-        return jsonResponse({ success: false, error: "Unauthorized" }, 401);
-      }
+  async create(request: Request): Promise<Response> {
+    return withAdmin(request, async (payload) => {
+      try {
+        const { name, email, password, department_id, role } = await request.json() as {
+          name: string; email: string; password: string; department_id: number; role?: "user" | "admin" | "superuser";
+        };
 
-      const id = parseInt(params.id);
-      if (isNaN(id)) {
-        return jsonResponse({ success: false, error: "Invalid user ID" }, 400);
-      }
+        if (!name?.trim()) return err("Name is required");
+        if (!email?.trim()) return err("Email is required");
+        if (!password || password.length < 6) return err("Password must be at least 6 characters");
+        if (!department_id) return err("Department is required");
 
-      // Users can only view their own profile, admins can view any
-      if (payload.userId !== id && !requireAdmin(payload)) {
-        return jsonResponse({ success: false, error: "Forbidden" }, 403);
-      }
+        const emailLower = email.toLowerCase().trim();
+        const [existing] = await db<{ id: number }[]>`SELECT id FROM users WHERE LOWER(email) = ${emailLower}`;
+        if (existing) return err("Email already exists");
 
-      const users = await db<
-        UserPublic[]
-      >`SELECT * FROM v_users_public WHERE id = ${id}`;
-      const user = users[0];
-
-      if (!user) {
-        return jsonResponse({ success: false, error: "User not found" }, 404);
-      }
-
-      return jsonResponse({ success: true, data: user });
-    } catch (error) {
-      console.error("Get user error:", error);
-      return jsonResponse({ success: false, error: "Failed to get user" }, 500);
-    }
-  },
-
-  // PUT /api/users/:id
-  async update(
-    request: Request,
-    params: Record<string, string>,
-  ): Promise<Response> {
-    try {
-      const payload = await authenticateRequest(request);
-      if (!payload) {
-        return jsonResponse({ success: false, error: "Unauthorized" }, 401);
-      }
-
-      const id = parseInt(params.id);
-      if (isNaN(id)) {
-        return jsonResponse({ success: false, error: "Invalid user ID" }, 400);
-      }
-
-      // Users can only update their own profile, admins can update any
-      if (payload.userId !== id && !requireAdmin(payload)) {
-        return jsonResponse({ success: false, error: "Forbidden" }, 403);
-      }
-
-      const body = await request.json();
-      const { name, department_id, avatar_url, role } = body;
-
-      // Build update query dynamically
-      const updates: string[] = [];
-      const values: unknown[] = [];
-
-      if (name !== undefined) {
-        updates.push("name = ?");
-        values.push(name.trim());
-      }
-      if (department_id !== undefined) {
-        updates.push("department_id = ?");
-        values.push(department_id);
-      }
-      if (avatar_url !== undefined) {
-        updates.push("avatar_url = ?");
-        values.push(avatar_url);
-      }
-      // Role change restrictions:
-      // - Only superusers can assign superuser role
-      // - Admins can only assign 'user' role, not 'admin' or 'superuser'
-      if (role !== undefined && requireAdmin(payload)) {
-        // Superusers can assign any role
-        if (payload.role === "superuser") {
-          updates.push("role = ?");
-          values.push(role);
+        let userRole: "user" | "admin" | "superuser" = "user";
+        if (role) {
+          if (payload.role === "superuser") userRole = role;
+          else if (payload.role === "admin" && role !== "user") return forbidden("Admins can only create user accounts");
         }
-        // Admins can only assign 'user' role
-        else if (payload.role === "admin" && role === "user") {
-          updates.push("role = ?");
-          values.push(role);
+
+        const password_hash = await hashPassword(password);
+        const avatar_url = `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name.trim())}`;
+
+        await db`INSERT INTO users (name, email, password_hash, department_id, role, avatar_url, must_change_password)
+                 VALUES (${name.trim()}, ${emailLower}, ${password_hash}, ${department_id}, ${userRole}, ${avatar_url}, true)`;
+
+        const [newUser] = await db<UserPublic[]>`SELECT * FROM v_users_public WHERE email = ${emailLower}`;
+        if (!newUser) return err("Failed to create user", 500);
+
+        await auditLogger.log({
+          action: "create", objectType: "user", objectId: newUser.id,
+          actor: auditLogger.createActorFromPayload(payload),
+          changes: { after: { name: name.trim(), email: emailLower, department_id, role: userRole } },
+        });
+
+        return created(newUser, "User created successfully");
+      } catch (e) {
+        console.error("Create user error:", e);
+        return err("Failed to create user", 500);
+      }
+    });
+  },
+
+  async getById(request: Request, params: Record<string, string>): Promise<Response> {
+    return withAuth(request, async (payload) => {
+      try {
+        const id = parseId(params.id);
+        if (!id) return err("Invalid user ID");
+        if (payload.userId !== id && !requireAdmin(payload)) return forbidden();
+
+        const [user] = await db<UserPublic[]>`SELECT * FROM v_users_public WHERE id = ${id}`;
+        return user ? ok(user) : notFound("User");
+      } catch (e) {
+        console.error("Get user error:", e);
+        return err("Failed to get user", 500);
+      }
+    });
+  },
+
+  async update(request: Request, params: Record<string, string>): Promise<Response> {
+    return withAuth(request, async (payload) => {
+      try {
+        const id = parseId(params.id);
+        if (!id) return err("Invalid user ID");
+        if (payload.userId !== id && !requireAdmin(payload)) return forbidden();
+
+        const { name, department_id, avatar_url, role } = await request.json();
+        const updates: string[] = [], values: unknown[] = [];
+
+        if (name !== undefined) { updates.push("name = ?"); values.push(name.trim()); }
+        if (department_id !== undefined) { updates.push("department_id = ?"); values.push(department_id); }
+        if (avatar_url !== undefined) { updates.push("avatar_url = ?"); values.push(avatar_url); }
+
+        if (role !== undefined && requireAdmin(payload)) {
+          if (payload.role === "superuser") { updates.push("role = ?"); values.push(role); }
+          else if (payload.role === "admin" && role === "user") { updates.push("role = ?"); values.push(role); }
+          else if (payload.role === "admin" && (role === "admin" || role === "superuser")) {
+            return forbidden("Admins cannot assign admin or superuser roles");
+          }
         }
-        // Admins trying to assign admin/superuser role - forbidden
-        else if (
-          payload.role === "admin" &&
-          (role === "admin" || role === "superuser")
-        ) {
-          return jsonResponse(
-            {
-              success: false,
-              error: "Admins cannot assign admin or superuser roles",
-            },
-            403,
-          );
-        }
+
+        if (!updates.length) return err("No fields to update");
+
+        const [before] = await db<UserPublic[]>`SELECT * FROM v_users_public WHERE id = ${id}`;
+        values.push(id);
+        await db.unsafe(`UPDATE users SET ${updates.join(", ")} WHERE id = ?`, values);
+        const [updated] = await db<UserPublic[]>`SELECT * FROM v_users_public WHERE id = ${id}`;
+
+        await auditLogger.log({
+          action: "update", objectType: "user", objectId: id,
+          actor: auditLogger.createActorFromPayload(payload),
+          changes: { before: before ? { ...before } : undefined, after: { name, department_id, avatar_url, role } },
+        });
+
+        return ok(updated, "User updated");
+      } catch (e) {
+        console.error("Update user error:", e);
+        return err("Failed to update user", 500);
       }
-
-      if (updates.length === 0) {
-        return jsonResponse(
-          { success: false, error: "No fields to update" },
-          400,
-        );
-      }
-
-      // Get current user state for audit log
-      const currentUsers = await db<
-        UserPublic[]
-      >`SELECT * FROM v_users_public WHERE id = ${id}`;
-      const beforeState = currentUsers[0] ? { ...currentUsers[0] } : undefined;
-
-      values.push(id);
-      await db.unsafe(
-        `UPDATE users SET ${updates.join(", ")} WHERE id = ?`,
-        values,
-      );
-
-      const updatedUsers = await db<
-        UserPublic[]
-      >`SELECT * FROM v_users_public WHERE id = ${id}`;
-      const updatedUser = updatedUsers[0];
-
-      // Audit log
-      await auditLogger.log({
-        action: "update",
-        objectType: "user",
-        objectId: id,
-        actor: auditLogger.createActorFromPayload(payload),
-        changes: {
-          before: beforeState,
-          after: { name, department_id, avatar_url, role },
-        },
-      });
-
-      return jsonResponse({
-        success: true,
-        data: updatedUser,
-        message: "User updated",
-      });
-    } catch (error) {
-      console.error("Update user error:", error);
-      return jsonResponse(
-        { success: false, error: "Failed to update user" },
-        500,
-      );
-    }
+    });
   },
 
-  // DELETE /api/users/:id
-  async delete(
-    request: Request,
-    params: Record<string, string>,
-  ): Promise<Response> {
-    try {
-      const payload = await authenticateRequest(request);
-      if (!payload) {
-        return jsonResponse({ success: false, error: "Unauthorized" }, 401);
+  async delete(request: Request, params: Record<string, string>): Promise<Response> {
+    return withSuperuser(request, async (payload) => {
+      try {
+        const id = parseId(params.id);
+        if (!id) return err("Invalid user ID");
+        if (payload.userId === id) return err("Cannot delete your own account");
+
+        const [active] = await db<{ count: number }[]>`
+          SELECT COUNT(*) as count FROM borrow_requests WHERE user_id = ${id} AND status IN ('pending', 'approved', 'active')`;
+        if (active.count > 0) return err("Cannot delete user with active borrow requests");
+
+        const [before] = await db<UserPublic[]>`SELECT * FROM v_users_public WHERE id = ${id}`;
+        await db`DELETE FROM users WHERE id = ${id}`;
+
+        await auditLogger.log({
+          action: "delete", objectType: "user", objectId: id,
+          actor: auditLogger.createActorFromPayload(payload),
+          changes: { before: before ? { ...before } : undefined },
+        });
+
+        return ok(null, "User deleted");
+      } catch (e) {
+        console.error("Delete user error:", e);
+        return err("Failed to delete user", 500);
       }
-
-      // Only superusers can delete users
-      if (payload.role !== "superuser") {
-        return jsonResponse(
-          { success: false, error: "Forbidden - Superuser access required" },
-          403,
-        );
-      }
-
-      const id = parseInt(params.id);
-      if (isNaN(id)) {
-        return jsonResponse({ success: false, error: "Invalid user ID" }, 400);
-      }
-
-      // Prevent self-deletion
-      if (payload.userId === id) {
-        return jsonResponse(
-          { success: false, error: "Cannot delete your own account" },
-          400,
-        );
-      }
-
-      // Check if user has active borrow requests
-      const activeRequests = await db<{ count: number }[]>`
-        SELECT COUNT(*) as count FROM borrow_requests 
-        WHERE user_id = ${id} AND status IN ('pending', 'approved', 'active')
-      `;
-      if (activeRequests[0].count > 0) {
-        return jsonResponse(
-          {
-            success: false,
-            error: "Cannot delete user with active borrow requests",
-          },
-          400,
-        );
-      }
-
-      // Get user info for audit log before deletion
-      const userToDelete = await db<
-        UserPublic[]
-      >`SELECT * FROM v_users_public WHERE id = ${id}`;
-      const deletedUser = userToDelete[0] ? { ...userToDelete[0] } : undefined;
-
-      await db`DELETE FROM users WHERE id = ${id}`;
-
-      // Audit log
-      await auditLogger.log({
-        action: "delete",
-        objectType: "user",
-        objectId: id,
-        actor: auditLogger.createActorFromPayload(payload),
-        changes: {
-          before: deletedUser,
-        },
-      });
-
-      return jsonResponse({ success: true, message: "User deleted" });
-    } catch (error) {
-      console.error("Delete user error:", error);
-      return jsonResponse(
-        { success: false, error: "Failed to delete user" },
-        500,
-      );
-    }
+    });
   },
 
-  // PATCH /api/users/:id/password
-  async resetPassword(
-    request: Request,
-    params: Record<string, string>,
-  ): Promise<Response> {
-    try {
-      const payload = await authenticateRequest(request);
-      if (!payload) {
-        return jsonResponse({ success: false, error: "Unauthorized" }, 401);
+  async resetPassword(request: Request, params: Record<string, string>): Promise<Response> {
+    return withSuperuser(request, async (payload) => {
+      try {
+        const id = parseId(params.id);
+        if (!id) return err("Invalid user ID");
+
+        const { password } = await request.json() as { password: string };
+        if (!password || password.length < 6) return err("Password must be at least 6 characters");
+
+        const hash = await hashPassword(password);
+        await db`UPDATE users SET password_hash = ${hash} WHERE id = ${id}`;
+
+        await auditLogger.log({
+          action: "password_reset", objectType: "user", objectId: id,
+          actor: auditLogger.createActorFromPayload(payload),
+          metadata: { targetUserId: id },
+        });
+
+        return ok(null, "Password reset successfully");
+      } catch (e) {
+        console.error("Reset password error:", e);
+        return err("Failed to reset password", 500);
       }
-
-      // Only superusers can reset passwords
-      if (payload.role !== "superuser") {
-        return jsonResponse(
-          { success: false, error: "Forbidden - Superuser access required" },
-          403,
-        );
-      }
-
-      const id = parseInt(params.id);
-      if (isNaN(id)) {
-        return jsonResponse({ success: false, error: "Invalid user ID" }, 400);
-      }
-
-      const body = await request.json();
-      const { password } = body as { password: string };
-
-      if (!password || password.length < 6) {
-        return jsonResponse(
-          { success: false, error: "Password must be at least 6 characters" },
-          400,
-        );
-      }
-
-      // Hash the new password
-      const password_hash = await hashPassword(password);
-
-      await db`UPDATE users SET password_hash = ${password_hash} WHERE id = ${id}`;
-
-      // Audit log
-      await auditLogger.log({
-        action: "password_reset",
-        objectType: "user",
-        objectId: id,
-        actor: auditLogger.createActorFromPayload(payload),
-        metadata: {
-          targetUserId: id,
-        },
-      });
-
-      return jsonResponse({
-        success: true,
-        message: "Password reset successfully",
-      });
-    } catch (error) {
-      console.error("Reset password error:", error);
-      return jsonResponse(
-        { success: false, error: "Failed to reset password" },
-        500,
-      );
-    }
+    });
   },
 
-  // PATCH /api/users/:id/status
-  async toggleStatus(
-    request: Request,
-    params: Record<string, string>,
-  ): Promise<Response> {
-    try {
-      const payload = await authenticateRequest(request);
-      if (!payload) {
-        return jsonResponse({ success: false, error: "Unauthorized" }, 401);
+  async toggleStatus(request: Request, params: Record<string, string>): Promise<Response> {
+    return withSuperuser(request, async (payload) => {
+      try {
+        const id = parseId(params.id);
+        if (!id) return err("Invalid user ID");
+        if (payload.userId === id) return err("Cannot change your own account status");
+
+        const { is_active } = await request.json() as { is_active: boolean };
+        if (typeof is_active !== "boolean") return err("is_active must be a boolean");
+
+        await db`UPDATE users SET is_active = ${is_active} WHERE id = ${id}`;
+        const [updated] = await db<UserPublic[]>`SELECT * FROM v_users_public WHERE id = ${id}`;
+
+        await auditLogger.log({
+          action: is_active ? "account_unlock" : "account_lock", objectType: "user", objectId: id,
+          actor: auditLogger.createActorFromPayload(payload),
+          changes: { before: { is_active: !is_active }, after: { is_active } },
+        });
+
+        return ok(updated, is_active ? "User account unlocked" : "User account locked");
+      } catch (e) {
+        console.error("Toggle status error:", e);
+        return err("Failed to toggle user status", 500);
       }
-
-      // Only superusers can toggle user status
-      if (payload.role !== "superuser") {
-        return jsonResponse(
-          { success: false, error: "Forbidden - Superuser access required" },
-          403,
-        );
-      }
-
-      const id = parseInt(params.id);
-      if (isNaN(id)) {
-        return jsonResponse({ success: false, error: "Invalid user ID" }, 400);
-      }
-
-      // Prevent self-locking
-      if (payload.userId === id) {
-        return jsonResponse(
-          { success: false, error: "Cannot change your own account status" },
-          400,
-        );
-      }
-
-      const body = await request.json();
-      const { is_active } = body as { is_active: boolean };
-
-      if (typeof is_active !== "boolean") {
-        return jsonResponse(
-          { success: false, error: "is_active must be a boolean" },
-          400,
-        );
-      }
-
-      await db`UPDATE users SET is_active = ${is_active} WHERE id = ${id}`;
-
-      const updatedUsers = await db<
-        UserPublic[]
-      >`SELECT * FROM v_users_public WHERE id = ${id}`;
-      const updatedUser = updatedUsers[0];
-
-      // Audit log
-      await auditLogger.log({
-        action: is_active ? "account_unlock" : "account_lock",
-        objectType: "user",
-        objectId: id,
-        actor: auditLogger.createActorFromPayload(payload),
-        changes: {
-          before: { is_active: !is_active },
-          after: { is_active },
-        },
-      });
-
-      return jsonResponse({
-        success: true,
-        data: updatedUser,
-        message: is_active ? "User account unlocked" : "User account locked",
-      });
-    } catch (error) {
-      console.error("Toggle status error:", error);
-      return jsonResponse(
-        { success: false, error: "Failed to toggle user status" },
-        500,
-      );
-    }
+    });
   },
 };

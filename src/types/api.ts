@@ -96,6 +96,8 @@ export interface DeviceWithDepartment extends Device {
   department_name?: string;
   assigned_to_name?: string;
   assigned_to_id?: number;
+  assigned_to_avatar?: string | null;
+  assigned_to_department_name?: string;
 }
 
 export interface BorrowRequest {

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useCallback } from "react";
 import { AdminSidebar } from "@/components/layout/AdminSidebar";
 import { BreadcrumbNav } from "@/components/ui/breadcrumb-nav";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ import { Calendar, LayoutList, Filter, X } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import type { DeviceCategory } from "@/types/api";
 import { useDevices, useBorrowRequests } from "@/hooks/use-api-queries";
+import { useUpdateBorrowStatus } from "@/hooks/use-api-mutations";
 import { DeviceCalendarView } from "@/components/calendar/DeviceCalendarView";
 import { DeviceTimelineView } from "@/components/calendar/DeviceTimelineView";
 import { AvailabilitySummary } from "@/components/calendar/AvailabilitySummary";
@@ -39,9 +40,11 @@ const AdminCalendar: React.FC = () => {
   const [filterOpen, setFilterOpen] = useState(false);
 
   // Use API queries directly
-  const { data: devices = [], isLoading: devicesLoading } = useDevices();
-  const { data: bookingRequests = [], isLoading: requestsLoading } =
-    useBorrowRequests();
+  const { data: devices = [] } = useDevices();
+  const { data: bookingRequests = [] } = useBorrowRequests();
+  
+  // Use mutation hook for updating borrow status
+  const updateBorrowStatus = useUpdateBorrowStatus();
 
   // Filter devices by selected categories
   const filteredDevices = useMemo(
@@ -83,20 +86,34 @@ const AdminCalendar: React.FC = () => {
     setSelectedDevices([]);
   };
 
-  const handleApprove = (id: number) => {
-    toast({
-      title: t("requests.approved"),
-      description: `Request ${id} has been approved.`,
-    });
-  };
+  const handleApprove = useCallback((id: number) => {
+    updateBorrowStatus.mutate(
+      { id, status: "approved" },
+      {
+        onSuccess: () => {
+          toast({
+            title: t("requests.approved"),
+            description: t("calendar.requestApprovedToast", { id: String(id) }),
+          });
+        },
+      }
+    );
+  }, [updateBorrowStatus, toast, t]);
 
-  const handleReject = (id: number) => {
-    toast({
-      title: t("requests.rejected"),
-      description: `Request ${id} has been rejected.`,
-      variant: "destructive",
-    });
-  };
+  const handleReject = useCallback((id: number) => {
+    updateBorrowStatus.mutate(
+      { id, status: "rejected" },
+      {
+        onSuccess: () => {
+          toast({
+            title: t("requests.rejected"),
+            description: t("calendar.requestRejectedToast", { id: String(id) }),
+            variant: "destructive",
+          });
+        },
+      }
+    );
+  }, [updateBorrowStatus, toast, t]);
 
   const activeFiltersCount = selectedCategories.length + selectedDevices.length;
 

@@ -182,7 +182,7 @@ export const DeviceTimelineView: React.FC<DeviceTimelineViewProps> = ({
                 className="h-8 px-3 text-xs font-medium rounded-lg"
                 onClick={goToToday}
               >
-                Today
+                {t("calendar.today")}
               </Button>
               <div className="px-4 py-1.5 rounded-lg bg-muted/50 border border-border/50">
                 <span className="font-semibold text-sm">
@@ -404,7 +404,7 @@ export const DeviceTimelineView: React.FC<DeviceTimelineViewProps> = ({
                     {t("calendar.noDevicesSelected")}
                   </p>
                   <p className="text-sm text-muted-foreground/70 mt-1">
-                    Select devices from the filter to view their timeline
+                    {t("calendar.selectDevicesFromFilter")}
                   </p>
                 </div>
               )}

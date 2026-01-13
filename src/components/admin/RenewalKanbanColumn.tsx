@@ -50,7 +50,7 @@ export const RenewalKanbanColumn: React.FC<RenewalKanbanColumnProps> = ({
       {/* Header */}
       <div
         className={cn(
-          "flex items-center gap-2 pb-2 border-b-2 rounded-t-lg px-2 mb-3",
+          "flex items-center gap-2 pb-2 border-b-2 rounded-t-lg px-2 py-1 mb-3",
           color,
           isOver && "border-primary",
         )}

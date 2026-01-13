@@ -81,7 +81,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
       className={cn(
         "flex flex-col h-screen bg-sidebar text-sidebar-foreground transition-all duration-300 sticky top-0",
         // Responsive width: scale up on larger screens
-        collapsed ? "w-12 lg:w-14" : "w-56 lg:w-60 xl:w-64",
+        collapsed ? "w-14 lg:w-16" : "w-56 lg:w-60 xl:w-64",
       )}
       role="navigation"
       aria-label={t("nav.adminNavigation")}

@@ -98,7 +98,7 @@ const statusConfig = {
   },
 };
 
-const weekDays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const weekDays = ["weekdays.sun", "weekdays.mon", "weekdays.tue", "weekdays.wed", "weekdays.thu", "weekdays.fri", "weekdays.sat"];
 
 export const DeviceCalendarView: React.FC<DeviceCalendarViewProps> = ({
   bookings,
@@ -222,7 +222,7 @@ export const DeviceCalendarView: React.FC<DeviceCalendarViewProps> = ({
           <div className="p-1">
             <div
               className={cn(
-                "group relative rounded-xl border-l-3 bg-card p-2.5 cursor-pointer transition-all duration-300",
+                "group relative rounded-xl border-l-3 bg-card p-3 cursor-pointer transition-all duration-300",
                 "hover:shadow-lg hover:shadow-black/5 hover:-translate-y-0.5",
                 "border border-border/50",
                 config.border,
@@ -231,20 +231,20 @@ export const DeviceCalendarView: React.FC<DeviceCalendarViewProps> = ({
               {/* Header: Status + Device */}
               <div className="flex items-center gap-2 mb-2">
                 <div className={cn("p-1.5 rounded-lg shrink-0", config.bg)}>
-                  <Smartphone className={cn("h-3 w-3", config.text)} />
+                  <Smartphone className={cn("h-4 w-4", config.text)} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h4 className="font-semibold text-xs truncate">
+                  <h4 className="font-semibold text-sm truncate">
                     {device?.name}
                   </h4>
-                  <p className="text-[10px] text-muted-foreground truncate">
+                  <p className="text-xs text-muted-foreground truncate">
                     {device?.brand} • {device?.model}
                   </p>
                 </div>
                 <Badge
                   variant="secondary"
                   className={cn(
-                    "text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0 shrink-0",
+                    "text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 shrink-0",
                     config.bg,
                     config.text,
                   )}
@@ -255,17 +255,17 @@ export const DeviceCalendarView: React.FC<DeviceCalendarViewProps> = ({
 
               {/* User + Date row */}
               <div className="flex items-center gap-2">
-                <Avatar className="h-5 w-5 ring-1 ring-background shrink-0">
+                <Avatar className="h-6 w-6 ring-1 ring-background shrink-0">
                   <AvatarImage src={user?.avatar_url || undefined} />
-                  <AvatarFallback className="text-[8px] font-medium">
+                  <AvatarFallback className="text-[9px] font-medium">
                     {user?.name?.charAt(0)}
                   </AvatarFallback>
                 </Avatar>
-                <span className="text-[10px] font-medium truncate flex-1">
+                <span className="text-xs font-medium truncate flex-1">
                   {user?.name}
                 </span>
-                <div className="flex items-center gap-1 text-[10px] text-muted-foreground shrink-0">
-                  <Clock className="h-2.5 w-2.5" />
+                <div className="flex items-center gap-1 text-xs text-muted-foreground shrink-0">
+                  <Clock className="h-3 w-3" />
                   <span>
                     {format(
                       parseISO(booking.start_date as unknown as string),
@@ -286,28 +286,28 @@ export const DeviceCalendarView: React.FC<DeviceCalendarViewProps> = ({
                   {onApprove && (
                     <Button
                       size="sm"
-                      className="flex-1 h-7 text-[10px] font-medium bg-emerald-500 hover:bg-emerald-600 text-white"
+                      className="flex-1 h-8 text-xs font-medium bg-emerald-500 hover:bg-emerald-600 text-white"
                       onClick={(e) => {
                         e.stopPropagation();
                         onApprove(booking.id);
                       }}
                     >
-                      <Check className="h-3 w-3 mr-1" />
-                      Approve
+                      <Check className="h-3.5 w-3.5 mr-1" />
+                      {t("calendar.approve")}
                     </Button>
                   )}
                   {onReject && (
                     <Button
                       size="sm"
                       variant="outline"
-                      className="flex-1 h-7 text-[10px] font-medium border-red-200 text-red-600 hover:bg-red-50 dark:border-red-800 dark:text-red-400"
+                      className="flex-1 h-8 text-xs font-medium border-red-200 text-red-600 hover:bg-red-50 dark:border-red-800 dark:text-red-400"
                       onClick={(e) => {
                         e.stopPropagation();
                         onReject(booking.id);
                       }}
                     >
-                      <X className="h-3 w-3 mr-1" />
-                      Reject
+                      <X className="h-3.5 w-3.5 mr-1" />
+                      {t("calendar.reject")}
                     </Button>
                   )}
                 </div>
@@ -337,13 +337,13 @@ export const DeviceCalendarView: React.FC<DeviceCalendarViewProps> = ({
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
                   <div className="p-2 rounded-lg bg-primary/10 ring-1 ring-primary/20">
-                    <CalendarDays className="h-4 w-4 text-primary" />
+                    <CalendarDays className="h-5 w-5 text-primary" />
                   </div>
                   <div>
-                    <h3 className="font-bold text-base">
+                    <h3 className="font-bold text-lg">
                       {format(currentMonth, "MMMM yyyy")}
                     </h3>
-                    <p className="text-[10px] text-muted-foreground">
+                    <p className="text-xs text-muted-foreground">
                       {filteredBookings.length} booking
                       {filteredBookings.length !== 1 ? "s" : ""} total
                     </p>
@@ -353,7 +353,7 @@ export const DeviceCalendarView: React.FC<DeviceCalendarViewProps> = ({
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-7 w-7 rounded-lg"
+                    className="h-8 w-8 rounded-lg"
                     onClick={handlePrevMonth}
                   >
                     <ChevronLeft className="h-4 w-4" />
@@ -361,15 +361,15 @@ export const DeviceCalendarView: React.FC<DeviceCalendarViewProps> = ({
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-7 px-2 text-[10px] font-medium rounded-lg"
+                    className="h-8 px-3 text-xs font-medium rounded-lg"
                     onClick={handleToday}
                   >
-                    Today
+                    {t("calendar.today")}
                   </Button>
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-7 w-7 rounded-lg"
+                    className="h-8 w-8 rounded-lg"
                     onClick={handleNextMonth}
                   >
                     <ChevronRight className="h-4 w-4" />
@@ -381,12 +381,12 @@ export const DeviceCalendarView: React.FC<DeviceCalendarViewProps> = ({
               <div className="bg-card rounded-xl border border-border/50 shadow-sm overflow-hidden flex-1 flex flex-col">
                 {/* Week days header */}
                 <div className="grid grid-cols-7 border-b border-border/30 bg-muted/30">
-                  {weekDays.map((day) => (
+                  {weekDays.map((dayKey) => (
                     <div
-                      key={day}
-                      className="py-2 text-center text-[10px] font-semibold text-muted-foreground uppercase tracking-wider"
+                      key={dayKey}
+                      className="py-2.5 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wider"
                     >
-                      {day}
+                      {t(dayKey)}
                     </div>
                   ))}
                 </div>
@@ -431,7 +431,7 @@ export const DeviceCalendarView: React.FC<DeviceCalendarViewProps> = ({
                           >
                             <span
                               className={cn(
-                                "text-xs font-medium w-6 h-6 flex items-center justify-center rounded-full transition-all",
+                                "text-sm font-medium w-7 h-7 flex items-center justify-center rounded-full transition-all",
                                 isTodayDate &&
                                   "bg-primary text-primary-foreground font-bold shadow-md",
                                 isSelected &&
@@ -446,16 +446,16 @@ export const DeviceCalendarView: React.FC<DeviceCalendarViewProps> = ({
                             {count > 0 && (
                               <div className="flex items-center gap-0.5">
                                 {hasPending && (
-                                  <div className="w-1 h-1 rounded-full bg-amber-500" />
+                                  <div className="w-1.5 h-1.5 rounded-full bg-amber-500" />
                                 )}
                                 {hasApproved && (
-                                  <div className="w-1 h-1 rounded-full bg-blue-500" />
+                                  <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
                                 )}
                                 {hasActive && (
-                                  <div className="w-1 h-1 rounded-full bg-emerald-500" />
+                                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                                 )}
                                 {hasReturned && (
-                                  <div className="w-1 h-1 rounded-full bg-slate-400" />
+                                  <div className="w-1.5 h-1.5 rounded-full bg-slate-400" />
                                 )}
                               </div>
                             )}
@@ -474,47 +474,47 @@ export const DeviceCalendarView: React.FC<DeviceCalendarViewProps> = ({
 
               {/* Legend */}
               <div className="mt-3 p-3 rounded-lg bg-muted/40 border border-border/30">
-                <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mb-2">
-                  Status Legend
+                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-2">
+                  {t("calendar.statusLegend")}
                 </p>
                 <div className="grid grid-cols-2 gap-2">
                   {[
                     {
                       color: "bg-amber-500",
-                      label: "Pending",
-                      hint: "Awaiting approval",
+                      labelKey: "calendar.pending",
+                      hintKey: "calendar.awaitingApproval",
                     },
                     {
                       color: "bg-blue-500",
-                      label: "Approved",
-                      hint: "Ready for pickup",
+                      labelKey: "calendar.approved",
+                      hintKey: "calendar.readyForPickup",
                     },
                     {
                       color: "bg-emerald-500",
-                      label: "Active",
-                      hint: "Currently in use",
+                      labelKey: "calendar.active",
+                      hintKey: "calendar.currentlyInUse",
                     },
                     {
                       color: "bg-slate-400",
-                      label: "Returned",
-                      hint: "Device returned",
+                      labelKey: "calendar.returned",
+                      hintKey: "calendar.deviceReturned",
                     },
                   ].map((status) => (
-                    <Tooltip key={status.label}>
+                    <Tooltip key={status.labelKey}>
                       <TooltipTrigger asChild>
                         <div className="flex items-center gap-1.5 cursor-help group">
                           <div
                             className={cn(
-                              "w-2 h-2 rounded-full transition-transform group-hover:scale-110",
+                              "w-2.5 h-2.5 rounded-full transition-transform group-hover:scale-110",
                               status.color,
                             )}
                           />
-                          <span className="text-[10px] text-muted-foreground font-medium">
-                            {status.label}
+                          <span className="text-xs text-muted-foreground font-medium">
+                            {t(status.labelKey)}
                           </span>
                         </div>
                       </TooltipTrigger>
-                      <TooltipContent>{status.hint}</TooltipContent>
+                      <TooltipContent>{t(status.hintKey)}</TooltipContent>
                     </Tooltip>
                   ))}
                 </div>
@@ -526,19 +526,19 @@ export const DeviceCalendarView: React.FC<DeviceCalendarViewProps> = ({
               {/* Header */}
               <div className="flex items-center justify-between mb-3 shrink-0">
                 <div>
-                  <h3 className="font-bold text-sm">
+                  <h3 className="font-bold text-base">
                     {format(selectedDate, "EEEE, MMMM d")}
                   </h3>
-                  <p className="text-[10px] text-muted-foreground">
+                  <p className="text-xs text-muted-foreground">
                     {bookingsForSelectedDate.length === 0
-                      ? "No bookings scheduled"
-                      : `${bookingsForSelectedDate.length} booking${bookingsForSelectedDate.length !== 1 ? "s" : ""}`}
+                      ? t("calendar.noBookingsScheduled")
+                      : `${bookingsForSelectedDate.length} ${bookingsForSelectedDate.length !== 1 ? t("calendar.bookings") : t("calendar.booking")}`}
                   </p>
                 </div>
                 {pendingBookings.length > 0 && (
-                  <Badge className="bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30 hover:bg-amber-500/20 font-semibold text-[10px] px-2 py-0.5">
-                    <Zap className="h-2.5 w-2.5 mr-1" />
-                    {pendingBookings.length} pending
+                  <Badge className="bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30 hover:bg-amber-500/20 font-semibold text-xs px-2.5 py-1">
+                    <Zap className="h-3 w-3 mr-1" />
+                    {pendingBookings.length} {t("calendar.pending").toLowerCase()}
                   </Badge>
                 )}
               </div>
@@ -547,18 +547,18 @@ export const DeviceCalendarView: React.FC<DeviceCalendarViewProps> = ({
                 /* Empty State */
                 <div className="flex-1 flex flex-col items-center justify-center text-center">
                   <div className="relative mb-3">
-                    <div className="p-3 rounded-xl bg-linear-to-br from-muted/80 to-muted/40 ring-1 ring-border/50">
-                      <CalendarX2 className="h-6 w-6 text-muted-foreground/40" />
+                    <div className="p-4 rounded-xl bg-linear-to-br from-muted/80 to-muted/40 ring-1 ring-border/50">
+                      <CalendarX2 className="h-7 w-7 text-muted-foreground/40" />
                     </div>
                     <div className="absolute -bottom-1 -right-1 p-1 rounded-full bg-card border border-border shadow-lg">
-                      <Circle className="h-2 w-2 text-muted-foreground/30" />
+                      <Circle className="h-2.5 w-2.5 text-muted-foreground/30" />
                     </div>
                   </div>
-                  <h4 className="font-semibold text-xs text-muted-foreground mb-0.5">
-                    No Bookings
+                  <h4 className="font-semibold text-sm text-muted-foreground mb-0.5">
+                    {t("calendar.noBookings")}
                   </h4>
-                  <p className="text-[10px] text-muted-foreground/70 max-w-[200px]">
-                    Select a date with indicators to view details
+                  <p className="text-xs text-muted-foreground/70 max-w-[200px]">
+                    {t("calendar.selectDateWithIndicators")}
                   </p>
                 </div>
               ) : (
@@ -568,9 +568,9 @@ export const DeviceCalendarView: React.FC<DeviceCalendarViewProps> = ({
                     {pendingBookings.length > 0 && (
                       <div>
                         <div className="flex items-center gap-1.5 mb-2">
-                          <div className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
-                          <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
-                            Needs Attention ({pendingBookings.length})
+                          <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                          <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest">
+                            {t("calendar.needsAttention")} ({pendingBookings.length})
                           </span>
                         </div>
                         <div className="grid gap-2 sm:grid-cols-1 xl:grid-cols-2 2xl:grid-cols-3">
@@ -586,9 +586,9 @@ export const DeviceCalendarView: React.FC<DeviceCalendarViewProps> = ({
                       <div>
                         {pendingBookings.length > 0 && (
                           <div className="flex items-center gap-1.5 mb-2">
-                            <div className="w-1.5 h-1.5 rounded-full bg-slate-400" />
-                            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
-                              Other Bookings ({otherBookings.length})
+                            <div className="w-2 h-2 rounded-full bg-slate-400" />
+                            <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest">
+                              {t("calendar.otherBookings")} ({otherBookings.length})
                             </span>
                           </div>
                         )}

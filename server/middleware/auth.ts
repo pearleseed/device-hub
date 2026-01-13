@@ -1,183 +1,62 @@
 import type { JWTPayload, UserRole } from "../types";
 
-const JWT_SECRET =
-  process.env.JWT_SECRET || "device-hub-secret-key-change-in-production";
-const JWT_EXPIRY_DEFAULT = 24 * 60 * 60; // 24 hours in seconds
-const JWT_EXPIRY_REMEMBER_ME = 30 * 24 * 60 * 60; // 30 days in seconds
+const JWT_SECRET = process.env.JWT_SECRET || "device-hub-secret-key-change-in-production";
+const JWT_EXPIRY = { default: 24 * 60 * 60, rememberMe: 30 * 24 * 60 * 60 };
+const PBKDF2_ITERATIONS = 100000;
 
-// Simple base64url encoding/decoding
-function base64urlEncode(data: string): string {
-  return Buffer.from(data).toString("base64url");
+const b64Encode = (s: string) => Buffer.from(s).toString("base64url");
+const b64Decode = (s: string) => Buffer.from(s, "base64url").toString("utf-8");
+
+const createSignature = async (data: string): Promise<string> => {
+  const enc = new TextEncoder();
+  const key = await crypto.subtle.importKey("raw", enc.encode(JWT_SECRET), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  return Buffer.from(await crypto.subtle.sign("HMAC", key, enc.encode(data))).toString("base64url");
+};
+
+export async function generateToken(userId: number, email: string, role: UserRole, rememberMe = false): Promise<string> {
+  const header = b64Encode(JSON.stringify({ alg: "HS256", typ: "JWT" }));
+  const payload = b64Encode(JSON.stringify({ userId, email, role, exp: Math.floor(Date.now() / 1000) + (rememberMe ? JWT_EXPIRY.rememberMe : JWT_EXPIRY.default) }));
+  return `${header}.${payload}.${await createSignature(`${header}.${payload}`)}`;
 }
 
-function base64urlDecode(data: string): string {
-  return Buffer.from(data, "base64url").toString("utf-8");
-}
-
-// Create HMAC signature using Web Crypto API
-async function createSignature(data: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const key = await crypto.subtle.importKey(
-    "raw",
-    encoder.encode(JWT_SECRET),
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"],
-  );
-  const signature = await crypto.subtle.sign("HMAC", key, encoder.encode(data));
-  return Buffer.from(signature).toString("base64url");
-}
-
-// Verify HMAC signature
-async function verifySignature(
-  data: string,
-  signature: string,
-): Promise<boolean> {
-  const expectedSignature = await createSignature(data);
-  return signature === expectedSignature;
-}
-
-// Generate JWT token
-export async function generateToken(
-  userId: number,
-  email: string,
-  role: UserRole,
-  rememberMe: boolean = false,
-): Promise<string> {
-  const header = { alg: "HS256", typ: "JWT" };
-  const expiry = rememberMe ? JWT_EXPIRY_REMEMBER_ME : JWT_EXPIRY_DEFAULT;
-  const payload: JWTPayload = {
-    userId,
-    email,
-    role,
-    exp: Math.floor(Date.now() / 1000) + expiry,
-  };
-
-  const headerB64 = base64urlEncode(JSON.stringify(header));
-  const payloadB64 = base64urlEncode(JSON.stringify(payload));
-  const signature = await createSignature(`${headerB64}.${payloadB64}`);
-
-  return `${headerB64}.${payloadB64}.${signature}`;
-}
-
-// Verify and decode JWT token
 export async function verifyToken(token: string): Promise<JWTPayload | null> {
   try {
-    const parts = token.split(".");
-    if (parts.length !== 3) return null;
-
-    const [headerB64, payloadB64, signature] = parts;
-
-    // Verify signature
-    const isValid = await verifySignature(
-      `${headerB64}.${payloadB64}`,
-      signature,
-    );
-    if (!isValid) return null;
-
-    // Decode and validate payload
-    const payload: JWTPayload = JSON.parse(base64urlDecode(payloadB64));
-
-    // Check expiration
-    if (payload.exp < Math.floor(Date.now() / 1000)) {
-      return null;
-    }
-
-    return payload;
-  } catch {
-    return null;
-  }
+    const [h, p, sig] = token.split(".");
+    if (!h || !p || !sig || await createSignature(`${h}.${p}`) !== sig) return null;
+    const payload: JWTPayload = JSON.parse(b64Decode(p));
+    return payload.exp >= Math.floor(Date.now() / 1000) ? payload : null;
+  } catch { return null; }
 }
 
-// Password hashing using Web Crypto API
+const derivePBKDF2 = async (password: string, salt: Uint8Array | Buffer): Promise<ArrayBuffer> => {
+  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(password), "PBKDF2", false, ["deriveBits"]);
+  const saltBuffer = salt instanceof Buffer ? new Uint8Array(salt) : salt;
+  return crypto.subtle.deriveBits({ name: "PBKDF2", salt: saltBuffer as BufferSource, iterations: PBKDF2_ITERATIONS, hash: "SHA-256" }, key, 256);
+};
+
 export async function hashPassword(password: string): Promise<string> {
-  const encoder = new TextEncoder();
   const salt = crypto.getRandomValues(new Uint8Array(16));
-  const saltHex = Buffer.from(salt).toString("hex");
-
-  const key = await crypto.subtle.importKey(
-    "raw",
-    encoder.encode(password),
-    "PBKDF2",
-    false,
-    ["deriveBits"],
-  );
-
-  const derivedBits = await crypto.subtle.deriveBits(
-    {
-      name: "PBKDF2",
-      salt,
-      iterations: 100000,
-      hash: "SHA-256",
-    },
-    key,
-    256,
-  );
-
-  const hashHex = Buffer.from(derivedBits).toString("hex");
-  return `${saltHex}:${hashHex}`;
+  const hash = await derivePBKDF2(password, salt);
+  return `${Buffer.from(salt).toString("hex")}:${Buffer.from(hash).toString("hex")}`;
 }
 
-// Verify password
-export async function verifyPassword(
-  password: string,
-  storedHash: string,
-): Promise<boolean> {
+export async function verifyPassword(password: string, storedHash: string): Promise<boolean> {
   try {
     const [saltHex, hashHex] = storedHash.split(":");
-    const salt = Buffer.from(saltHex, "hex");
-    const encoder = new TextEncoder();
-
-    const key = await crypto.subtle.importKey(
-      "raw",
-      encoder.encode(password),
-      "PBKDF2",
-      false,
-      ["deriveBits"],
-    );
-
-    const derivedBits = await crypto.subtle.deriveBits(
-      {
-        name: "PBKDF2",
-        salt,
-        iterations: 100000,
-        hash: "SHA-256",
-      },
-      key,
-      256,
-    );
-
-    const computedHashHex = Buffer.from(derivedBits).toString("hex");
-    return computedHashHex === hashHex;
-  } catch {
-    return false;
-  }
+    const computed = await derivePBKDF2(password, Buffer.from(saltHex, "hex"));
+    return Buffer.from(computed).toString("hex") === hashHex;
+  } catch { return false; }
 }
 
-// Extract token from Authorization header
-export function extractToken(request: Request): string | null {
-  const authHeader = request.headers.get("Authorization");
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    return null;
-  }
-  return authHeader.substring(7);
-}
+export const extractToken = (req: Request): string | null => {
+  const auth = req.headers.get("Authorization");
+  return auth?.startsWith("Bearer ") ? auth.slice(7) : null;
+};
 
-// Middleware to authenticate request
-export async function authenticateRequest(
-  request: Request,
-): Promise<JWTPayload | null> {
-  const token = extractToken(request);
-  if (!token) return null;
-  return verifyToken(token);
-}
+export const authenticateRequest = async (req: Request): Promise<JWTPayload | null> => {
+  const token = extractToken(req);
+  return token ? verifyToken(token) : null;
+};
 
-// Check if user has admin role (includes superuser)
-export function requireAdmin(payload: JWTPayload | null): boolean {
-  return payload?.role === "admin" || payload?.role === "superuser";
-}
-
-// Check if user has superuser role
-export function requireSuperuser(payload: JWTPayload | null): boolean {
-  return payload?.role === "superuser";
-}
+export const requireAdmin = (p: JWTPayload | null) => p?.role === "admin" || p?.role === "superuser";
+export const requireSuperuser = (p: JWTPayload | null) => p?.role === "superuser";

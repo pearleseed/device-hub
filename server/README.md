@@ -130,7 +130,7 @@ bun run dev:all
 
 ### Authentication
 
-- `POST /api/auth/login` - Login with email/password
+- `POST /api/auth/login` - Login with username/password
 - `POST /api/auth/signup` - Register new user
 - `GET /api/auth/me` - Get current user (requires auth)
 
@@ -222,12 +222,12 @@ After seeding the database:
 
 **Admin:**
 
-- Email: `alex.johnson@company.com`
+- Username: `alex.johnson@company.com`
 - Password: `password123`
 
 **User:**
 
-- Email: `sarah.chen@company.com`
+- Username: `sarah.chen@company.com`
 - Password: `password123`
 
 Note: The seed data uses placeholder password hashes. For the demo to work properly, you'll need to either:

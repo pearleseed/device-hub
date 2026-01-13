@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from "react";
+import React, { createContext, useContext, useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { useAuth } from "./AuthContext";
 
 export type NotificationType =
@@ -25,9 +25,7 @@ interface NotificationContextType {
   notifications: Notification[];
   unreadCount: number;
   isLoading: boolean;
-  addNotification: (
-    notification: Omit<Notification, "id" | "timestamp" | "read">,
-  ) => void;
+  addNotification: (notification: Omit<Notification, "id" | "timestamp" | "read">) => void;
   markAsRead: (id: string) => void;
   markAllAsRead: () => void;
   clearNotification: (id: string) => void;
@@ -35,10 +33,7 @@ interface NotificationContextType {
   refreshNotifications: () => Promise<void>;
 }
 
-const NotificationContext = createContext<NotificationContextType | undefined>(
-  undefined,
-);
-
+const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:3001";
 
 // Helper to get the correct link based on notification type and user role
@@ -70,7 +65,7 @@ export const getNotificationLink = (
 export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user, isAdmin } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
@@ -149,17 +144,36 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const addNotification = useCallback(
     async (notification: Omit<Notification, "id" | "timestamp" | "read">) => {
-      // For local notifications (not from API)
-      const newNotification: Notification = {
-        ...notification,
-        id: String(Date.now()),
-        timestamp: new Date(),
-        read: false,
-      };
-      setNotifications((prev) => [newNotification, ...prev]);
-      setUnreadCount((prev) => prev + 1);
+      // Only admins can create notifications via API
+      if (!isAdmin || !user) {
+        console.warn("Only admins can create notifications");
+        return;
+      }
+
+      try {
+        const response = await fetch(`${API_BASE}/api/in-app-notifications`, {
+          method: "POST",
+          headers: getAuthHeaders(),
+          body: JSON.stringify({
+            user_id: user.id,
+            type: notification.type,
+            title: notification.title,
+            message: notification.message,
+            link: notification.link,
+          }),
+        });
+
+        if (response.ok) {
+          // Refresh notifications to get the new one from backend
+          await fetchNotifications();
+        } else {
+          console.error("Failed to create notification via API");
+        }
+      } catch (error) {
+        console.error("Failed to create notification:", error);
+      }
     },
-    [],
+    [isAdmin, user, getAuthHeaders, fetchNotifications],
   );
 
   const markAsRead = useCallback(async (id: string) => {
@@ -233,20 +247,20 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   }, [getAuthHeaders]);
 
+  const value = useMemo(() => ({
+    notifications,
+    unreadCount,
+    isLoading,
+    addNotification,
+    markAsRead,
+    markAllAsRead,
+    clearNotification,
+    clearAllNotifications,
+    refreshNotifications,
+  }), [notifications, unreadCount, isLoading, addNotification, markAsRead, markAllAsRead, clearNotification, clearAllNotifications, refreshNotifications]);
+
   return (
-    <NotificationContext.Provider
-      value={{
-        notifications,
-        unreadCount,
-        isLoading,
-        addNotification,
-        markAsRead,
-        markAllAsRead,
-        clearNotification,
-        clearAllNotifications,
-        refreshNotifications,
-      }}
-    >
+    <NotificationContext.Provider value={value}>
       {children}
     </NotificationContext.Provider>
   );

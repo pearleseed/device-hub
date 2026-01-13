@@ -62,7 +62,7 @@ function parseCSV(csvContent: string): CSVUserRow[] {
     (h) => h === "name" || h === "full name" || h === "fullname",
   );
   const emailIdx = headers.findIndex(
-    (h) => h === "email" || h === "email address",
+    (h) => h === "email" || h === "email address" || h === "username",
   );
   const deptIdx = headers.findIndex((h) => h === "department" || h === "dept");
   const roleIdx = headers.findIndex((h) => h === "role");
@@ -180,7 +180,7 @@ export async function importUsersFromCSV(
       const fullEmailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       const simpleUsernameRegex = /^[a-zA-Z0-9._-]+$/;
       if (!fullEmailRegex.test(userData.email) && !simpleUsernameRegex.test(userData.email)) {
-        result.errors.push(`Invalid email/username format: ${userData.email}`);
+        result.errors.push(`Invalid username format: ${userData.email}`);
         result.failed++;
         continue;
       }
@@ -190,7 +190,7 @@ export async function importUsersFromCSV(
         { id: number }[]
       >`SELECT id FROM users WHERE email = ${userData.email}`;
       if (existing.length > 0) {
-        result.errors.push(`Email already exists: ${userData.email}`);
+        result.errors.push(`Username already exists: ${userData.email}`);
         result.failed++;
         continue;
       }
@@ -294,7 +294,7 @@ export async function exportUsersWithPasswords(
   const headers = [
     "ID",
     "Name",
-    "Email",
+    "Username",
     "Department",
     "Role",
     "Temporary Password",
@@ -338,7 +338,7 @@ export async function exportUsersForAdmin(): Promise<{
   const headers = [
     "ID",
     "Name",
-    "Email",
+    "Username",
     "Department",
     "Role",
     "Temporary Password",
@@ -389,7 +389,7 @@ export function clearAllTemporaryPasswords(): void {
  * Get CSV template for user import
  */
 export function getImportTemplate(): string {
-  const headers = "name,email,department,role";
+  const headers = "name,username,department,role";
   const example1 = '"John Doe",john.doe@company.com,Engineering,user';
   const example2 = '"Jane Smith",jane.smith@company.com,IT,admin';
 

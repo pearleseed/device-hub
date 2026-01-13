@@ -35,8 +35,15 @@ import {
   useUsers,
   useRefreshData,
   useBorrowRequests,
-  useDepartmentNames,
+  useDepartments,
 } from "@/hooks/use-api-queries";
+import {
+  useUpdateUser,
+  useToggleUserStatus,
+  useDeleteUser,
+  useResetUserPassword,
+  useCreateUser,
+} from "@/hooks/use-api-mutations";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
 import {
@@ -64,26 +71,21 @@ const AdminUsers: React.FC = () => {
   const { toast } = useToast();
   const { user: currentUser } = useAuth();
 
-  // Fetch department names from API
-  const { data: departments = [] } = useDepartmentNames();
+  // Fetch departments from API
+  const { data: departments = [] } = useDepartments();
 
   // Use API queries directly
-  const { data: cachedUsers = [] } = useUsers();
+  const { data: users = [] } = useUsers();
   const { data: bookingRequests = [] } = useBorrowRequests();
   const { refreshUsers } = useRefreshData();
 
-  // Local state for optimistic updates
-  const [localUsers, setLocalUsers] = useState<UserPublic[] | null>(null);
-  const users = localUsers ?? cachedUsers;
-  const setUsers = (
-    updater: UserPublic[] | ((prev: UserPublic[]) => UserPublic[]),
-  ) => {
-    if (typeof updater === "function") {
-      setLocalUsers(updater(users));
-    } else {
-      setLocalUsers(updater);
-    }
-  };
+  // Mutation hooks
+  const createUser = useCreateUser();
+  const updateUser = useUpdateUser();
+  const toggleUserStatus = useToggleUserStatus();
+  const deleteUser = useDeleteUser();
+  const resetUserPassword = useResetUserPassword();
+
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
@@ -92,36 +94,44 @@ const AdminUsers: React.FC = () => {
   const [newUser, setNewUser] = useState({
     name: "",
     email: "",
-    department: "",
+    department_id: 0,
     role: "user" as UserRole,
     password: "",
   });
   const [editPassword, setEditPassword] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const currentUserRole = currentUser?.role || "user";
   const isSuperuser = currentUserRole === "superuser";
   const isAdmin = currentUserRole === "admin";
   const canManageUsers = isSuperuser || isAdmin; // Admin và Superuser đều có thể quản lý users
 
-  const handleToggleUserActive = (userId: number, isActive: boolean) => {
-    setUsers((prev) =>
-      prev.map((u) => (u.id === userId ? { ...u, is_active: isActive } : u)),
-    );
+  const handleToggleUserActive = async (userId: number, isActive: boolean) => {
+    try {
+      await toggleUserStatus.mutateAsync({ id: userId, is_active: isActive });
+    } catch (error) {
+      console.error("Failed to toggle user status:", error);
+    }
   };
 
-  const handleResetPassword = (_userId: number, _newPassword: string) => {
-    // In a real app, this would call the API
-    toast({
-      title: t("users.passwordResetTitle"),
-      description: t("users.passwordResetDesc"),
-    });
+  const handleResetPassword = async (userId: number) => {
+    try {
+      await resetUserPassword.mutateAsync(userId);
+    } catch (error) {
+      console.error("Failed to reset password:", error);
+    }
   };
 
-  const handleSaveUser = (updatedUser: UserPublic) => {
-    setUsers((prev) =>
-      prev.map((u) => (u.id === updatedUser.id ? updatedUser : u)),
-    );
-    setSelectedUser(updatedUser);
+  const handleSaveUser = async (updatedUser: UserPublic) => {
+    try {
+      await updateUser.mutateAsync({
+        id: updatedUser.id,
+        data: updatedUser,
+      });
+      setSelectedUser(updatedUser);
+    } catch (error) {
+      console.error("Failed to update user:", error);
+    }
   };
 
   const openDetailModal = (user: UserPublic) => {
@@ -129,7 +139,23 @@ const AdminUsers: React.FC = () => {
     setDetailModalOpen(true);
   };
 
-  const handleAddUser = () => {
+  const handleAddUser = async () => {
+    if (!newUser.name?.trim()) {
+      toast({
+        title: t("users.nameRequiredTitle") || "Name Required",
+        description: t("users.nameRequiredDesc") || "Please enter a name",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (!newUser.email?.trim()) {
+      toast({
+        title: t("users.emailRequiredTitle") || "Email Required",
+        description: t("users.emailRequiredDesc") || "Please enter an email",
+        variant: "destructive",
+      });
+      return;
+    }
     if (!newUser.password || newUser.password.length < 6) {
       toast({
         title: t("users.passwordRequiredTitle"),
@@ -138,102 +164,90 @@ const AdminUsers: React.FC = () => {
       });
       return;
     }
-    const user: UserPublic = {
-      id: users.length + 1,
-      name: newUser.name,
-      email: newUser.email,
-      department_id: 1,
-      department_name: newUser.department,
-      role: newUser.role,
-      avatar_url: `https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&h=100&fit=crop&crop=face`,
-      avatar_thumbnail_url: null,
-      is_active: true,
-      last_login_at: null,
-      created_at: new Date(),
-    };
-    setUsers([...users, user]);
-    setNewUser({
-      name: "",
-      email: "",
-      department: "",
-      role: "user",
-      password: "",
-    });
-    setAddModalOpen(false);
-    toast({
-      title: t("users.userAddedTitle"),
-      description: `${user.name} ${t("inventory.hasBeenAdded")} `,
-    });
-  };
-
-  const handleEditUser = () => {
-    if (!selectedUser) return;
-    setUsers(users.map((u) => (u.id === selectedUser.id ? selectedUser : u)));
-
-    // Handle password update if provided
-    if (editPassword && editPassword.length >= 6) {
-      handleResetPassword(selectedUser.id, editPassword);
+    if (!newUser.department_id) {
+      toast({
+        title: t("users.departmentRequiredTitle") || "Department Required",
+        description: t("users.departmentRequiredDesc") || "Please select a department",
+        variant: "destructive",
+      });
+      return;
     }
 
-    setEditModalOpen(false);
-    setEditPassword("");
-    toast({
-      title: t("users.userUpdatedTitle"),
-      description: `${selectedUser.name} ${t("inventory.hasBeenUpdated")}.${editPassword ? ` ${t("users.passwordChanged")}` : ""}`,
-    });
+    setIsSubmitting(true);
+
+    try {
+      await createUser.mutateAsync({
+        name: newUser.name.trim(),
+        email: newUser.email.trim(),
+        password: newUser.password,
+        department_id: newUser.department_id,
+        role: newUser.role,
+      });
+
+      setNewUser({
+        name: "",
+        email: "",
+        department_id: 0,
+        role: "user",
+        password: "",
+      });
+      setAddModalOpen(false);
+    } catch (error) {
+      console.error("Failed to create user:", error);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const handleDeleteUser = (user: UserPublic) => {
-    const deletedUser = user;
-    setUsers(users.filter((u) => u.id !== user.id));
+  const handleEditUser = async () => {
+    if (!selectedUser) return;
+    
+    setIsSubmitting(true);
+    
+    try {
+      await updateUser.mutateAsync({
+        id: selectedUser.id,
+        data: selectedUser,
+      });
 
-    toast({
-      title: t("users.userDeletedTitle"),
-      description: `${user.name} ${t("inventory.hasBeenRemoved")}.`,
-      action: (
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => {
-            setUsers((prev) => [...prev, deletedUser]);
-            toast({
-              title: t("common.restored"),
-              description: `${deletedUser.name} ${t("inventory.hasBeenRestored")}.`,
-            });
-          }}
-        >
-          <Undo2 className="h-4 w-4 mr-1" />
-          {t("common.undo")}
-        </Button>
-      ),
-    });
+      // Handle password update if provided
+      if (editPassword && editPassword.length >= 6) {
+        await handleResetPassword(selectedUser.id);
+      }
+
+      setEditModalOpen(false);
+      setEditPassword("");
+    } catch (error) {
+      console.error("Failed to update user:", error);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const handleBulkDelete = () => {
-    const deletedUsers = [...selectedUsers];
-    setUsers(users.filter((u) => !selectedUsers.some((s) => s.id === u.id)));
-    setSelectedUsers([]);
+  const handleDeleteUser = async (user: UserPublic) => {
+    try {
+      await deleteUser.mutateAsync(user.id);
+    } catch (error) {
+      console.error("Failed to delete user:", error);
+    }
+  };
 
-    toast({
-      title: t("users.usersDeletedTitle"),
-      description: `${deletedUsers.length} ${t("inventory.haveBeenRemoved")}.`,
-      action: (
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => {
-            setUsers((prev) => [...prev, ...deletedUsers]);
-            toast({
-              title: t("common.restored"),
-              description: `${deletedUsers.length} ${t("inventory.haveBeenRestored")}.`,
-            });
-          }}
-        >
-          <Undo2 className="h-4 w-4 mr-1" />
-          {t("common.undo")}
-        </Button>
-      ),
-    });
+  const handleBulkDelete = async () => {
+    setIsSubmitting(true);
+    
+    try {
+      // Delete all selected users
+      const promises = selectedUsers.map((user) =>
+        deleteUser.mutateAsync(user.id)
+      );
+      
+      await Promise.all(promises);
+      setSelectedUsers([]);
+    } catch (error) {
+      console.error("Failed to delete users:", error);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const getActiveLoansCount = (userId: number) => {
@@ -493,7 +507,7 @@ const AdminUsers: React.FC = () => {
               <div className="space-y-2">
                 <Label>{t("common.email")}</Label>
                 <Input
-                  type="email"
+                  type="text"
                   value={newUser.email}
                   onChange={(e) =>
                     setNewUser({ ...newUser, email: e.target.value })
@@ -520,9 +534,9 @@ const AdminUsers: React.FC = () => {
               <div className="space-y-2">
                 <Label>{t("common.department")}</Label>
                 <Select
-                  value={newUser.department}
+                  value={newUser.department_id ? String(newUser.department_id) : ""}
                   onValueChange={(v) =>
-                    setNewUser({ ...newUser, department: v })
+                    setNewUser({ ...newUser, department_id: parseInt(v) })
                   }
                 >
                   <SelectTrigger>
@@ -530,8 +544,8 @@ const AdminUsers: React.FC = () => {
                   </SelectTrigger>
                   <SelectContent position="popper" sideOffset={4}>
                     {departments.map((dept) => (
-                      <SelectItem key={dept} value={dept}>
-                        {dept}
+                      <SelectItem key={dept.id} value={String(dept.id)}>
+                        {dept.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -568,10 +582,19 @@ const AdminUsers: React.FC = () => {
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setAddModalOpen(false)}>
+              <Button variant="outline" onClick={() => setAddModalOpen(false)} disabled={isSubmitting}>
                 {t("common.cancel")}
               </Button>
-              <Button onClick={handleAddUser}>{t("common.add")}</Button>
+              <Button onClick={handleAddUser} disabled={isSubmitting}>
+                {isSubmitting ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                    {t("common.adding") || "Adding..."}
+                  </>
+                ) : (
+                  t("common.add")
+                )}
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -604,7 +627,7 @@ const AdminUsers: React.FC = () => {
                 <div className="space-y-2">
                   <Label>{t("common.email")}</Label>
                   <Input
-                    type="email"
+                    type="text"
                     value={selectedUser.email}
                     onChange={(e) =>
                       setSelectedUser({

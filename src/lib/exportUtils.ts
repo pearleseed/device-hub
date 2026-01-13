@@ -107,7 +107,7 @@ export const returnExportColumns = [
 export const userExportColumns = [
   { key: "id" as const, header: "ID" },
   { key: "name" as const, header: "Name" },
-  { key: "email" as const, header: "Email" },
+  { key: "email" as const, header: "Username" },
   { key: "department_name" as const, header: "Department" },
   { key: "role" as const, header: "Role" },
   { key: "is_active" as const, header: "Status" },
@@ -117,7 +117,7 @@ export const userExportColumns = [
 // User import template columns
 export const userImportTemplateColumns = [
   { key: "name", header: "name", example: "John Doe" },
-  { key: "email", header: "email", example: "john.doe@company.com" },
+  { key: "email", header: "username", example: "john.doe" },
   { key: "department", header: "department", example: "Engineering" },
   { key: "role", header: "role", example: "user" },
 ];

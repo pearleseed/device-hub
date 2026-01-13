@@ -47,6 +47,14 @@ Device Hub is an enterprise device management system built with React (frontend)
 
 ## Backend API Endpoints
 
+### System Endpoints
+
+| Method | Endpoint      | Description                            |
+| ------ | ------------- | -------------------------------------- |
+| GET    | `/api/health` | Check system and database health status|
+| GET    | `/api/ready`  | Readiness check                        |
+| GET    | `/api/live`   | Liveness check                         |
+
 ### Authentication (`/api/auth`)
 
 | Method | Endpoint           | Description                    |
@@ -60,46 +68,64 @@ Device Hub is an enterprise device management system built with React (frontend)
 
 | Method | Endpoint        | Description                                |
 | ------ | --------------- | ------------------------------------------ |
-| GET    | `/`             | List all users (admin only)                |
+| GET    | `/`             | List all users                             |
 | GET    | `/:id`          | Get user by ID                             |
 | PUT    | `/:id`          | Update user profile                        |
 | DELETE | `/:id`          | Delete user (superuser only)               |
 | PATCH  | `/:id/password` | Reset user password (superuser only)       |
 | PATCH  | `/:id/status`   | Toggle user active status (superuser only) |
 
+### User Import/Export (`/api/users`)
+
+| Method | Endpoint                 | Description                                     |
+| ------ | ------------------------ | ----------------------------------------------- |
+| POST   | `/import`                | Import users from CSV file (admin only)         |
+| GET    | `/export`                | Export users with temporary passwords (admin)   |
+| GET    | `/export/admin`          | Export all users with passwords (superuser)     |
+| GET    | `/import/template`       | Download CSV template for user import (admin)   |
+| POST   | `/export/clear-passwords`| Clear temporary passwords from memory (superuser)|
+
 ### Devices (`/api/devices`)
 
-| Method | Endpoint | Description                                                 |
-| ------ | -------- | ----------------------------------------------------------- |
-| GET    | `/`      | List devices with filters (category, status, price, search) |
-| GET    | `/:id`   | Get device by ID with parsed specs                          |
-| POST   | `/`      | Create device (admin only)                                  |
-| PUT    | `/:id`   | Update device (admin only)                                  |
-| DELETE | `/:id`   | Delete device (admin only)                                  |
+| Method | Endpoint             | Description                                                 |
+| ------ | -------------------- | ----------------------------------------------------------- |
+| GET    | `/`                  | List devices with filters (category, status, price, search) |
+| GET    | `/:id`               | Get device by ID with parsed specs                          |
+| POST   | `/`                  | Create device (admin only)                                  |
+| PUT    | `/:id`               | Update device (admin only)                                  |
+| DELETE | `/:id`               | Delete device (admin only)                                  |
+| GET    | `/category/:category`| Get devices by category                                     |
+| GET    | `/category/:category`| Get devices by category                                     |
+| GET    | `/status/:status`    | Get devices by status                                       |
+| GET    | `/pending-ids`       | Get IDs of devices with pending/approved requests           |
 
 ### Borrow Requests (`/api/borrow`)
 
-| Method | Endpoint        | Description                             |
-| ------ | --------------- | --------------------------------------- |
-| GET    | `/`             | List borrow requests (filtered by role) |
-| GET    | `/:id`          | Get borrow request by ID                |
-| GET    | `/user/:userId` | Get requests for specific user          |
-| POST   | `/`             | Create borrow request                   |
-| PATCH  | `/:id/status`   | Update request status (admin only)      |
+| Method | Endpoint          | Description                             |
+| ------ | ----------------- | --------------------------------------- |
+| GET    | `/`               | List borrow requests (filtered by role) |
+| GET    | `/:id`            | Get borrow request by ID                |
+| GET    | `/user/:userId`   | Get requests for specific user          |
+| GET    | `/status/:status` | Get requests by status                  |
+| POST   | `/`               | Create borrow request                   |
+| PATCH  | `/:id/status`     | Update request status (admin only)      |
 
 ### Returns (`/api/returns`)
 
-| Method | Endpoint | Description           |
-| ------ | -------- | --------------------- |
-| GET    | `/`      | List return requests  |
-| POST   | `/`      | Create return request |
+| Method | Endpoint | Description              |
+| ------ | -------- | ------------------------ |
+| GET    | `/`      | List return requests     |
+| GET    | `/:id`   | Get return request by ID |
+| POST   | `/`      | Create return request    |
 
 ### Renewals (`/api/renewals`)
 
 | Method | Endpoint            | Description                         |
 | ------ | ------------------- | ----------------------------------- |
 | GET    | `/`                 | List renewal requests               |
+| GET    | `/:id`              | Get renewal request by ID           |
 | GET    | `/borrow/:borrowId` | Get renewals for borrow request     |
+| GET    | `/status/:status`   | Get renewals by status              |
 | POST   | `/`                 | Create renewal request              |
 | PATCH  | `/:id/status`       | Approve/reject renewal (admin only) |
 
@@ -111,7 +137,55 @@ Device Hub is an enterprise device management system built with React (frontend)
 | GET    | `/names` | Get valid department names               |
 | GET    | `/:id`   | Get department by ID                     |
 | POST   | `/`      | Create department (admin only)           |
+| PUT    | `/:id`   | Update department (admin only)           |
 | DELETE | `/:id`   | Delete empty department (admin only)     |
+
+### Avatars (`/api/avatars`)
+
+| Method | Endpoint            | Description                              |
+| ------ | ------------------- | ---------------------------------------- |
+| POST   | `/user/:userId`     | Upload/update user avatar                |
+| POST   | `/device/:deviceId` | Upload/update device image (admin only)  |
+| DELETE | `/user/:userId`     | Delete user avatar                       |
+| DELETE | `/device/:deviceId` | Delete device image (admin only)         |
+
+### Audit Logs (`/api/audit`)
+
+| Method | Endpoint              | Description                              |
+| ------ | --------------------- | ---------------------------------------- |
+| GET    | `/`                   | Get audit logs with filters (admin only) |
+| GET    | `/object/:type/:id`   | Get audit logs by object (admin only)    |
+
+### In-App Notifications (`/api/in-app-notifications`)
+
+| Method | Endpoint        | Description                                    |
+| ------ | --------------- | ---------------------------------------------- |
+| GET    | `/`             | Get notifications for authenticated user       |
+| GET    | `/unread-count` | Get unread notification count                  |
+| POST   | `/`             | Create notification (admin only)               |
+| PATCH  | `/:id/read`     | Mark notification as read                      |
+| PATCH  | `/read-all`     | Mark all notifications as read                 |
+| DELETE | `/:id`          | Delete a notification                          |
+| DELETE | `/clear`        | Clear all notifications for user               |
+
+### Mattermost Notifications (`/api/notifications`)
+
+| Method | Endpoint       | Description                                    |
+| ------ | -------------- | ---------------------------------------------- |
+| POST   | `/send`        | Send notification for device action (admin)    |
+| GET    | `/status`      | Get notification service status (admin)        |
+| GET    | `/users`       | Get all user notification states (admin)       |
+| GET    | `/idempotency` | Get idempotency records (admin)                |
+| POST   | `/initialize`  | Initialize notification service (admin)        |
+
+### Mattermost Slash Commands (`/api/mattermost`)
+
+| Method | Endpoint       | Description                                    |
+| ------ | -------------- | ---------------------------------------------- |
+| POST   | `/command`     | Handle incoming slash commands from Mattermost |
+| POST   | `/interactive` | Handle interactive message actions             |
+| POST   | `/text-input`  | Handle text input during wizard sessions       |
+| GET    | `/sessions`    | Get session statistics (admin only)            |
 
 ---
 
@@ -247,6 +321,32 @@ Device Hub is an enterprise device management system built with React (frontend)
 - Cache invalidation on mutations
 - Error toast display
 - useRefreshData functionality
+
+### Scenario Tests (`tests/scenarios/`)
+
+#### User Workflows (`user-workflows.test.ts`)
+
+- Complete user journey simulation
+- Login -> Browse Devices -> Book Device -> Return Device
+- Role-based workflow validation (User vs Admin)
+
+#### Concurrent Operations (`concurrent-operations.test.ts`)
+
+- Race condition testing
+- Concurrent booking attempts for same device
+- Inventory update synchronicity
+
+### Server Tests (`tests/server/`)
+
+#### Notifications (`notifications.test.ts`)
+
+- Notification service logic
+- Email/Messaging integration mock tests
+
+#### Returns Logic (`returns.test.ts`)
+
+- Backend logic verification for return processes
+- Condition assessment impact on device status
 
 ### Property Tests (`tests/properties/`)
 

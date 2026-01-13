@@ -1,525 +1,131 @@
 import { db } from "../db/connection";
-import { authenticateRequest, requireAdmin } from "../middleware/auth";
-// Mattermost disabled for testing
-// import { triggerRenewalNotification } from "../mattermost";
+import { requireAdmin } from "../middleware/auth";
 import { auditLogger } from "../services/audit-logger";
 import { createNotification, notifyAdmins } from "./in-app-notifications";
-import type {
-  RenewalRequest,
-  RenewalRequestWithDetails,
-  CreateRenewalRequest,
-  RenewalStatus,
-  BorrowRequest,
-} from "../types";
+import { ok, created, err, notFound, forbidden, parseId, withAuth, withAdmin } from "./_helpers";
+import type { RenewalRequest, RenewalRequestWithDetails, CreateRenewalRequest, RenewalStatus, BorrowRequest } from "../types";
 
-// JSON response helper
-function jsonResponse(data: unknown, status = 200): Response {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: { "Content-Type": "application/json" },
-  });
-}
+const VALID_STATUSES: RenewalStatus[] = ["pending", "approved", "rejected"];
 
 export const renewalsRoutes = {
-  // GET /api/renewals
   async getAll(request: Request): Promise<Response> {
-    try {
-      const payload = await authenticateRequest(request);
-      if (!payload) {
-        return jsonResponse({ success: false, error: "Unauthorized" }, 401);
-      }
-
-      const url = new URL(request.url);
-      const status = url.searchParams.get("status");
-
-      // Build dynamic query with filters
-      let sql = "SELECT * FROM v_renewal_details WHERE 1=1";
-      const params: unknown[] = [];
-
-      // Non-admins can only see their own renewal requests
-      if (!requireAdmin(payload)) {
-        sql += " AND user_id = ?";
-        params.push(payload.userId);
-      }
-
-      if (status) {
-        sql += " AND status = ?";
-        params.push(status);
-      }
-
-      sql += " ORDER BY created_at DESC";
-
-      const renewals = await db.unsafe<RenewalRequestWithDetails>(sql, params);
-      return jsonResponse({ success: true, data: renewals });
-    } catch (error) {
-      console.error("Get renewal requests error:", error);
-      return jsonResponse(
-        { success: false, error: "Failed to get renewal requests" },
-        500,
-      );
-    }
+    return withAuth(request, async (payload) => {
+      try {
+        const url = new URL(request.url);
+        const status = url.searchParams.get("status");
+        let sql = "SELECT * FROM v_renewal_details WHERE 1=1";
+        const params: unknown[] = [];
+        if (!requireAdmin(payload)) { sql += " AND user_id = ?"; params.push(payload.userId); }
+        if (status) { sql += " AND status = ?"; params.push(status); }
+        sql += " ORDER BY created_at DESC";
+        return ok(await db.unsafe<RenewalRequestWithDetails>(sql, params));
+      } catch (e) { console.error("Get renewal requests error:", e); return err("Failed to get renewal requests", 500); }
+    });
   },
 
-  // GET /api/renewals/:id
-  async getById(
-    request: Request,
-    params: Record<string, string>,
-  ): Promise<Response> {
-    try {
-      const payload = await authenticateRequest(request);
-      if (!payload) {
-        return jsonResponse({ success: false, error: "Unauthorized" }, 401);
-      }
-
-      const id = parseInt(params.id);
-      if (isNaN(id)) {
-        return jsonResponse(
-          { success: false, error: "Invalid renewal request ID" },
-          400,
-        );
-      }
-
-      const renewals = await db<RenewalRequestWithDetails[]>`
-        SELECT * FROM v_renewal_details WHERE id = ${id}
-      `;
-      const renewal = renewals[0];
-
-      if (!renewal) {
-        return jsonResponse(
-          { success: false, error: "Renewal request not found" },
-          404,
-        );
-      }
-
-      // Non-admins can only see their own renewal requests
-      if (!requireAdmin(payload) && renewal.user_id !== payload.userId) {
-        return jsonResponse({ success: false, error: "Forbidden" }, 403);
-      }
-
-      return jsonResponse({ success: true, data: renewal });
-    } catch (error) {
-      console.error("Get renewal request error:", error);
-      return jsonResponse(
-        { success: false, error: "Failed to get renewal request" },
-        500,
-      );
-    }
+  async getById(request: Request, params: Record<string, string>): Promise<Response> {
+    return withAuth(request, async (payload) => {
+      try {
+        const id = parseId(params.id);
+        if (!id) return err("Invalid renewal request ID");
+        const [renewal] = await db<RenewalRequestWithDetails[]>`SELECT * FROM v_renewal_details WHERE id = ${id}`;
+        if (!renewal) return notFound("Renewal request");
+        if (!requireAdmin(payload) && renewal.user_id !== payload.userId) return forbidden();
+        return ok(renewal);
+      } catch (e) { console.error("Get renewal request error:", e); return err("Failed to get renewal request", 500); }
+    });
   },
 
-  // POST /api/renewals
   async create(request: Request): Promise<Response> {
-    try {
-      const payload = await authenticateRequest(request);
-      if (!payload) {
-        return jsonResponse({ success: false, error: "Unauthorized" }, 401);
-      }
+    return withAuth(request, async (payload) => {
+      try {
+        const { borrow_request_id, requested_end_date, reason }: CreateRenewalRequest = await request.json();
+        if (!borrow_request_id) return err("Borrow request ID is required");
+        if (!requested_end_date) return err("Requested end date is required");
+        if (!reason?.trim()) return err("Reason is required");
 
-      const body: CreateRenewalRequest = await request.json();
-      const { borrow_request_id, requested_end_date, reason } = body;
+        const [borrowReq] = await db<BorrowRequest[]>`SELECT * FROM borrow_requests WHERE id = ${borrow_request_id}`;
+        if (!borrowReq) return notFound("Borrow request");
+        if (borrowReq.status !== "active") return err("Can only request renewal for active loans");
+        if (borrowReq.user_id !== payload.userId) return forbidden("You can only request renewal for your own loans");
+        if (new Date(requested_end_date) <= new Date(borrowReq.end_date)) return err("Requested end date must be after current end date");
 
-      // Validation
-      if (!borrow_request_id) {
-        return jsonResponse(
-          { success: false, error: "Borrow request ID is required" },
-          400,
-        );
-      }
-      if (!requested_end_date) {
-        return jsonResponse(
-          { success: false, error: "Requested end date is required" },
-          400,
-        );
-      }
-      if (!reason?.trim()) {
-        return jsonResponse(
-          { success: false, error: "Reason is required" },
-          400,
-        );
-      }
+        const [existing] = await db<{ count: number }[]>`SELECT COUNT(*) as count FROM renewal_requests WHERE borrow_request_id = ${borrow_request_id} AND status = 'pending'`;
+        if (existing.count > 0) return err("A pending renewal request already exists for this loan");
 
-      // Check if borrow request exists and is active
-      const borrowRequests = await db<BorrowRequest[]>`
-        SELECT * FROM borrow_requests WHERE id = ${borrow_request_id}
-      `;
-      const borrowRequest = borrowRequests[0];
+        const currentEndStr = borrowReq.end_date.toISOString().split("T")[0];
+        await db`INSERT INTO renewal_requests (borrow_request_id, user_id, current_end_date, requested_end_date, reason) VALUES (${borrow_request_id}, ${payload.userId}, ${currentEndStr}, ${requested_end_date}, ${reason.trim()})`;
 
-      if (!borrowRequest) {
-        return jsonResponse(
-          { success: false, error: "Borrow request not found" },
-          404,
-        );
-      }
-
-      if (borrowRequest.status !== "active") {
-        return jsonResponse(
-          {
-            success: false,
-            error: "Can only request renewal for active loans",
-          },
-          400,
-        );
-      }
-
-      // Check if user owns the borrow request
-      if (borrowRequest.user_id !== payload.userId) {
-        return jsonResponse(
-          {
-            success: false,
-            error: "You can only request renewal for your own loans",
-          },
-          403,
-        );
-      }
-
-      // Check if requested date is after current end date
-      const currentEndDate = new Date(borrowRequest.end_date);
-      const newEndDate = new Date(requested_end_date);
-      if (newEndDate <= currentEndDate) {
-        return jsonResponse(
-          {
-            success: false,
-            error: "Requested end date must be after current end date",
-          },
-          400,
-        );
-      }
-
-      // Check if there's already a pending renewal for this borrow request
-      const existingRenewals = await db<{ count: number }[]>`
-        SELECT COUNT(*) as count FROM renewal_requests 
-        WHERE borrow_request_id = ${borrow_request_id} AND status = 'pending'
-      `;
-      if (existingRenewals[0].count > 0) {
-        return jsonResponse(
-          {
-            success: false,
-            error: "A pending renewal request already exists for this loan",
-          },
-          400,
-        );
-      }
-
-      const reasonTrimmed = reason.trim();
-      const currentEndDateStr = borrowRequest.end_date
-        .toISOString()
-        .split("T")[0];
-
-      await db`
-        INSERT INTO renewal_requests (borrow_request_id, user_id, current_end_date, requested_end_date, reason)
-        VALUES (${borrow_request_id}, ${payload.userId}, ${currentEndDateStr}, ${requested_end_date}, ${reasonTrimmed})
-      `;
-
-      // Get the created renewal request
-      const newRenewals = await db<RenewalRequestWithDetails[]>`
-        SELECT * FROM v_renewal_details 
-        WHERE borrow_request_id = ${borrow_request_id} AND user_id = ${payload.userId}
-        ORDER BY created_at DESC LIMIT 1
-      `;
-
-      // Notify admins about new renewal request
-      const newRenewal = newRenewals[0];
-      if (newRenewal) {
-        notifyAdmins(
-          "new_request",
-          "New Renewal Request",
-          `${newRenewal.user_name} requested to extend ${newRenewal.device_name}`,
-          "/admin/requests?tab=renewals",
-          borrow_request_id,
-          newRenewal.device_id
-        ).catch(err => console.error("Failed to notify admins:", err));
-      }
-
-      return jsonResponse(
-        {
-          success: true,
-          data: newRenewals[0],
-          message: "Renewal request created",
-        },
-        201,
-      );
-    } catch (error) {
-      console.error("Create renewal request error:", error);
-      return jsonResponse(
-        { success: false, error: "Failed to create renewal request" },
-        500,
-      );
-    }
+        const [newRenewal] = await db<RenewalRequestWithDetails[]>`SELECT * FROM v_renewal_details WHERE borrow_request_id = ${borrow_request_id} AND user_id = ${payload.userId} ORDER BY created_at DESC LIMIT 1`;
+        if (newRenewal) notifyAdmins("new_request", "New Renewal Request", `${newRenewal.user_name} requested to extend ${newRenewal.device_name}`, "/admin/requests?tab=renewals", borrow_request_id, newRenewal.device_id).catch(console.error);
+        return created(newRenewal, "Renewal request created");
+      } catch (e) { console.error("Create renewal request error:", e); return err("Failed to create renewal request", 500); }
+    });
   },
 
-  // PATCH /api/renewals/:id/status
-  async updateStatus(
-    request: Request,
-    params: Record<string, string>,
-  ): Promise<Response> {
-    try {
-      const payload = await authenticateRequest(request);
-      if (!payload) {
-        return jsonResponse({ success: false, error: "Unauthorized" }, 401);
-      }
+  async updateStatus(request: Request, params: Record<string, string>): Promise<Response> {
+    return withAdmin(request, async (payload) => {
+      try {
+        const id = parseId(params.id);
+        if (!id) return err("Invalid renewal request ID");
+        const { status } = await request.json() as { status: RenewalStatus };
+        if (!VALID_STATUSES.includes(status)) return err("Invalid status");
 
-      // Only admins can approve/reject renewal requests
-      if (!requireAdmin(payload)) {
-        return jsonResponse({ success: false, error: "Forbidden" }, 403);
-      }
+        const [current] = await db<RenewalRequest[]>`SELECT * FROM renewal_requests WHERE id = ${id}`;
+        if (!current) return notFound("Renewal request");
+        if (current.status !== "pending") return err("Can only update status of pending renewal requests");
 
-      const id = parseInt(params.id);
-      if (isNaN(id)) {
-        return jsonResponse(
-          { success: false, error: "Invalid renewal request ID" },
-          400,
-        );
-      }
-
-      const body = await request.json();
-      const { status } = body as { status: RenewalStatus };
-
-      const validStatuses: RenewalStatus[] = [
-        "pending",
-        "approved",
-        "rejected",
-      ];
-      if (!validStatuses.includes(status)) {
-        return jsonResponse({ success: false, error: "Invalid status" }, 400);
-      }
-
-      // Get current renewal request
-      const currentRenewals = await db<RenewalRequest[]>`
-        SELECT * FROM renewal_requests WHERE id = ${id}
-      `;
-      const currentRenewal = currentRenewals[0];
-
-      if (!currentRenewal) {
-        return jsonResponse(
-          { success: false, error: "Renewal request not found" },
-          404,
-        );
-      }
-
-      // Can only change status from pending
-      if (currentRenewal.status !== "pending") {
-        return jsonResponse(
-          {
-            success: false,
-            error: "Can only update status of pending renewal requests",
-          },
-          400,
-        );
-      }
-
-      // Use transaction for atomicity
-      await db.begin(async (tx) => {
-        if (status === "approved") {
-          // Check for conflict bookings before approving
-          const borrowRequest = await tx<{ device_id: number, end_date: Date }[]>`
-            SELECT device_id, end_date FROM borrow_requests WHERE id = ${currentRenewal.borrow_request_id}
-          `;
-          
-          if (borrowRequest.length > 0) {
-            const { device_id, end_date } = borrowRequest[0];
-            const currentEndDate = new Date(end_date);
-            const requestedEndDate = new Date(currentRenewal.requested_end_date);
-            
-            // Allow 1 day overlap for substantial overlap check
-             // Logic: Check if any OTHER active/approved request overlaps with the NEW extension period
-            // The extension period is from (Current End Date) to (Requested End Date)
-            
-            const conflicts = await tx<{ count: number }[]>`
-              SELECT COUNT(*) as count FROM borrow_requests 
-              WHERE device_id = ${device_id} 
-              AND status IN ('pending', 'approved', 'active')
-              AND id != ${currentRenewal.borrow_request_id}
-              AND (
-                  (start_date <= ${requestedEndDate} AND end_date >= ${currentEndDate})
-              )
-            `;
-
-            if (conflicts[0].count > 0) {
-               throw new Error("Device is booked for the requested renewal period");
+        await db.begin(async (tx) => {
+          if (status === "approved") {
+            const [borrowReq] = await tx<{ device_id: number; end_date: Date }[]>`SELECT device_id, end_date FROM borrow_requests WHERE id = ${current.borrow_request_id}`;
+            if (borrowReq) {
+              const [conflict] = await tx<{ count: number }[]>`SELECT COUNT(*) as count FROM borrow_requests WHERE device_id = ${borrowReq.device_id} AND status IN ('pending', 'approved', 'active') AND id != ${current.borrow_request_id} AND start_date <= ${current.requested_end_date} AND end_date >= ${borrowReq.end_date}`;
+              if (conflict.count > 0) throw new Error("Device is booked for the requested renewal period");
             }
           }
+          await tx`UPDATE renewal_requests SET status = ${status}, reviewed_by = ${payload.userId}, reviewed_at = NOW() WHERE id = ${id}`;
+          if (status === "approved") {
+            const reqEndDate = current.requested_end_date.toISOString().split("T")[0];
+            await tx`UPDATE borrow_requests SET end_date = ${reqEndDate}, updated_at = NOW() WHERE id = ${current.borrow_request_id}`;
+          }
+        });
+
+        const [updated] = await db<RenewalRequestWithDetails[]>`SELECT * FROM v_renewal_details WHERE id = ${id}`;
+        if (updated && (status === "approved" || status === "rejected")) {
+          createNotification({ user_id: current.user_id, type: status === "approved" ? "renewal_approved" : "renewal_rejected", title: status === "approved" ? "Renewal Approved" : "Renewal Rejected", message: `Your renewal request for ${updated.device_name} has been ${status}`, link: "/loans?tab=active", related_request_id: current.borrow_request_id, related_device_id: updated.device_id }).catch(console.error);
         }
 
-        // Update renewal request status
-        await tx`
-          UPDATE renewal_requests 
-          SET status = ${status}, reviewed_by = ${payload.userId}, reviewed_at = NOW()
-          WHERE id = ${id}
-        `;
-
-        // If approved, update the borrow request end date
-        if (status === "approved") {
-          const requestedEndDate = currentRenewal.requested_end_date
-            .toISOString()
-            .split("T")[0];
-          await tx`
-            UPDATE borrow_requests 
-            SET end_date = ${requestedEndDate}, updated_at = NOW()
-            WHERE id = ${currentRenewal.borrow_request_id}
-          `;
-        }
-      });
-
-      const updatedRenewals = await db<RenewalRequestWithDetails[]>`
-        SELECT * FROM v_renewal_details WHERE id = ${id}
-      `;
-
-      const updatedRenewal = updatedRenewals[0];
-
-      // Send notification to user based on status change
-      if (updatedRenewal) {
-        if (status === "approved") {
-          createNotification({
-            user_id: currentRenewal.user_id,
-            type: "renewal_approved",
-            title: "Renewal Approved",
-            message: `Your renewal request for ${updatedRenewal.device_name} has been approved`,
-            link: "/loans?tab=active",
-            related_request_id: currentRenewal.borrow_request_id,
-            related_device_id: updatedRenewal.device_id,
-          }).catch(err => console.error("Failed to create notification:", err));
-        } else if (status === "rejected") {
-          createNotification({
-            user_id: currentRenewal.user_id,
-            type: "renewal_rejected",
-            title: "Renewal Rejected",
-            message: `Your renewal request for ${updatedRenewal.device_name} has been rejected`,
-            link: "/loans?tab=active",
-            related_request_id: currentRenewal.borrow_request_id,
-            related_device_id: updatedRenewal.device_id,
-          }).catch(err => console.error("Failed to create notification:", err));
-        }
-      }
-
-      // Audit log
-      await auditLogger.log({
-        action: "status_change",
-        objectType: "renewal_request",
-        objectId: id,
-        actor: auditLogger.createActorFromPayload(payload),
-        changes: {
-          before: { status: currentRenewal.status },
-          after: { status },
-        },
-        metadata: {
-          borrow_request_id: currentRenewal.borrow_request_id,
-          user_id: currentRenewal.user_id,
-          requested_end_date: currentRenewal.requested_end_date,
-        },
-      });
-
-      // Trigger Mattermost notification for approved renewals - disabled for testing
-      // if (status === "approved") {
-      //   // Fire and forget - don't block the response
-      //   triggerRenewalNotification(id).catch((err) => {
-      //     console.error("Failed to send renewal notification:", err);
-      //   });
-      // }
-
-      return jsonResponse({
-        success: true,
-        data: updatedRenewals[0],
-        message:
-          status === "approved" ? "Renewal approved" : "Renewal rejected",
-      });
-    } catch (error) {
-      console.error("Update renewal status error:", error);
-      return jsonResponse(
-        { success: false, error: "Failed to update renewal status" },
-        500,
-      );
-    }
+        await auditLogger.log({ action: "status_change", objectType: "renewal_request", objectId: id, actor: auditLogger.createActorFromPayload(payload), changes: { before: { status: current.status }, after: { status } }, metadata: { borrow_request_id: current.borrow_request_id, user_id: current.user_id, requested_end_date: current.requested_end_date } });
+        return ok(updated, status === "approved" ? "Renewal approved" : "Renewal rejected");
+      } catch (e) { console.error("Update renewal status error:", e); return err("Failed to update renewal status", 500); }
+    });
   },
 
-  // GET /api/renewals/borrow/:borrowId
-  async getByBorrowRequest(
-    request: Request,
-    params: Record<string, string>,
-  ): Promise<Response> {
-    try {
-      const payload = await authenticateRequest(request);
-      if (!payload) {
-        return jsonResponse({ success: false, error: "Unauthorized" }, 401);
-      }
-
-      const borrowId = parseInt(params.borrowId);
-      if (isNaN(borrowId)) {
-        return jsonResponse(
-          { success: false, error: "Invalid borrow request ID" },
-          400,
-        );
-      }
-
-      // Build dynamic query
-      let sql = "SELECT * FROM v_renewal_details WHERE borrow_request_id = ?";
-      const sqlParams: unknown[] = [borrowId];
-
-      // Non-admins can only see their own renewal requests
-      if (!requireAdmin(payload)) {
-        sql += " AND user_id = ?";
-        sqlParams.push(payload.userId);
-      }
-
-      sql += " ORDER BY created_at DESC";
-
-      const renewals = await db.unsafe<RenewalRequestWithDetails[]>(
-        sql,
-        sqlParams,
-      );
-      return jsonResponse({ success: true, data: renewals });
-    } catch (error) {
-      console.error("Get renewals by borrow request error:", error);
-      return jsonResponse(
-        { success: false, error: "Failed to get renewal requests" },
-        500,
-      );
-    }
+  async getByBorrowRequest(request: Request, params: Record<string, string>): Promise<Response> {
+    return withAuth(request, async (payload) => {
+      try {
+        const borrowId = parseId(params.borrowId);
+        if (!borrowId) return err("Invalid borrow request ID");
+        let sql = "SELECT * FROM v_renewal_details WHERE borrow_request_id = ?";
+        const sqlParams: unknown[] = [borrowId];
+        if (!requireAdmin(payload)) { sql += " AND user_id = ?"; sqlParams.push(payload.userId); }
+        sql += " ORDER BY created_at DESC";
+        return ok(await db.unsafe<RenewalRequestWithDetails[]>(sql, sqlParams));
+      } catch (e) { console.error("Get renewals by borrow request error:", e); return err("Failed to get renewal requests", 500); }
+    });
   },
 
-  // GET /api/renewals/status/:status
-  async getByStatus(
-    request: Request,
-    params: Record<string, string>,
-  ): Promise<Response> {
-    try {
-      const payload = await authenticateRequest(request);
-      if (!payload) {
-        return jsonResponse({ success: false, error: "Unauthorized" }, 401);
-      }
-
-      const status = params.status as RenewalStatus;
-      const validStatuses: RenewalStatus[] = [
-        "pending",
-        "approved",
-        "rejected",
-      ];
-
-      if (!validStatuses.includes(status)) {
-        return jsonResponse({ success: false, error: "Invalid status" }, 400);
-      }
-
-      // Build dynamic query
-      let sql = "SELECT * FROM v_renewal_details WHERE status = ?";
-      const sqlParams: unknown[] = [status];
-
-      // Non-admins can only see their own renewal requests
-      if (!requireAdmin(payload)) {
-        sql += " AND user_id = ?";
-        sqlParams.push(payload.userId);
-      }
-
-      sql += " ORDER BY created_at DESC";
-
-      const renewals = await db.unsafe<RenewalRequestWithDetails[]>(
-        sql,
-        sqlParams,
-      );
-      return jsonResponse({ success: true, data: renewals });
-    } catch (error) {
-      console.error("Get renewals by status error:", error);
-      return jsonResponse(
-        { success: false, error: "Failed to get renewal requests" },
-        500,
-      );
-    }
+  async getByStatus(request: Request, params: Record<string, string>): Promise<Response> {
+    return withAuth(request, async (payload) => {
+      try {
+        const status = params.status as RenewalStatus;
+        if (!VALID_STATUSES.includes(status)) return err("Invalid status");
+        let sql = "SELECT * FROM v_renewal_details WHERE status = ?";
+        const sqlParams: unknown[] = [status];
+        if (!requireAdmin(payload)) { sql += " AND user_id = ?"; sqlParams.push(payload.userId); }
+        sql += " ORDER BY created_at DESC";
+        return ok(await db.unsafe<RenewalRequestWithDetails[]>(sql, sqlParams));
+      } catch (e) { console.error("Get renewals by status error:", e); return err("Failed to get renewal requests", 500); }
+    });
   },
 };

@@ -17,12 +17,16 @@ import {
   validStatusTransitionArb,
   invalidStatusTransitionArb,
 } from "../utils/generators";
-import { daysFromNow, today } from "../utils/helpers";
-import { TEST_USERS } from "../setup";
+import {
+  daysFromNow,
+  today,
+  uniqueAssetTag,
+  setupTestContext,
+  type TestContext,
+} from "../utils/helpers";
 import type {
   BorrowRequestWithDetails,
   DeviceWithDepartment,
-  UserPublic,
 } from "../../src/types/api";
 
 // ============================================================================
@@ -31,36 +35,22 @@ import type {
 
 const api = new TestApiClient();
 
-let adminToken: string;
-let superuserToken: string;
-let userToken: string;
-let regularUserId: number;
-let adminUserId: number;
+let ctx: TestContext;
 const createdDeviceIds: number[] = [];
 const createdBorrowRequestIds: number[] = [];
 
 beforeAll(async () => {
-  const [adminResult, superuserResult, userResult] = await Promise.all([
-    api.loginAsAdmin(),
-    api.loginAsSuperuser(),
-    api.loginAsUser(),
-  ]);
-  adminToken = adminResult.token;
-  superuserToken = superuserResult.token;
-  userToken = userResult.token;
-  regularUserId = userResult.user.id;
-  adminUserId = adminResult.user.id;
+  ctx = await setupTestContext();
 });
 
 afterAll(async () => {
   // Cleanup created borrow requests (by rejecting them to free devices)
   for (const requestId of createdBorrowRequestIds) {
     try {
-      // Try to reject or return the request to free the device
       await api.patch(
         `/api/borrow/${requestId}/status`,
         { status: "rejected" },
-        adminToken,
+        ctx.adminToken,
       );
     } catch {
       // Ignore cleanup errors
@@ -70,7 +60,7 @@ afterAll(async () => {
   // Cleanup created devices
   for (const deviceId of createdDeviceIds) {
     try {
-      await api.delete(`/api/devices/${deviceId}`, adminToken);
+      await api.delete(`/api/devices/${deviceId}`, ctx.adminToken);
     } catch {
       // Ignore cleanup errors
     }
@@ -81,25 +71,19 @@ afterAll(async () => {
 // Helper Functions
 // ============================================================================
 
-// Counter for unique asset tags
-let deviceCounter = Date.now();
-
 /**
  * Create a test device and return its ID
  */
 async function createTestDevice(): Promise<number> {
-  deviceCounter++;
-  const uniqueAssetTag = `TEST-${deviceCounter}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
-
   const deviceData = createDevice({
-    asset_tag: uniqueAssetTag,
-    name: `Test Device ${deviceCounter}`,
+    asset_tag: uniqueAssetTag("BORROW"),
+    name: `Borrow Test Device ${Date.now()}`,
   });
 
   const response = await api.post<DeviceWithDepartment>(
     "/api/devices",
     deviceData,
-    adminToken,
+    ctx.adminToken,
   );
 
   if (!response.data.success || !response.data.data?.id) {
@@ -117,7 +101,7 @@ async function createTestDevice(): Promise<number> {
  */
 async function createTestBorrowRequest(
   deviceId: number,
-  token: string = userToken,
+  token: string = ctx.userToken,
   overrides?: Partial<{ start_date: string; end_date: string; reason: string }>,
 ): Promise<BorrowRequestWithDetails> {
   const borrowData = createBorrowRequest({
@@ -152,7 +136,7 @@ describe("Borrow Request API - Listing", () => {
     it("should return all borrow requests for admin (Req 4.1)", async () => {
       const response = await api.get<BorrowRequestWithDetails[]>(
         "/api/borrow",
-        adminToken,
+        ctx.adminToken,
       );
 
       expect(response.status).toBe(200);
@@ -176,7 +160,7 @@ describe("Borrow Request API - Listing", () => {
     it("should return only own requests for non-admin (Req 4.2)", async () => {
       const response = await api.get<BorrowRequestWithDetails[]>(
         "/api/borrow",
-        userToken,
+        ctx.userToken,
       );
 
       expect(response.status).toBe(200);
@@ -187,7 +171,7 @@ describe("Borrow Request API - Listing", () => {
       // All returned requests should belong to the regular user
       if (response.data.data && response.data.data.length > 0) {
         response.data.data.forEach((request) => {
-          expect(request.user_id).toBe(regularUserId);
+          expect(request.user_id).toBe(ctx.regularUserId);
         });
       }
     });
@@ -202,7 +186,7 @@ describe("Borrow Request API - Listing", () => {
     it("should filter by status parameter", async () => {
       const response = await api.get<BorrowRequestWithDetails[]>(
         "/api/borrow",
-        adminToken,
+        ctx.adminToken,
         { status: "pending" },
       );
 
@@ -221,7 +205,7 @@ describe("Borrow Request API - Listing", () => {
       // First get all requests to find a device_id
       const allResponse = await api.get<BorrowRequestWithDetails[]>(
         "/api/borrow",
-        adminToken,
+        ctx.adminToken,
       );
 
       if (allResponse.data.data && allResponse.data.data.length > 0) {
@@ -229,7 +213,7 @@ describe("Borrow Request API - Listing", () => {
 
         const response = await api.get<BorrowRequestWithDetails[]>(
           "/api/borrow",
-          adminToken,
+          ctx.adminToken,
           { device_id: deviceId.toString() },
         );
 
@@ -266,14 +250,14 @@ describe("Borrow Request API - Creation", () => {
       const response = await api.post<BorrowRequestWithDetails>(
         "/api/borrow",
         borrowData,
-        userToken,
+        ctx.userToken,
       );
 
       expect(response.status).toBe(201);
       expect(response.data.success).toBe(true);
       expect(response.data.data).toBeDefined();
       expect(response.data.data?.device_id).toBe(deviceId);
-      expect(response.data.data?.user_id).toBe(regularUserId);
+      expect(response.data.data?.user_id).toBe(ctx.regularUserId);
       expect(response.data.data?.status).toBe("pending");
 
       if (response.data.data?.id) {
@@ -290,12 +274,12 @@ describe("Borrow Request API - Creation", () => {
       await api.patch(
         `/api/borrow/${firstRequest.id}/status`,
         { status: "approved" },
-        adminToken,
+        ctx.adminToken,
       );
       await api.patch(
         `/api/borrow/${firstRequest.id}/status`,
         { status: "active" },
-        adminToken,
+        ctx.adminToken,
       );
 
       // Try to create another request for the same device
@@ -308,7 +292,7 @@ describe("Borrow Request API - Creation", () => {
       const response = await api.post<BorrowRequestWithDetails>(
         "/api/borrow",
         borrowData,
-        userToken,
+        ctx.userToken,
       );
 
       expect(response.status).toBe(400);
@@ -328,7 +312,7 @@ describe("Borrow Request API - Creation", () => {
       const response = await api.post<BorrowRequestWithDetails>(
         "/api/borrow",
         borrowData,
-        userToken,
+        ctx.userToken,
       );
 
       expect(response.status).toBe(400);
@@ -349,7 +333,7 @@ describe("Borrow Request API - Creation", () => {
       const firstResponse = await api.post<BorrowRequestWithDetails>(
         "/api/borrow",
         firstBorrowData,
-        userToken,
+        ctx.userToken,
       );
 
       if (firstResponse.data.data?.id) {
@@ -366,7 +350,7 @@ describe("Borrow Request API - Creation", () => {
       const response = await api.post<BorrowRequestWithDetails>(
         "/api/borrow",
         secondBorrowData,
-        userToken,
+        ctx.userToken,
       );
 
       expect(response.status).toBe(400);
@@ -396,7 +380,7 @@ describe("Borrow Request API - Creation", () => {
       const response = await api.post<BorrowRequestWithDetails>(
         "/api/borrow",
         borrowData,
-        userToken,
+        ctx.userToken,
       );
 
       expect(response.status).toBe(404);
@@ -407,7 +391,7 @@ describe("Borrow Request API - Creation", () => {
       const response = await api.post<BorrowRequestWithDetails>(
         "/api/borrow",
         { device_id: 1 }, // Missing start_date, end_date, reason
-        userToken,
+        ctx.userToken,
       );
 
       expect(response.status).toBe(400);
@@ -429,7 +413,7 @@ describe("Borrow Request API - Status Transitions", () => {
       const response = await api.patch<BorrowRequestWithDetails>(
         `/api/borrow/${borrowRequest.id}/status`,
         { status: "approved" },
-        adminToken,
+        ctx.adminToken,
       );
 
       expect(response.status).toBe(200);
@@ -445,14 +429,14 @@ describe("Borrow Request API - Status Transitions", () => {
       await api.patch(
         `/api/borrow/${borrowRequest.id}/status`,
         { status: "approved" },
-        adminToken,
+        ctx.adminToken,
       );
 
       // Then activate
       const response = await api.patch<BorrowRequestWithDetails>(
         `/api/borrow/${borrowRequest.id}/status`,
         { status: "active" },
-        adminToken,
+        ctx.adminToken,
       );
 
       expect(response.status).toBe(200);
@@ -474,19 +458,19 @@ describe("Borrow Request API - Status Transitions", () => {
       await api.patch(
         `/api/borrow/${borrowRequest.id}/status`,
         { status: "approved" },
-        adminToken,
+        ctx.adminToken,
       );
       await api.patch(
         `/api/borrow/${borrowRequest.id}/status`,
         { status: "active" },
-        adminToken,
+        ctx.adminToken,
       );
 
       // Return
       const response = await api.patch<BorrowRequestWithDetails>(
         `/api/borrow/${borrowRequest.id}/status`,
         { status: "returned" },
-        adminToken,
+        ctx.adminToken,
       );
 
       expect(response.status).toBe(200);
@@ -508,7 +492,7 @@ describe("Borrow Request API - Status Transitions", () => {
       const response = await api.patch<BorrowRequestWithDetails>(
         `/api/borrow/${borrowRequest.id}/status`,
         { status: "active" },
-        adminToken,
+        ctx.adminToken,
       );
 
       expect(response.status).toBe(400);
@@ -524,24 +508,24 @@ describe("Borrow Request API - Status Transitions", () => {
       await api.patch(
         `/api/borrow/${borrowRequest.id}/status`,
         { status: "approved" },
-        adminToken,
+        ctx.adminToken,
       );
       await api.patch(
         `/api/borrow/${borrowRequest.id}/status`,
         { status: "active" },
-        adminToken,
+        ctx.adminToken,
       );
       await api.patch(
         `/api/borrow/${borrowRequest.id}/status`,
         { status: "returned" },
-        adminToken,
+        ctx.adminToken,
       );
 
       // Try to change status from returned
       const response = await api.patch<BorrowRequestWithDetails>(
         `/api/borrow/${borrowRequest.id}/status`,
         { status: "active" },
-        adminToken,
+        ctx.adminToken,
       );
 
       expect(response.status).toBe(400);
@@ -556,14 +540,14 @@ describe("Borrow Request API - Status Transitions", () => {
       await api.patch(
         `/api/borrow/${borrowRequest.id}/status`,
         { status: "rejected" },
-        adminToken,
+        ctx.adminToken,
       );
 
       // Try to change status from rejected
       const response = await api.patch<BorrowRequestWithDetails>(
         `/api/borrow/${borrowRequest.id}/status`,
         { status: "approved" },
-        adminToken,
+        ctx.adminToken,
       );
 
       expect(response.status).toBe(400);
@@ -577,7 +561,7 @@ describe("Borrow Request API - Status Transitions", () => {
       const response = await api.patch<BorrowRequestWithDetails>(
         `/api/borrow/${borrowRequest.id}/status`,
         { status: "approved" },
-        userToken,
+        ctx.userToken,
       );
 
       expect(response.status).toBe(403);
@@ -598,7 +582,7 @@ describe("Borrow Request API - Status Transitions", () => {
       const response = await api.patch<BorrowRequestWithDetails>(
         "/api/borrow/999999/status",
         { status: "approved" },
-        adminToken,
+        ctx.adminToken,
       );
 
       expect(response.status).toBe(404);
@@ -609,7 +593,7 @@ describe("Borrow Request API - Status Transitions", () => {
       const response = await api.patch<BorrowRequestWithDetails>(
         "/api/borrow/invalid/status",
         { status: "approved" },
-        adminToken,
+        ctx.adminToken,
       );
 
       expect(response.status).toBe(400);
@@ -623,7 +607,7 @@ describe("Borrow Request API - Status Transitions", () => {
       const response = await api.patch<BorrowRequestWithDetails>(
         `/api/borrow/${borrowRequest.id}/status`,
         { status: "invalid_status" },
-        adminToken,
+        ctx.adminToken,
       );
 
       expect(response.status).toBe(400);
@@ -640,8 +624,8 @@ describe("Borrow Request API - User-Specific Requests", () => {
   describe("GET /api/borrow/user/:userId", () => {
     it("should return requests for specified user (Req 4.11)", async () => {
       const response = await api.get<BorrowRequestWithDetails[]>(
-        `/api/borrow/user/${regularUserId}`,
-        userToken,
+        `/api/borrow/user/${ctx.regularUserId}`,
+        ctx.userToken,
       );
 
       expect(response.status).toBe(200);
@@ -652,15 +636,15 @@ describe("Borrow Request API - User-Specific Requests", () => {
       // All returned requests should belong to the specified user
       if (response.data.data && response.data.data.length > 0) {
         response.data.data.forEach((request) => {
-          expect(request.user_id).toBe(regularUserId);
+          expect(request.user_id).toBe(ctx.regularUserId);
         });
       }
     });
 
     it("should allow admin to view any user requests", async () => {
       const response = await api.get<BorrowRequestWithDetails[]>(
-        `/api/borrow/user/${regularUserId}`,
-        adminToken,
+        `/api/borrow/user/${ctx.regularUserId}`,
+        ctx.adminToken,
       );
 
       expect(response.status).toBe(200);
@@ -671,8 +655,8 @@ describe("Borrow Request API - User-Specific Requests", () => {
     it("should return 403 for non-admin viewing other user requests", async () => {
       // Try to view admin's requests as regular user
       const response = await api.get<BorrowRequestWithDetails[]>(
-        `/api/borrow/user/${adminUserId}`,
-        userToken,
+        `/api/borrow/user/${ctx.adminUserId}`,
+        ctx.userToken,
       );
 
       expect(response.status).toBe(403);
@@ -681,7 +665,7 @@ describe("Borrow Request API - User-Specific Requests", () => {
 
     it("should return 401 for unauthenticated request", async () => {
       const response = await api.get<BorrowRequestWithDetails[]>(
-        `/api/borrow/user/${regularUserId}`,
+        `/api/borrow/user/${ctx.regularUserId}`,
       );
 
       expect(response.status).toBe(401);
@@ -691,7 +675,7 @@ describe("Borrow Request API - User-Specific Requests", () => {
     it("should return 400 for invalid user ID format", async () => {
       const response = await api.get<BorrowRequestWithDetails[]>(
         "/api/borrow/user/invalid",
-        adminToken,
+        ctx.adminToken,
       );
 
       expect(response.status).toBe(400);
@@ -716,7 +700,7 @@ describe("Real-World Scenarios", () => {
     const response = await api.post<BorrowRequestWithDetails>(
       "/api/borrow",
       borrowData,
-      userToken,
+      ctx.userToken,
     );
 
     // This checks for the fix we plan to implement
@@ -733,7 +717,7 @@ describe("Real-World Scenarios", () => {
     const patchResponse = await api.put(
       `/api/devices/${deviceId}`,
       { status: "maintenance" },
-      adminToken
+      ctx.adminToken
     );
     expect(patchResponse.status).toBe(200);
 
@@ -751,7 +735,7 @@ describe("Real-World Scenarios", () => {
     const response = await api.post<BorrowRequestWithDetails>(
       "/api/borrow",
       borrowData,
-      userToken,
+      ctx.userToken,
     );
 
     expect(response.status).toBe(400);
@@ -769,7 +753,7 @@ describe("Real-World Scenarios", () => {
     const response = await api.post<BorrowRequestWithDetails>(
       "/api/borrow",
       borrowData,
-      userToken,
+      ctx.userToken,
     );
 
     expect(response.status).toBe(201);
@@ -789,13 +773,13 @@ describe("Real-World Scenarios", () => {
     const responseA = await api.post<BorrowRequestWithDetails>(
       "/api/borrow", 
       reqAData, 
-      userToken
+      ctx.userToken
     );
     expect(responseA.status).toBe(201);
     const idA = responseA.data.data!.id;
 
     // Approve A
-    await api.patch(`/api/borrow/${idA}/status`, { status: "approved" }, adminToken);
+    await api.patch(`/api/borrow/${idA}/status`, { status: "approved" }, ctx.adminToken);
 
     // 2. Request B: Days 6-10 (Should Succeed - Adjacent)
     const reqBData = createBorrowRequest({
@@ -806,7 +790,7 @@ describe("Real-World Scenarios", () => {
     const responseB = await api.post<BorrowRequestWithDetails>(
       "/api/borrow",
       reqBData,
-      userToken
+      ctx.userToken
     );
     expect(responseB.status).toBe(201);
 
@@ -819,7 +803,7 @@ describe("Real-World Scenarios", () => {
     const responseC = await api.post<BorrowRequestWithDetails>(
       "/api/borrow",
       reqCData,
-      userToken
+      ctx.userToken
     );
     expect(responseC.status).toBe(400);
   });
@@ -844,21 +828,21 @@ describe("Borrow Request API - Property Tests", () => {
         fc.asyncProperty(
           fc.constantFrom(
             {
-              token: adminToken,
+              token: ctx.adminToken,
               isAdmin: true,
-              userId: adminUserId,
+              userId: ctx.adminUserId,
               description: "admin",
             },
             {
-              token: superuserToken,
+              token: superctx.userToken,
               isAdmin: true,
               userId: 0,
               description: "superuser",
             },
             {
-              token: userToken,
+              token: ctx.userToken,
               isAdmin: false,
-              userId: regularUserId,
+              userId: ctx.regularUserId,
               description: "regular user",
             },
           ),
@@ -921,7 +905,7 @@ describe("Borrow Request API - Property Tests", () => {
           const response = await api.post<BorrowRequestWithDetails>(
             "/api/borrow",
             borrowData,
-            userToken,
+            ctx.userToken,
           );
 
           // Should fail with 400 for invalid date range
@@ -954,7 +938,7 @@ describe("Borrow Request API - Property Tests", () => {
           const response = await api.post<BorrowRequestWithDetails>(
             "/api/borrow",
             borrowData,
-            userToken,
+            ctx.userToken,
           );
 
           // Should succeed (201) or fail for reasons other than date validation
@@ -1004,19 +988,19 @@ describe("Borrow Request API - Property Tests", () => {
             await api.patch(
               `/api/borrow/${borrowRequest.id}/status`,
               { status: "approved" },
-              adminToken,
+              ctx.adminToken,
             );
             currentStatus = "approved";
           } else if (transition.from === "active") {
             await api.patch(
               `/api/borrow/${borrowRequest.id}/status`,
               { status: "approved" },
-              adminToken,
+              ctx.adminToken,
             );
             await api.patch(
               `/api/borrow/${borrowRequest.id}/status`,
               { status: "active" },
-              adminToken,
+              ctx.adminToken,
             );
             currentStatus = "active";
           } else if (
@@ -1031,7 +1015,7 @@ describe("Borrow Request API - Property Tests", () => {
           const response = await api.patch<BorrowRequestWithDetails>(
             `/api/borrow/${borrowRequest.id}/status`,
             { status: transition.to },
-            adminToken,
+            ctx.adminToken,
           );
 
           // Valid transitions should succeed
@@ -1065,18 +1049,18 @@ describe("Borrow Request API - Property Tests", () => {
             await api.patch(
               `/api/borrow/${borrowRequest.id}/status`,
               { status: "approved" },
-              adminToken,
+              ctx.adminToken,
             );
           } else if (transition.from === "active") {
             await api.patch(
               `/api/borrow/${borrowRequest.id}/status`,
               { status: "approved" },
-              adminToken,
+              ctx.adminToken,
             );
             await api.patch(
               `/api/borrow/${borrowRequest.id}/status`,
               { status: "active" },
-              adminToken,
+              ctx.adminToken,
             );
           }
           // For 'pending', no navigation needed
@@ -1085,7 +1069,7 @@ describe("Borrow Request API - Property Tests", () => {
           const response = await api.patch<BorrowRequestWithDetails>(
             `/api/borrow/${borrowRequest.id}/status`,
             { status: transition.to },
-            adminToken,
+            ctx.adminToken,
           );
 
           // Invalid transitions should fail with 400

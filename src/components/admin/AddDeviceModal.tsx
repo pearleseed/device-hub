@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useForm, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import type { DeviceWithDepartment, DeviceCategory } from "@/types/api";
+import type { DeviceCategory } from "@/types/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -28,7 +28,8 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Link2, Upload } from "lucide-react";
+import { Link2, Upload, Loader2 } from "lucide-react";
+import { useCreateDevice } from "@/hooks/use-api-mutations";
 
 const deviceSchema = z.object({
   name: z.string().min(2, "Device name must be at least 2 characters").max(100),
@@ -54,7 +55,7 @@ type DeviceFormData = z.infer<typeof deviceSchema>;
 interface AddDeviceModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onAdd: (device: Omit<DeviceWithDepartment, "id">) => void;
+  onAdd?: () => void; // Optional callback after successful creation
 }
 
 const categories: DeviceCategory[] = [
@@ -74,6 +75,8 @@ export const AddDeviceModal: React.FC<AddDeviceModalProps> = ({
   const [uploadedImagePreview, setUploadedImagePreview] = useState<
     string | null
   >(null);
+
+  const createDevice = useCreateDevice();
 
   const form = useForm<DeviceFormData>({
     resolver: zodResolver(deviceSchema) as Resolver<DeviceFormData>,
@@ -111,32 +114,34 @@ export const AddDeviceModal: React.FC<AddDeviceModalProps> = ({
     }
   };
 
-  const onSubmit = (data: DeviceFormData) => {
-    onAdd({
-      name: data.name,
-      brand: data.brand,
-      model: data.model,
-      category: data.category as DeviceCategory,
-      asset_tag: data.assetTag,
-      status: "available",
-      department_id: 1, // Default department
-      image_url: data.image,
-      image_thumbnail_url: null,
-      specs_json: JSON.stringify({
-        os: data.os || "",
-        processor: data.processor || "",
-        ram: data.ram || "",
-        storage: data.storage || "",
-      }),
-      purchase_price: data.purchasePrice,
-      selling_price: null,
-      purchase_date: new Date(data.purchaseDate),
-      created_at: new Date(),
-    });
-    form.reset();
-    setUploadedImagePreview(null);
-    setImageInputMode("url");
-    onOpenChange(false);
+  const onSubmit = async (data: DeviceFormData) => {
+    try {
+      await createDevice.mutateAsync({
+        name: data.name,
+        brand: data.brand,
+        model: data.model,
+        category: data.category as DeviceCategory,
+        asset_tag: data.assetTag,
+        department_id: 1, // Default department
+        image_url: data.image || "",
+        specs_json: JSON.stringify({
+          os: data.os || "",
+          processor: data.processor || "",
+          ram: data.ram || "",
+          storage: data.storage || "",
+        }),
+        purchase_price: data.purchasePrice,
+        purchase_date: data.purchaseDate,
+      });
+      
+      form.reset();
+      setUploadedImagePreview(null);
+      setImageInputMode("url");
+      onOpenChange(false);
+      onAdd?.();
+    } catch (error) {
+      console.error("Failed to create device:", error);
+    }
   };
 
   const handleClose = () => {
@@ -445,7 +450,16 @@ export const AddDeviceModal: React.FC<AddDeviceModalProps> = ({
               <Button type="button" variant="outline" onClick={handleClose}>
                 Cancel
               </Button>
-              <Button type="submit">Add Device</Button>
+              <Button type="submit" disabled={createDevice.isPending}>
+                {createDevice.isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Adding...
+                  </>
+                ) : (
+                  "Add Device"
+                )}
+              </Button>
             </DialogFooter>
           </form>
         </Form>

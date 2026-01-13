@@ -30,7 +30,7 @@ interface AuthContextType {
   isLoading: boolean;
   mustChangePassword: boolean;
   login: (
-    email: string,
+    username: string,
     password: string,
     rememberMe?: boolean,
   ) => Promise<{
@@ -106,7 +106,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const login = useCallback(
     async (
-      email: string,
+      username: string,
       password: string,
       rememberMe: boolean = false,
     ): Promise<{
@@ -115,7 +115,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       mustChangePassword?: boolean;
     }> => {
       try {
-        const loginRequest: LoginRequest = { email, password, rememberMe };
+        const loginRequest: LoginRequest = { email: username, password, rememberMe };
 
         const response = await fetch(`${API_BASE}/api/auth/login`, {
           method: "POST",
@@ -128,7 +128,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         if (!response.ok || !data.success) {
           return {
             success: false,
-            error: data.error || "Invalid email or password",
+            error: data.error || "Invalid username or password",
           };
         }
 

@@ -1,3 +1,4 @@
+import { useState, useMemo, useEffect, useCallback } from "react";
 import React from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -10,10 +11,60 @@ import {
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 
-// Hook
-// Re-export hook
-export { usePagination } from "@/hooks/use-pagination";
-export type { UsePaginationOptions } from "@/hooks/use-pagination";
+/* eslint-disable react-refresh/only-export-components */
+
+export interface UsePaginationOptions {
+  initialPage?: number;
+  initialPerPage?: number;
+}
+
+export function usePagination<T>(
+  items: T[],
+  deps: unknown[] = [],
+  options: UsePaginationOptions = {},
+) {
+  const { initialPage = 1, initialPerPage = 12 } = options;
+  const [currentPage, setCurrentPage] = useState(initialPage);
+  const [itemsPerPage, setItemsPerPage] = useState(initialPerPage);
+
+  const totalPages = Math.ceil(items.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = Math.min(startIndex + itemsPerPage, items.length);
+  const paginatedItems = useMemo(
+    () => items.slice(startIndex, endIndex),
+    [items, startIndex, endIndex],
+  );
+
+  useEffect(() => {
+    setCurrentPage(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, deps);
+
+  const goToPage = useCallback((page: number) => {
+    setCurrentPage((prev) => {
+      const maxPage = Math.ceil(items.length / itemsPerPage);
+      return Math.max(1, Math.min(page, maxPage));
+    });
+  }, [items.length, itemsPerPage]);
+
+  const setPerPage = useCallback((perPage: number) => {
+    setItemsPerPage(perPage);
+    setCurrentPage(1);
+  }, []);
+
+  return {
+    currentPage,
+    itemsPerPage,
+    totalPages,
+    startIndex,
+    endIndex,
+    paginatedItems,
+    totalItems: items.length,
+    goToPage,
+    setPerPage,
+  };
+}
+
 
 // Types
 interface PaginationProps {

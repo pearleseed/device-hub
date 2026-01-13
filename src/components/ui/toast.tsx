@@ -14,7 +14,7 @@ const ToastViewport = React.forwardRef<
   <ToastPrimitives.Viewport
     ref={ref}
     className={cn(
-      "fixed top-0 z-[100] flex max-h-screen w-full flex-col-reverse p-4 sm:bottom-0 sm:right-0 sm:top-auto sm:flex-col md:max-w-[420px]",
+      "fixed top-0 z-100 flex max-h-screen w-full flex-col-reverse p-4 sm:bottom-0 sm:right-0 sm:top-auto sm:flex-col md:max-w-[420px]",
       className,
     )}
     {...props}
@@ -30,6 +30,7 @@ const toastVariants = cva(
         default: "border bg-background text-foreground",
         destructive:
           "destructive group border-destructive bg-destructive text-destructive-foreground",
+        // Borrow Request statuses
         pending:
           "border-yellow-500 bg-yellow-50 text-yellow-900 dark:bg-yellow-950 dark:text-yellow-100",
         approved:
@@ -39,6 +40,15 @@ const toastVariants = cva(
         returned:
           "border-gray-500 bg-gray-50 text-gray-900 dark:bg-gray-800 dark:text-gray-100",
         rejected:
+          "border-red-500 bg-red-50 text-red-900 dark:bg-red-950 dark:text-red-100",
+        // Return Request conditions
+        excellent:
+          "border-green-500 bg-green-50 text-green-900 dark:bg-green-950 dark:text-green-100",
+        good:
+          "border-blue-500 bg-blue-50 text-blue-900 dark:bg-blue-950 dark:text-blue-100",
+        fair:
+          "border-yellow-500 bg-yellow-50 text-yellow-900 dark:bg-yellow-950 dark:text-yellow-100",
+        damaged:
           "border-red-500 bg-red-50 text-red-900 dark:bg-red-950 dark:text-red-100",
       },
     },

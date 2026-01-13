@@ -254,6 +254,7 @@ function registerRoutes(): void {
 
   // Users routes
   addRoute("GET", "/api/users", usersRoutes.getAll);
+  addRoute("POST", "/api/users", usersRoutes.create);
   addRoute("GET", "/api/users/:id", usersRoutes.getById);
   addRoute("PUT", "/api/users/:id", usersRoutes.update);
   addRoute("PATCH", "/api/users/:id/password", usersRoutes.resetPassword);
@@ -289,6 +290,7 @@ function registerRoutes(): void {
 
   // Devices routes
   addRoute("GET", "/api/devices", devicesRoutes.getAll);
+  addRoute("GET", "/api/devices/pending-ids", devicesRoutes.getPendingDeviceIds);
   addRoute("GET", "/api/devices/:id", devicesRoutes.getById);
   addRoute("POST", "/api/devices", devicesRoutes.create);
   addRoute("PUT", "/api/devices/:id", devicesRoutes.update);
@@ -312,6 +314,7 @@ function registerRoutes(): void {
   addRoute("GET", "/api/returns", returnsRoutes.getAll);
   addRoute("GET", "/api/returns/:id", returnsRoutes.getById);
   addRoute("POST", "/api/returns", returnsRoutes.create);
+  addRoute("PATCH", "/api/returns/:id/condition", returnsRoutes.updateCondition);
 
   // Renewal request routes
   addRoute("GET", "/api/renewals", renewalsRoutes.getAll);

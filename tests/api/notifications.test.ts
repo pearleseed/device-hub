@@ -327,6 +327,12 @@ describe("In-App Notifications API - Mark as Read", () => {
 describe("In-App Notifications API - Mark All as Read", () => {
   describe("PATCH /api/in-app-notifications/read-all", () => {
     it("should mark all notifications as read", async () => {
+      // First clear any existing notifications and mark all as read
+      await api.delete<{ message: string }>(
+        "/api/in-app-notifications/clear",
+        userToken
+      );
+
       // Create some unread notifications first
       await api.post<Notification>(
         "/api/in-app-notifications",
@@ -338,6 +344,25 @@ describe("In-App Notifications API - Mark All as Read", () => {
         },
         adminToken
       );
+
+      await api.post<Notification>(
+        "/api/in-app-notifications",
+        {
+          user_id: userId,
+          type: "info",
+          title: "Unread 2",
+          message: "Test",
+        },
+        adminToken
+      );
+
+      // Verify we have unread notifications
+      const beforeResponse = await api.get<Notification[]>(
+        "/api/in-app-notifications",
+        userToken,
+        { unread: "true" }
+      );
+      expect((beforeResponse.data as unknown as { unreadCount: number }).unreadCount).toBeGreaterThan(0);
 
       const response = await api.patch<{ message: string }>(
         "/api/in-app-notifications/read-all",
@@ -449,6 +474,12 @@ describe("In-App Notifications API - Delete", () => {
 describe("In-App Notifications API - Clear All", () => {
   describe("DELETE /api/in-app-notifications/clear", () => {
     it("should clear all notifications for user", async () => {
+      // First clear any existing notifications
+      await api.delete<{ message: string }>(
+        "/api/in-app-notifications/clear",
+        userToken
+      );
+
       // Create some notifications first
       await api.post<Notification>(
         "/api/in-app-notifications",
@@ -471,6 +502,13 @@ describe("In-App Notifications API - Clear All", () => {
         },
         adminToken
       );
+
+      // Verify notifications were created
+      const beforeClear = await api.get<Notification[]>(
+        "/api/in-app-notifications",
+        userToken
+      );
+      expect((beforeClear.data.data?.length || 0)).toBeGreaterThan(0);
 
       const response = await api.delete<{ message: string }>(
         "/api/in-app-notifications/clear",

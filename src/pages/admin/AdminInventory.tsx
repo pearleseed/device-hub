@@ -27,6 +27,7 @@ import type {
 } from "@/types/api";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useDevices, useUsers } from "@/hooks/use-api-queries";
+import { useDeleteDevice } from "@/hooks/use-api-mutations";
 import { exportToCSV, deviceExportColumns } from "@/lib/exportUtils";
 import { cn, getDeviceImageUrl } from "@/lib/utils";
 import {
@@ -51,7 +52,7 @@ import {
   usePagination,
   PaginationInfo,
   PaginationNav,
-} from "@/components/ui/pagination-controls";
+} from "@/hooks/use-pagination";
 import { AddDeviceModal } from "@/components/admin/AddDeviceModal";
 import { useToast } from "@/hooks/use-toast";
 
@@ -151,6 +152,10 @@ const AdminInventory: React.FC = () => {
   const navigate = useNavigate();
   const { data: cachedDevices = [] } = useDevices();
   const { data: users = [] } = useUsers();
+  
+  // Mutation hooks
+  const deleteDeviceMutation = useDeleteDevice();
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const categoryOptions = useMemo(
     () => [
@@ -213,11 +218,8 @@ const AdminInventory: React.FC = () => {
     [users],
   );
 
-  // Local state for optimistic updates
-  const [localDevices, setLocalDevices] = useState<
-    DeviceWithDepartment[] | null
-  >(null);
-  const devices = localDevices ?? cachedDevices;
+  // Use cached devices directly (no local state needed since we use API)
+  const devices = cachedDevices;
 
   // Filter states
   const [searchQuery, setSearchQuery] = useState("");
@@ -279,89 +281,38 @@ const AdminInventory: React.FC = () => {
     setStatusFilter("all");
   };
 
-  const handleAddDevice = (newDevice: Omit<DeviceWithDepartment, "id">) => {
-    const device: DeviceWithDepartment = {
-      ...newDevice,
-      id: devices.length + 1,
-    };
-    setLocalDevices([...devices, device]);
-    toast({
-      title: t("inventory.deviceAdded"),
-      description: `${device.name} ${t("inventory.hasBeenAdded")}`,
-    });
+  // handleAddDevice is handled by AddDeviceModal which uses useCreateDevice mutation
+  const handleAddDevice = () => {
+    // This is just a placeholder - the actual creation is done by AddDeviceModal
+    // The modal will call the API and invalidate the query
   };
 
-  const handleDeleteDevice = (device: DeviceWithDepartment) => {
-    const deletedDevice = { ...device };
-
-    setLocalDevices((prev) => {
-      const current = prev ?? cachedDevices;
-      return current.filter((d) => d.id !== device.id);
-    });
-
-    toast({
-      title: t("inventory.deviceDeleted"),
-      description: `${device.name} ${t("inventory.hasBeenRemoved")}`,
-      action: (
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => {
-            setLocalDevices((prev) => {
-              const current = prev ?? cachedDevices;
-              if (current.some((d) => d.id === deletedDevice.id)) {
-                return current;
-              }
-              return [...current, deletedDevice];
-            });
-            toast({
-              title: t("common.restored"),
-              description: `${deletedDevice.name} ${t("inventory.deviceRestored")}`,
-            });
-          }}
-        >
-          <Undo2 className="h-4 w-4 mr-1" />
-          {t("common.undo")}
-        </Button>
-      ),
-    });
+  const handleDeleteDevice = async (device: DeviceWithDepartment) => {
+    try {
+      await deleteDeviceMutation.mutateAsync(device.id);
+    } catch (error) {
+      console.error("Failed to delete device:", error);
+    }
   };
 
-  const handleBulkDelete = () => {
-    const deletedDevices = selectedDevices.map((device) => ({ ...device }));
-
-    setLocalDevices((prev) => {
-      const current = prev ?? cachedDevices;
-      return current.filter((d) => !selectedDevices.some((s) => s.id === d.id));
-    });
-    setSelectedDevices([]);
-
-    toast({
-      title: t("inventory.devicesDeleted"),
-      description: `${deletedDevices.length} ${t("inventory.haveBeenRemoved")}`,
-      action: (
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => {
-            setLocalDevices((prev) => {
-              const current = prev ?? cachedDevices;
-              const devicesToRestore = deletedDevices.filter(
-                (deleted) => !current.some((d) => d.id === deleted.id),
-              );
-              return [...current, ...devicesToRestore];
-            });
-            toast({
-              title: t("common.restored"),
-              description: `${deletedDevices.length} ${t("inventory.haveBeenRestored")}`,
-            });
-          }}
-        >
-          <Undo2 className="h-4 w-4 mr-1" />
-          {t("common.undo")}
-        </Button>
-      ),
-    });
+  const handleBulkDelete = async () => {
+    if (selectedDevices.length === 0) return;
+    
+    setIsDeleting(true);
+    
+    try {
+      // Delete all selected devices
+      const promises = selectedDevices.map((device) =>
+        deleteDeviceMutation.mutateAsync(device.id)
+      );
+      
+      await Promise.all(promises);
+      setSelectedDevices([]);
+    } catch (error) {
+      console.error("Failed to delete devices:", error);
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   const handleEditDevice = (device: DeviceWithDepartment) => {

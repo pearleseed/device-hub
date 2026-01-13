@@ -30,7 +30,8 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { useDevice, useDevices, useUsers } from "@/hooks/use-api-queries";
+import { useDevice, useDevices } from "@/hooks/use-api-queries";
+import { useCreateBorrowRequest } from "@/hooks/use-api-mutations";
 import { cn, getDeviceImageUrl, getDeviceThumbnailUrl } from "@/lib/utils";
 import { getCategoryIcon } from "@/lib/constants";
 import { useToast } from "@/hooks/use-toast";
@@ -200,7 +201,10 @@ const CompactDateRangeCalendar: React.FC<CompactDateRangeCalendarProps> = ({
                   </p>
                   {loanDuration > 0 && (
                     <p className="text-xs text-muted-foreground">
-                      {t("deviceDetail.daySelected", { count: loanDuration })}
+                      {t("deviceDetail.daySelected", {
+                        count: loanDuration,
+                        s: loanDuration > 1 ? "s" : "",
+                      })}
                     </p>
                   )}
                 </>
@@ -213,13 +217,19 @@ const CompactDateRangeCalendar: React.FC<CompactDateRangeCalendarProps> = ({
           </div>
           <div className="flex items-center gap-2">
             {dateRange?.from && (
-              <button
-                type="button"
+              <span
+                role="button"
+                tabIndex={0}
                 onClick={handleClear}
-                className="p-1 rounded-md hover:bg-muted transition-colors"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    handleClear(e as unknown as React.MouseEvent);
+                  }
+                }}
+                className="p-1 rounded-md hover:bg-muted transition-colors cursor-pointer"
               >
                 <X className="h-3.5 w-3.5 text-muted-foreground" />
-              </button>
+              </span>
             )}
             <ChevronDown
               className={cn(
@@ -350,15 +360,14 @@ const DeviceDetail: React.FC = () => {
   const [reason, setReason] = useState("");
   const [step, setStep] = useState<PageStep>("details");
   const [calendarOpen, setCalendarOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const deviceId = id ? parseInt(id, 10) : 0;
   const { data: device, isLoading } = useDevice(deviceId);
   const { data: allDevices = [] } = useDevices();
-  const { data: users = [] } = useUsers();
-
-  // Create user lookup map
-  const userMap = useMemo(() => new Map(users.map((u) => [u.id, u])), [users]);
-  const getUserById = (userId: number) => userMap.get(userId);
+  
+  // Mutation hook for creating borrow request
+  const createBorrowRequest = useCreateBorrowRequest();
 
   // Track view
   React.useEffect(() => {
@@ -367,8 +376,13 @@ const DeviceDetail: React.FC = () => {
     }
   }, [device, addToRecentlyViewed]);
 
+  // Assigned user info comes directly from device (via v_device_details view)
   const assignedUser = device?.assigned_to_id
-    ? getUserById(device.assigned_to_id)
+    ? {
+        name: device.assigned_to_name,
+        avatar_url: device.assigned_to_avatar,
+        department_name: device.assigned_to_department_name,
+      }
     : null;
 
   // Get similar devices
@@ -467,9 +481,27 @@ const DeviceDetail: React.FC = () => {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const handleConfirmRequest = () => {
-    setStep("success");
-    window.scrollTo({ top: 0, behavior: "smooth" });
+  const handleConfirmRequest = async () => {
+    if (!device || !dateRange?.from || !dateRange?.to) return;
+    
+    setIsSubmitting(true);
+    
+    try {
+      await createBorrowRequest.mutateAsync({
+        device_id: device.id,
+        start_date: format(dateRange.from, "yyyy-MM-dd"),
+        end_date: format(dateRange.to, "yyyy-MM-dd"),
+        reason: reason.trim(),
+      });
+      
+      setStep("success");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } catch (error) {
+      // Error is already handled by the mutation hook's onError
+      console.error("Failed to submit borrow request:", error);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleReset = () => {
@@ -575,11 +607,11 @@ const DeviceDetail: React.FC = () => {
 
             <div className="space-y-3 animate-fade-in">
               <Button
-                onClick={() => navigate("/dashboard")}
+                onClick={() => navigate("/loans")}
                 className="w-full"
                 size="lg"
               >
-                {t("deviceDetail.goToDashboard")}
+                {t("deviceDetail.goToLoanManagement")}
               </Button>
               <Button
                 variant="outline"
@@ -667,7 +699,10 @@ const DeviceDetail: React.FC = () => {
                     – {dateRange?.to && format(dateRange.to, "MMMM d, yyyy")}
                   </p>
                   <p className="text-muted-foreground mt-1">
-                    {t("deviceDetail.daySelected", { count: loanDuration })}
+                    {t("deviceDetail.daySelected", {
+                      count: loanDuration,
+                      s: loanDuration > 1 ? "s" : "",
+                    })}
                   </p>
                 </CardContent>
               </Card>
@@ -691,6 +726,7 @@ const DeviceDetail: React.FC = () => {
                   onClick={() => setStep("details")}
                   className="flex-1"
                   size="lg"
+                  disabled={isSubmitting}
                 >
                   {t("deviceDetail.editRequest")}
                 </Button>
@@ -698,9 +734,19 @@ const DeviceDetail: React.FC = () => {
                   onClick={handleConfirmRequest}
                   className="flex-1"
                   size="lg"
+                  disabled={isSubmitting}
                 >
-                  <Sparkles className="h-4 w-4 mr-2" />
-                  {t("deviceDetail.submitRequest")}
+                  {isSubmitting ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                      {t("deviceDetail.submitting") || "Submitting..."}
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="h-4 w-4 mr-2" />
+                      {t("deviceDetail.submitRequest")}
+                    </>
+                  )}
                 </Button>
               </div>
             </div>
@@ -861,16 +907,26 @@ const DeviceDetail: React.FC = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="flex items-center gap-3">
-                    <img
-                      src={assignedUser.avatar_url || ""}
-                      alt={assignedUser.name}
-                      className="h-10 w-10 rounded-full"
-                    />
+                    {assignedUser.avatar_url ? (
+                      <img
+                        src={assignedUser.avatar_url}
+                        alt={assignedUser.name || ""}
+                        className="h-10 w-10 rounded-full object-cover"
+                      />
+                    ) : (
+                      <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center">
+                        <span className="text-lg font-medium text-muted-foreground">
+                          {assignedUser.name?.charAt(0).toUpperCase()}
+                        </span>
+                      </div>
+                    )}
                     <div>
                       <p className="font-medium">{assignedUser.name}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {assignedUser.department_name}
-                      </p>
+                      {assignedUser.department_name && (
+                        <p className="text-sm text-muted-foreground">
+                          {assignedUser.department_name}
+                        </p>
+                      )}
                     </div>
                   </div>
                 </CardContent>

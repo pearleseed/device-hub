@@ -266,7 +266,8 @@ describe("Device API - Retrieval", () => {
         expect(response.data.data).toHaveProperty("name");
         expect(response.data.data).toHaveProperty("asset_tag");
         expect(response.data.data).toHaveProperty("category");
-        expect(response.data.data).toHaveProperty("specs");
+        // API returns specs_json field, not specs
+        expect(response.data.data).toHaveProperty("specs_json");
       }
     });
 
@@ -683,7 +684,8 @@ describe("Device API - Property Tests", () => {
           expect(response.data.success).toBe(true);
           expect(response.data.data).toBeDefined();
           expect(response.data.data?.id).toBe(deviceId);
-          expect(response.data.data).toHaveProperty("specs");
+          // API returns specs_json field, not specs
+          expect(response.data.data).toHaveProperty("specs_json");
 
           return true;
         }),

@@ -81,8 +81,8 @@ const Login: React.FC = () => {
     setIsLoading(false);
 
     if (result.success) {
-      const isAdminEmail = loginForm.username.toLowerCase().includes("@admin.");
-      const targetPath = isAdminEmail ? "/admin" : "/dashboard";
+      const isAdminUser = loginForm.username.toLowerCase().includes("@admin.");
+      const targetPath = isAdminUser ? "/admin" : "/dashboard";
 
       // Check if password change is required
       if (result.mustChangePassword) {
@@ -229,8 +229,8 @@ const Login: React.FC = () => {
                   <Label htmlFor="username">{t("login.email")}</Label>
                   <Input
                     id="username"
-                    type="email"
-                    placeholder="name@company.com"
+                    type="text"
+                    placeholder="username"
                     value={loginForm.username}
                     onChange={(e) =>
                       setLoginForm({
@@ -410,14 +410,14 @@ const Login: React.FC = () => {
                       onClick={() =>
                         copyToClipboard(
                           demoCredentials.admin.email,
-                          "admin-email",
+                          "admin-username",
                         )
                       }
                     >
                       <span className="truncate max-w-[180px]">
                         {demoCredentials.admin.email}
                       </span>
-                      {copiedCredential === "admin-email" ? (
+                      {copiedCredential === "admin-username" ? (
                         <Check className="h-3 w-3 text-green-500 shrink-0" />
                       ) : (
                         <Copy className="h-3 w-3 shrink-0" />
@@ -434,14 +434,14 @@ const Login: React.FC = () => {
                       onClick={() =>
                         copyToClipboard(
                           demoCredentials.user.email,
-                          "user-email",
+                          "user-username",
                         )
                       }
                     >
                       <span className="truncate max-w-[180px]">
                         {demoCredentials.user.email}
                       </span>
-                      {copiedCredential === "user-email" ? (
+                      {copiedCredential === "user-username" ? (
                         <Check className="h-3 w-3 text-green-500 shrink-0" />
                       ) : (
                         <Copy className="h-3 w-3 shrink-0" />

@@ -23,6 +23,7 @@ import {
   useDevices,
   useUsers,
   useBorrowRequests,
+  useReturns,
   useRefreshData,
 } from "@/hooks/use-api-queries";
 import { cn } from "@/lib/utils";
@@ -59,7 +60,7 @@ import {
   AreaChart,
   Area,
 } from "recharts";
-import { format, subDays, startOfMonth, endOfMonth } from "date-fns";
+import { format, subDays, startOfMonth, endOfMonth, differenceInDays } from "date-fns";
 import type { DateRange } from "react-day-picker";
 
 type ReportPeriod = "daily" | "weekly" | "monthly";
@@ -73,6 +74,7 @@ const AdminAnalytics: React.FC = () => {
   const { data: devices = [] } = useDevices();
   const { data: users = [] } = useUsers();
   const { data: bookingRequests = [] } = useBorrowRequests();
+  const { data: returns = [] } = useReturns();
   const { refreshAll } = useRefreshData();
 
   // Date range for charts
@@ -116,6 +118,16 @@ const AdminAnalytics: React.FC = () => {
       rejected,
       total: bookingRequests.length,
     };
+  }, [bookingRequests]);
+
+  // Average loan duration - calculated from completed loans
+  const avgLoanDuration = useMemo(() => {
+    const completedLoans = bookingRequests.filter((r) => r.status === "returned");
+    if (completedLoans.length === 0) return 0;
+    const totalDays = completedLoans.reduce((acc, loan) => {
+      return acc + differenceInDays(new Date(loan.end_date), new Date(loan.start_date));
+    }, 0);
+    return Math.round(totalDays / completedLoans.length);
   }, [bookingRequests]);
 
   // Device status pie data
@@ -199,47 +211,47 @@ const AdminAnalytics: React.FC = () => {
     [requestStats, t],
   );
 
-  // Device condition data
-  const deviceConditionData = useMemo(
-    () => [
-      {
-        name: t("condition.excellent"),
-        value: Math.floor(devices.length * 0.4),
-        color: "hsl(var(--chart-2))",
-      },
-      {
-        name: t("condition.good"),
-        value: Math.floor(devices.length * 0.35),
-        color: "hsl(var(--chart-1))",
-      },
-      {
-        name: t("condition.fair"),
-        value: Math.floor(devices.length * 0.2),
-        color: "hsl(var(--chart-4))",
-      },
-      {
-        name: t("condition.damaged"),
-        value: Math.floor(devices.length * 0.05),
-        color: "hsl(var(--chart-5))",
-      },
-    ],
-    [devices, t],
-  );
-
-  // Return compliance data
-  const returnComplianceData = useMemo(() => {
-    const returnedCount = requestStats.returned;
-    const onTime = Math.floor(returnedCount * 0.85);
-    const late = returnedCount - onTime;
+  // Device condition data - calculated from actual return requests
+  const deviceConditionData = useMemo(() => {
+    const conditionCounts = { excellent: 0, good: 0, fair: 0, damaged: 0 };
+    returns.forEach((r) => {
+      if (r.device_condition && conditionCounts[r.device_condition] !== undefined) {
+        conditionCounts[r.device_condition]++;
+      }
+    });
     return [
-      {
-        name: t("analytics.onTime"),
-        value: onTime,
-        color: "hsl(var(--chart-2))",
-      },
+      { name: t("condition.excellent"), value: conditionCounts.excellent, color: "hsl(var(--chart-2))" },
+      { name: t("condition.good"), value: conditionCounts.good, color: "hsl(var(--chart-1))" },
+      { name: t("condition.fair"), value: conditionCounts.fair, color: "hsl(var(--chart-4))" },
+      { name: t("condition.damaged"), value: conditionCounts.damaged, color: "hsl(var(--chart-5))" },
+    ];
+  }, [returns, t]);
+
+  // Return compliance data - calculated from actual borrow/return data
+  const returnComplianceData = useMemo(() => {
+    const returnedRequests = bookingRequests.filter((r) => r.status === "returned");
+    let onTime = 0;
+    let late = 0;
+    returnedRequests.forEach((req) => {
+      const returnRecord = returns.find((r) => r.borrow_request_id === req.id);
+      if (returnRecord) {
+        const returnDate = new Date(returnRecord.return_date);
+        const endDate = new Date(req.end_date);
+        if (returnDate <= endDate) {
+          onTime++;
+        } else {
+          late++;
+        }
+      } else {
+        // No return record, assume on-time if status is returned
+        onTime++;
+      }
+    });
+    return [
+      { name: t("analytics.onTime"), value: onTime, color: "hsl(var(--chart-2))" },
       { name: t("analytics.late"), value: late, color: "hsl(var(--chart-5))" },
     ];
-  }, [requestStats, t]);
+  }, [bookingRequests, returns, t]);
 
   // Top borrowed devices
   const topBorrowedDevices = useMemo(() => {
@@ -349,41 +361,29 @@ const AdminAnalytics: React.FC = () => {
     });
   }, [bookingRequests]);
 
-  // Compliance trend data
+  // Compliance trend data - calculated from actual data
   const complianceTrendData = useMemo(() => {
     const last12Months = Array.from({ length: 12 }, (_, i) => {
       const date = subDays(new Date(), i * 30);
-      return {
-        month: format(date, "MMM"),
-        monthKey: format(date, "yyyy-MM"),
-      };
+      return { month: format(date, "MMM"), monthKey: format(date, "yyyy-MM") };
     }).reverse();
 
     return last12Months.map(({ month, monthKey }) => {
-      const returnedInMonth = bookingRequests.filter((r) =>
-        r.status === "returned" && 
-        format(new Date(r.updated_at), "yyyy-MM") === monthKey
+      const returnedInMonth = bookingRequests.filter(
+        (r) => r.status === "returned" && format(new Date(r.updated_at), "yyyy-MM") === monthKey
       );
+      if (returnedInMonth.length === 0) return { month, onTime: 100, late: 0 };
 
-      if (returnedInMonth.length === 0) {
-        return { month, onTime: 100, late: 0 };
-      }
-
-      const onTimeCount = returnedInMonth.filter((r) => {
-        // Assume updated_at is return time. Check if <= end_date
-        return new Date(r.updated_at) <= new Date(r.end_date);
-      }).length;
-
-      const lateCount = returnedInMonth.length - onTimeCount;
+      let onTimeCount = 0;
+      returnedInMonth.forEach((req) => {
+        const returnRecord = returns.find((r) => r.borrow_request_id === req.id);
+        const returnDate = returnRecord ? new Date(returnRecord.return_date) : new Date(req.updated_at);
+        if (returnDate <= new Date(req.end_date)) onTimeCount++;
+      });
       const onTimePct = Math.round((onTimeCount / returnedInMonth.length) * 100);
-
-      return {
-        month,
-        onTime: onTimePct,
-        late: 100 - onTimePct,
-      };
+      return { month, onTime: onTimePct, late: 100 - onTimePct };
     });
-  }, [bookingRequests]);
+  }, [bookingRequests, returns]);
 
   // ==================== HANDLERS ====================
 
@@ -1053,7 +1053,7 @@ const AdminAnalytics: React.FC = () => {
                       {t("analytics.avgDuration")}
                     </span>
                   </div>
-                  <span className="font-bold">{`12 ${t("analytics.days")}`}</span>
+                  <span className="font-bold">{`${avgLoanDuration} ${t("analytics.days")}`}</span>
                 </div>
               </CardContent>
             </Card>

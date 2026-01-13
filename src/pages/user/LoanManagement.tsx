@@ -51,6 +51,10 @@ import {
   useRenewalsByBorrow,
 } from "@/hooks/use-api-queries";
 import {
+  useCreateReturnRequest,
+  useCreateRenewalRequest,
+} from "@/hooks/use-api-mutations";
+import {
   Package,
   Clock,
   RotateCcw,
@@ -123,6 +127,7 @@ const LoanManagement: React.FC = () => {
   const [returnCondition, setReturnCondition] =
     useState<ReturnCondition>("good");
   const [returnNotes, setReturnNotes] = useState("");
+  const [isSubmittingReturn, setIsSubmittingReturn] = useState(false);
 
   // Renewal modal state
   const [renewalModalOpen, setRenewalModalOpen] = useState(false);
@@ -130,6 +135,7 @@ const LoanManagement: React.FC = () => {
     useState<RenewalModalData | null>(null);
   const [renewalDate, setRenewalDate] = useState("");
   const [renewalReason, setRenewalReason] = useState("");
+  const [isSubmittingRenewal, setIsSubmittingRenewal] = useState(false);
 
   // Bulk return state
   const [selectedLoans, setSelectedLoans] = useState<number[]>([]);
@@ -137,6 +143,7 @@ const LoanManagement: React.FC = () => {
   const [bulkReturnCondition, setBulkReturnCondition] =
     useState<ReturnCondition>("good");
   const [bulkReturnNotes, setBulkReturnNotes] = useState("");
+  const [isSubmittingBulkReturn, setIsSubmittingBulkReturn] = useState(false);
 
   // Data fetching
   const { data: userRequests = [], isLoading: requestsLoading } =
@@ -144,6 +151,10 @@ const LoanManagement: React.FC = () => {
   const { data: devices = [], isLoading: devicesLoading } = useDevices();
   const { data: allRenewalRequests = [] } = useRenewals();
   const isLoading = requestsLoading || devicesLoading;
+
+  // Mutation hooks
+  const createReturnRequest = useCreateReturnRequest();
+  const createRenewalRequest = useCreateRenewalRequest();
 
   // Create device lookup map
   const deviceMap = useMemo(() => {
@@ -397,12 +408,29 @@ const LoanManagement: React.FC = () => {
     }
   };
 
-  const handleSubmitReturn = () => {
-    toast.success(t("loans.returnRequestSubmitted"), {
-      description: t("loans.adminProcessReturn"),
-    });
-    setReturnModalOpen(false);
-    setReturnModalData(null);
+  const handleSubmitReturn = async () => {
+    if (!returnModalData) return;
+    
+    setIsSubmittingReturn(true);
+    
+    try {
+      await createReturnRequest.mutateAsync({
+        borrow_request_id: returnModalData.loan.id,
+        condition: returnCondition,
+        notes: returnNotes.trim() || undefined,
+      });
+      
+      toast.success(t("loans.returnRequestSubmitted"), {
+        description: t("loans.adminProcessReturn"),
+      });
+      setReturnModalOpen(false);
+      setReturnModalData(null);
+    } catch (error) {
+      // Error is already handled by the mutation hook's onError
+      console.error("Failed to submit return request:", error);
+    } finally {
+      setIsSubmittingReturn(false);
+    }
   };
 
   const handleOpenRenewalModal = (loan: BorrowRequestWithDetails) => {
@@ -419,16 +447,34 @@ const LoanManagement: React.FC = () => {
     }
   };
 
-  const handleSubmitRenewal = () => {
+  const handleSubmitRenewal = async () => {
+    if (!renewalModalData) return;
+    
     if (renewalReason.length < 10) {
       toast.error(t("loans.reasonRequired"));
       return;
     }
-    toast.success(t("loans.renewalRequestSubmitted"), {
-      description: t("loans.adminReviewRequest"),
-    });
-    setRenewalModalOpen(false);
-    setRenewalModalData(null);
+    
+    setIsSubmittingRenewal(true);
+    
+    try {
+      await createRenewalRequest.mutateAsync({
+        borrow_request_id: renewalModalData.loan.id,
+        requested_end_date: renewalDate,
+        reason: renewalReason.trim(),
+      });
+      
+      toast.success(t("loans.renewalRequestSubmitted"), {
+        description: t("loans.adminReviewRequest"),
+      });
+      setRenewalModalOpen(false);
+      setRenewalModalData(null);
+    } catch (error) {
+      // Error is already handled by the mutation hook's onError
+      console.error("Failed to submit renewal request:", error);
+    } finally {
+      setIsSubmittingRenewal(false);
+    }
   };
 
   const hasPendingRenewal = (loanId: number) => {
@@ -466,13 +512,35 @@ const LoanManagement: React.FC = () => {
     setBulkReturnModalOpen(true);
   };
 
-  const handleSubmitBulkReturn = () => {
-    const count = selectedLoans.length;
-    toast.success(t("loans.bulkReturnSubmitted", { count }), {
-      description: t("loans.adminProcessReturn"),
-    });
-    setBulkReturnModalOpen(false);
-    setSelectedLoans([]);
+  const handleSubmitBulkReturn = async () => {
+    if (selectedLoans.length === 0) return;
+    
+    setIsSubmittingBulkReturn(true);
+    
+    try {
+      // Submit return requests for all selected loans
+      const promises = selectedLoans.map((loanId) =>
+        createReturnRequest.mutateAsync({
+          borrow_request_id: loanId,
+          condition: bulkReturnCondition,
+          notes: bulkReturnNotes.trim() || undefined,
+        })
+      );
+      
+      await Promise.all(promises);
+      
+      const count = selectedLoans.length;
+      toast.success(t("loans.bulkReturnSubmitted", { count }), {
+        description: t("loans.adminProcessReturn"),
+      });
+      setBulkReturnModalOpen(false);
+      setSelectedLoans([]);
+    } catch (error) {
+      // Error is already handled by the mutation hook's onError
+      console.error("Failed to submit bulk return requests:", error);
+    } finally {
+      setIsSubmittingBulkReturn(false);
+    }
   };
 
   const selectedLoansData = useMemo(() => {
@@ -1143,11 +1211,19 @@ const LoanManagement: React.FC = () => {
               <Button
                 variant="outline"
                 onClick={() => setReturnModalOpen(false)}
+                disabled={isSubmittingReturn}
               >
                 {t("loans.cancel")}
               </Button>
-              <Button onClick={handleSubmitReturn}>
-                {t("loans.submitReturn")}
+              <Button onClick={handleSubmitReturn} disabled={isSubmittingReturn}>
+                {isSubmittingReturn ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                    {t("loans.submitting") || "Submitting..."}
+                  </>
+                ) : (
+                  t("loans.submitReturn")
+                )}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -1236,14 +1312,22 @@ const LoanManagement: React.FC = () => {
               <Button
                 variant="outline"
                 onClick={() => setRenewalModalOpen(false)}
+                disabled={isSubmittingRenewal}
               >
                 {t("loans.cancel")}
               </Button>
               <Button
                 onClick={handleSubmitRenewal}
-                disabled={renewalReason.length < 10}
+                disabled={renewalReason.length < 10 || isSubmittingRenewal}
               >
-                {t("loans.submitRequest")}
+                {isSubmittingRenewal ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                    {t("loans.submitting") || "Submitting..."}
+                  </>
+                ) : (
+                  t("loans.submitRequest")
+                )}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -1346,11 +1430,19 @@ const LoanManagement: React.FC = () => {
               <Button
                 variant="outline"
                 onClick={() => setBulkReturnModalOpen(false)}
+                disabled={isSubmittingBulkReturn}
               >
                 {t("loans.cancel")}
               </Button>
-              <Button onClick={handleSubmitBulkReturn}>
-                {t("loans.submitReturns", { count: selectedLoans.length })}
+              <Button onClick={handleSubmitBulkReturn} disabled={isSubmittingBulkReturn}>
+                {isSubmittingBulkReturn ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                    {t("loans.submitting") || "Submitting..."}
+                  </>
+                ) : (
+                  t("loans.submitReturns", { count: selectedLoans.length })
+                )}
               </Button>
             </DialogFooter>
           </DialogContent>

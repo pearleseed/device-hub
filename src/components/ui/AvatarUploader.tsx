@@ -251,6 +251,7 @@ export function AvatarUploader({
 
       const response = await fetch(endpoint, {
         method: "DELETE",
+        credentials: "include",
       });
 
       const result = await response.json();

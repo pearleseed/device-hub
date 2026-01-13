@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
-import { useForm } from "react-hook-form";
+import { useForm, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { format } from "date-fns";
@@ -34,7 +34,6 @@ import { getDeviceImageUrl } from "@/lib/utils";
 import { getCategoryIcon } from "@/lib/constants";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useToast } from "@/hooks/use-toast";
-import type { DeviceCategory, DeviceStatus } from "@/types/api";
 import {
   ArrowLeft, Cpu, HardDrive, Battery, Monitor, Package, Tag, Building,
   User, DollarSign, Pencil, MemoryStick, Laptop, Network, X, Save,
@@ -65,8 +64,11 @@ const deviceSchema = z.object({
 
 type DeviceFormData = z.infer<typeof deviceSchema>;
 
-const categories: DeviceCategory[] = ["laptop", "mobile", "tablet", "monitor", "accessories"];
-const statuses: DeviceStatus[] = ["available", "borrowed", "maintenance"];
+type FormCategory = "laptop" | "mobile" | "tablet" | "monitor" | "accessories";
+type FormStatus = "available" | "borrowed" | "maintenance";
+
+const categories: FormCategory[] = ["laptop", "mobile", "tablet", "monitor", "accessories"];
+const statuses: FormStatus[] = ["available", "borrowed", "maintenance"];
 
 const parseSpecs = (specsJson: string | undefined): Record<string, string> => {
   if (!specsJson) return {};
@@ -85,8 +87,19 @@ const AdminDeviceDetail: React.FC = () => {
   const { data: users = [] } = useUsers();
   const updateDevice = useUpdateDevice();
 
-  const [isEditing, setIsEditing] = useState(false);
+  // Derive initial edit mode from URL params (computed once)
+  const initialEditMode = searchParams.get("edit") === "true";
+  const [isEditing, setIsEditing] = useState(initialEditMode);
   const [currentImageUrl, setCurrentImageUrl] = useState<string | null>(null);
+  const [lastDeviceId, setLastDeviceId] = useState<number | null>(null);
+
+  // Clean up URL param after initial render
+  useEffect(() => {
+    if (initialEditMode) {
+      searchParams.delete("edit");
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const userMap = useMemo(() => new Map(users.map((u) => [u.id, u])), [users]);
   const getUserById = (userId: number) => userMap.get(userId);
@@ -97,50 +110,68 @@ const AdminDeviceDetail: React.FC = () => {
     catch { return {}; }
   }, [device?.specs_json]);
 
+  // Compute form default values from device data
+  const formDefaultValues = useMemo((): DeviceFormData => {
+    if (!device) {
+      return {
+        name: "", brand: "", model: "", category: "laptop", status: "available",
+        asset_tag: "", image_url: "", purchase_price: 0,
+        purchase_date: new Date().toISOString().split("T")[0],
+        warranty_date: "", vendor: "", hostname: "", ip_address: "", mac_address: "",
+        os: "", processor: "", ram: "", storage: "", display: "", battery: "",
+      };
+    }
+    const parsedSpecs = parseSpecs(device.specs_json);
+    return {
+      name: device.name, brand: device.brand, model: device.model,
+      category: device.category as FormCategory, status: device.status as FormStatus,
+      asset_tag: device.asset_tag, image_url: device.image_url || "",
+      purchase_price: device.purchase_price || 0,
+      purchase_date: device.purchase_date ? format(new Date(device.purchase_date), "yyyy-MM-dd") : "",
+      warranty_date: device.warranty_date ? format(new Date(device.warranty_date), "yyyy-MM-dd") : "",
+      vendor: device.vendor || "", hostname: device.hostname || "",
+      ip_address: device.ip_address || "", mac_address: device.mac_address || "",
+      os: parsedSpecs.os || "", processor: parsedSpecs.processor || "",
+      ram: parsedSpecs.ram || "", storage: parsedSpecs.storage || "",
+      display: parsedSpecs.display || "", battery: parsedSpecs.battery || "",
+    };
+  }, [device]);
+
   const form = useForm<DeviceFormData>({
-    resolver: zodResolver(deviceSchema) as any,
-    defaultValues: {
-      name: "", brand: "", model: "", category: "laptop", status: "available",
-      asset_tag: "", image_url: "", purchase_price: 0,
-      purchase_date: new Date().toISOString().split("T")[0],
-      warranty_date: "", vendor: "", hostname: "", ip_address: "", mac_address: "",
-      os: "", processor: "", ram: "", storage: "", display: "", battery: "",
-    },
+    resolver: zodResolver(deviceSchema) as Resolver<DeviceFormData>,
+    defaultValues: formDefaultValues,
   });
 
-  // Check for edit mode from URL
-  useEffect(() => {
-    const editMode = searchParams.get("edit");
-    if (editMode === "true") {
-      setIsEditing(true);
-      searchParams.delete("edit");
-      setSearchParams(searchParams, { replace: true });
-    }
-  }, [searchParams, setSearchParams]);
+  // Derive displayed image URL - use local state if set, otherwise device image
+  const displayedImageUrl = currentImageUrl ?? device?.image_url ?? null;
 
-  // Reset form when device loads or edit mode changes
-  useEffect(() => {
-    if (device && isEditing) {
-      const parsedSpecs = parseSpecs(device.specs_json);
-      form.reset({
-        name: device.name, brand: device.brand, model: device.model,
-        category: device.category as any, status: device.status as any,
-        asset_tag: device.asset_tag, image_url: device.image_url || "",
-        purchase_price: device.purchase_price || 0,
-        purchase_date: device.purchase_date ? format(new Date(device.purchase_date), "yyyy-MM-dd") : "",
-        warranty_date: device.warranty_date ? format(new Date(device.warranty_date), "yyyy-MM-dd") : "",
-        vendor: device.vendor || "", hostname: device.hostname || "",
-        ip_address: device.ip_address || "", mac_address: device.mac_address || "",
-        os: parsedSpecs.os || "", processor: parsedSpecs.processor || "",
-        ram: parsedSpecs.ram || "", storage: parsedSpecs.storage || "",
-        display: parsedSpecs.display || "", battery: parsedSpecs.battery || "",
-      });
-      setCurrentImageUrl(device.image_url || null);
-    }
-  }, [device, isEditing, form]);
+  const handleStartEdit = () => {
+    setIsEditing(true);
+    // Reset form with current device values when entering edit mode
+    form.reset(formDefaultValues);
+    setCurrentImageUrl(device?.image_url || null);
+  };
+  const handleCancelEdit = () => {
+    setIsEditing(false);
+    setCurrentImageUrl(null);
+  };
 
-  const handleStartEdit = () => setIsEditing(true);
-  const handleCancelEdit = () => { setIsEditing(false); setCurrentImageUrl(device?.image_url || null); };
+  // Handle device change - reset form when device ID changes and we're in edit mode
+  const handleDeviceChange = (newDeviceId: number) => {
+    if (lastDeviceId !== newDeviceId) {
+      setLastDeviceId(newDeviceId);
+      if (isEditing) {
+        form.reset(formDefaultValues);
+        setCurrentImageUrl(device?.image_url || null);
+      }
+    }
+  };
+
+  // Call device change handler when device loads
+  if (device && lastDeviceId !== device.id) {
+    // Schedule state update for next render to avoid setState during render
+    setTimeout(() => handleDeviceChange(device.id), 0);
+  }
 
   const handleAvatarUploadSuccess = (newUrl: string) => {
     setCurrentImageUrl(newUrl);
@@ -155,7 +186,7 @@ const AdminDeviceDetail: React.FC = () => {
         id: device.id,
         data: {
           name: data.name, brand: data.brand, model: data.model,
-          category: data.category as DeviceCategory, status: data.status as DeviceStatus,
+          category: data.category, status: data.status,
           asset_tag: data.asset_tag, image_url: data.image_url || device.image_url,
           purchase_price: data.purchase_price,
           purchase_date: data.purchase_date || undefined,
@@ -246,7 +277,7 @@ const AdminDeviceDetail: React.FC = () => {
                 <CardContent>
                   <div className="flex flex-col md:flex-row gap-6">
                     <div className="flex flex-col items-center gap-3">
-                      <AvatarUploader currentAvatarUrl={currentImageUrl} onUploadSuccess={handleAvatarUploadSuccess}
+                      <AvatarUploader currentAvatarUrl={displayedImageUrl} onUploadSuccess={handleAvatarUploadSuccess}
                         onDelete={handleAvatarDelete} entityType="device" entityId={device.id} size="lg" />
                       {/* <p className="text-xs text-muted-foreground">{t("deviceModal.deviceImage")}</p> */}
                     </div>

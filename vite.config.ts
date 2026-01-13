@@ -12,6 +12,13 @@ export default defineConfig({
     host: "0.0.0.0", // Allow network access
     port: 8080,
     https: {}, // Enable HTTPS via mkcert
+    proxy: {
+      "/api": {
+        target: "http://localhost:3001",
+        changeOrigin: true,
+        secure: false,
+      },
+    },
   },
   plugins: [react(), tailwindcss(), mkcert()],
   resolve: {

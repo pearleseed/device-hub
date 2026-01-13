@@ -231,15 +231,36 @@ const UserProfile: React.FC = () => {
       return;
     }
     setIsChangingPassword(true);
-    await new Promise((r) => setTimeout(r, 1000));
-    setIsChangingPassword(false);
-    setPasswordSuccess(t("userProfile.passwordChangedSuccess"));
-    setPasswordForm({
-      currentPassword: "",
-      newPassword: "",
-      confirmPassword: "",
-    });
-    setTimeout(() => setPasswordSuccess(""), 3000);
+    try {
+      const token = localStorage.getItem("auth-token");
+      const response = await fetch("/api/auth/change-password", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          currentPassword: passwordForm.currentPassword,
+          newPassword: passwordForm.newPassword,
+        }),
+      });
+      const data = await response.json();
+      if (data.success) {
+        setPasswordSuccess(t("userProfile.passwordChangedSuccess"));
+        setPasswordForm({
+          currentPassword: "",
+          newPassword: "",
+          confirmPassword: "",
+        });
+        setTimeout(() => setPasswordSuccess(""), 3000);
+      } else {
+        setPasswordError(data.error || t("userProfile.passwordChangeError"));
+      }
+    } catch {
+      setPasswordError(t("userProfile.passwordChangeError"));
+    } finally {
+      setIsChangingPassword(false);
+    }
   };
 
   return (

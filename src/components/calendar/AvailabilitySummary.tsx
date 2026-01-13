@@ -180,24 +180,24 @@ export const AvailabilitySummary: React.FC = () => {
                     <div className="flex items-center gap-2.5">
                       <div
                         className={cn(
-                          "p-1.5 rounded-lg transition-transform duration-300 group-hover:scale-110",
+                          "p-2 rounded-lg transition-transform duration-300 group-hover:scale-110",
                           stat.bgColor,
                           "ring-1",
                           stat.ringColor,
                         )}
                       >
-                        <stat.icon className={cn("h-3.5 w-3.5", stat.color)} />
+                        <stat.icon className={cn("h-4 w-4", stat.color)} />
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-baseline gap-1.5">
-                          <span className="text-xl font-bold tracking-tight">
+                          <span className="text-2xl font-bold tracking-tight">
                             {stat.value}
                           </span>
                           {stat.trendUp !== null && stat.trendUp && (
-                            <ArrowUpRight className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
+                            <ArrowUpRight className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
                           )}
                         </div>
-                        <p className="text-[10px] text-muted-foreground font-medium truncate">
+                        <p className="text-xs text-muted-foreground font-medium truncate">
                           {stat.label}
                         </p>
                       </div>
@@ -215,9 +215,9 @@ export const AvailabilitySummary: React.FC = () => {
             <div className="flex items-center gap-3 mt-3 pt-3 border-t border-border/30">
               <div className="flex items-center gap-1.5 shrink-0">
                 <div className="p-1 rounded-md bg-blue-500/10">
-                  <Sparkles className="h-2.5 w-2.5 text-blue-500" />
+                  <Sparkles className="h-3 w-3 text-blue-500" />
                 </div>
-                <span className="text-[10px] font-semibold text-muted-foreground">
+                <span className="text-xs font-semibold text-muted-foreground">
                   {t("calendar.upcomingAvailability")}
                 </span>
               </div>
@@ -226,7 +226,7 @@ export const AvailabilitySummary: React.FC = () => {
                   <Badge
                     key={index}
                     variant="secondary"
-                    className="text-[9px] px-2 py-0.5 font-medium bg-muted/60 hover:bg-muted transition-colors"
+                    className="text-[10px] px-2 py-0.5 font-medium bg-muted/60 hover:bg-muted transition-colors"
                   >
                     <span className="truncate max-w-[100px]">
                       {item.device?.name}
@@ -239,7 +239,7 @@ export const AvailabilitySummary: React.FC = () => {
                 {devicesBecomingAvailable.length > 5 && (
                   <Badge
                     variant="outline"
-                    className="text-[9px] px-1.5 py-0.5 font-medium"
+                    className="text-[10px] px-1.5 py-0.5 font-medium"
                   >
                     +{devicesBecomingAvailable.length - 5} more
                   </Badge>

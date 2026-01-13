@@ -17,7 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { usePagination } from "@/components/ui/pagination-controls";
+import { usePagination } from "@/hooks/use-pagination";
 import { cn } from "@/lib/utils";
 import {
   ChevronLeft,

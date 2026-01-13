@@ -522,9 +522,257 @@ describe("Return Request API - Creation", () => {
       expect(response.data.success).toBe(true);
     });
   });
+});
 
+// ============================================================================
+// Return Condition Update Tests (Admin Only)
+// ============================================================================
+
+describe("Return Request API - Condition Update", () => {
+  describe("PATCH /api/returns/:id/condition", () => {
+    it("should allow admin to update return condition", async () => {
+      // Create a device and complete return flow
+      const deviceId = await createTestDevice();
+      const borrowRequest = await createActiveBorrowRequest(deviceId);
+
+      // Create return with 'good' condition
+      const returnData = createReturnRequest({
+        borrow_request_id: borrowRequest.id,
+        condition: "good",
+        notes: "Initial return",
+      });
+
+      const returnResponse = await api.post<ReturnRequestWithDetails>(
+        "/api/returns",
+        returnData,
+        userToken,
+      );
+      expect(returnResponse.status).toBe(201);
+      const returnId = returnResponse.data.data?.id;
+
+      // Admin updates condition to 'excellent'
+      const updateResponse = await api.patch<ReturnRequestWithDetails>(
+        `/api/returns/${returnId}/condition`,
+        { condition: "excellent" },
+        adminToken,
+      );
+
+      expect(updateResponse.status).toBe(200);
+      expect(updateResponse.data.success).toBe(true);
+      expect(updateResponse.data.data?.device_condition).toBe("excellent");
+
+      // Verify device status is still available
+      const deviceResponse = await api.get<DeviceWithDepartment>(
+        `/api/devices/${deviceId}`,
+      );
+      expect(deviceResponse.data.data?.status).toBe("available");
+    });
+
+    it("should set device to maintenance when condition updated to damaged", async () => {
+      // Create a device and complete return flow
+      const deviceId = await createTestDevice();
+      const borrowRequest = await createActiveBorrowRequest(deviceId);
+
+      // Create return with 'good' condition
+      const returnData = createReturnRequest({
+        borrow_request_id: borrowRequest.id,
+        condition: "good",
+        notes: "Initial return",
+      });
+
+      const returnResponse = await api.post<ReturnRequestWithDetails>(
+        "/api/returns",
+        returnData,
+        userToken,
+      );
+      expect(returnResponse.status).toBe(201);
+      const returnId = returnResponse.data.data?.id;
+
+      // Admin updates condition to 'damaged'
+      const updateResponse = await api.patch<ReturnRequestWithDetails>(
+        `/api/returns/${returnId}/condition`,
+        { condition: "damaged" },
+        adminToken,
+      );
+
+      expect(updateResponse.status).toBe(200);
+      expect(updateResponse.data.success).toBe(true);
+      expect(updateResponse.data.data?.device_condition).toBe("damaged");
+
+      // Verify device status changed to maintenance
+      const deviceResponse = await api.get<DeviceWithDepartment>(
+        `/api/devices/${deviceId}`,
+      );
+      expect(deviceResponse.data.data?.status).toBe("maintenance");
+    });
+
+    it("should set device to available when condition updated from damaged to non-damaged", async () => {
+      // Create a device and complete return flow with damaged condition
+      const deviceId = await createTestDevice();
+      const borrowRequest = await createActiveBorrowRequest(deviceId);
+
+      // Create return with 'damaged' condition
+      const returnData = createReturnRequest({
+        borrow_request_id: borrowRequest.id,
+        condition: "damaged",
+        notes: "Device has damage",
+      });
+
+      const returnResponse = await api.post<ReturnRequestWithDetails>(
+        "/api/returns",
+        returnData,
+        userToken,
+      );
+      expect(returnResponse.status).toBe(201);
+      const returnId = returnResponse.data.data?.id;
+
+      // Verify device is in maintenance
+      let deviceResponse = await api.get<DeviceWithDepartment>(
+        `/api/devices/${deviceId}`,
+      );
+      expect(deviceResponse.data.data?.status).toBe("maintenance");
+
+      // Admin updates condition to 'fair' (repaired)
+      const updateResponse = await api.patch<ReturnRequestWithDetails>(
+        `/api/returns/${returnId}/condition`,
+        { condition: "fair" },
+        adminToken,
+      );
+
+      expect(updateResponse.status).toBe(200);
+      expect(updateResponse.data.success).toBe(true);
+      expect(updateResponse.data.data?.device_condition).toBe("fair");
+
+      // Verify device status changed to available
+      deviceResponse = await api.get<DeviceWithDepartment>(
+        `/api/devices/${deviceId}`,
+      );
+      expect(deviceResponse.data.data?.status).toBe("available");
+    });
+
+    it("should return 403 for non-admin updating condition", async () => {
+      // Create a device and complete return flow
+      const deviceId = await createTestDevice();
+      const borrowRequest = await createActiveBorrowRequest(deviceId);
+
+      const returnData = createReturnRequest({
+        borrow_request_id: borrowRequest.id,
+        condition: "good",
+        notes: "Initial return",
+      });
+
+      const returnResponse = await api.post<ReturnRequestWithDetails>(
+        "/api/returns",
+        returnData,
+        userToken,
+      );
+      expect(returnResponse.status).toBe(201);
+      const returnId = returnResponse.data.data?.id;
+
+      // Regular user tries to update condition
+      const updateResponse = await api.patch<ReturnRequestWithDetails>(
+        `/api/returns/${returnId}/condition`,
+        { condition: "excellent" },
+        userToken,
+      );
+
+      expect(updateResponse.status).toBe(403);
+      expect(updateResponse.data.success).toBe(false);
+    });
+
+    it("should return 401 for unauthenticated request", async () => {
+      const response = await api.patch<ReturnRequestWithDetails>(
+        "/api/returns/1/condition",
+        { condition: "excellent" },
+      );
+
+      expect(response.status).toBe(401);
+      expect(response.data.success).toBe(false);
+    });
+
+    it("should return 404 for non-existent return request", async () => {
+      const response = await api.patch<ReturnRequestWithDetails>(
+        "/api/returns/999999/condition",
+        { condition: "excellent" },
+        adminToken,
+      );
+
+      expect(response.status).toBe(404);
+      expect(response.data.success).toBe(false);
+    });
+
+    it("should return 400 for invalid return ID format", async () => {
+      const response = await api.patch<ReturnRequestWithDetails>(
+        "/api/returns/invalid/condition",
+        { condition: "excellent" },
+        adminToken,
+      );
+
+      expect(response.status).toBe(400);
+      expect(response.data.success).toBe(false);
+    });
+
+    it("should return 400 for invalid condition value", async () => {
+      // Create a device and complete return flow
+      const deviceId = await createTestDevice();
+      const borrowRequest = await createActiveBorrowRequest(deviceId);
+
+      const returnData = createReturnRequest({
+        borrow_request_id: borrowRequest.id,
+        condition: "good",
+        notes: "Initial return",
+      });
+
+      const returnResponse = await api.post<ReturnRequestWithDetails>(
+        "/api/returns",
+        returnData,
+        userToken,
+      );
+      expect(returnResponse.status).toBe(201);
+      const returnId = returnResponse.data.data?.id;
+
+      // Try to update with invalid condition
+      const updateResponse = await api.patch<ReturnRequestWithDetails>(
+        `/api/returns/${returnId}/condition`,
+        { condition: "invalid_condition" },
+        adminToken,
+      );
+
+      expect(updateResponse.status).toBe(400);
+      expect(updateResponse.data.success).toBe(false);
+    });
+
+    it("should return 400 for missing condition", async () => {
+      // Create a device and complete return flow
+      const deviceId = await createTestDevice();
+      const borrowRequest = await createActiveBorrowRequest(deviceId);
+
+      const returnData = createReturnRequest({
+        borrow_request_id: borrowRequest.id,
+        condition: "good",
+        notes: "Initial return",
+      });
+
+      const returnResponse = await api.post<ReturnRequestWithDetails>(
+        "/api/returns",
+        returnData,
+        userToken,
+      );
+      expect(returnResponse.status).toBe(201);
+      const returnId = returnResponse.data.data?.id;
+
+      // Try to update without condition
+      const updateResponse = await api.patch<ReturnRequestWithDetails>(
+        `/api/returns/${returnId}/condition`,
+        {},
+        adminToken,
+      );
+
+      expect(updateResponse.status).toBe(400);
+      expect(updateResponse.data.success).toBe(false);
+    });
   });
-
+});
 
 // ============================================================================
 // Real-World Scenarios

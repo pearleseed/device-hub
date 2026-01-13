@@ -12,7 +12,7 @@ import { PRICE_RANGES, type PriceRange } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { useDevices } from "@/hooks/use-api-queries";
+import { useDevices, usePendingDeviceIds } from "@/hooks/use-api-queries";
 import { useLanguage } from "@/contexts/LanguageContext";
 import {
   Select,
@@ -46,7 +46,7 @@ import {
   usePagination,
   PaginationInfo,
   PaginationNav,
-} from "@/components/ui/pagination-controls";
+} from "@/hooks/use-pagination";
 import { toast } from "sonner";
 import { SkeletonCard, SkeletonListItem } from "@/components/ui/skeleton-card";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -174,6 +174,9 @@ const DeviceCatalog: React.FC = () => {
 
   // Use cached devices data
   const { data: devices = [], isLoading } = useDevices();
+  
+  // Get device IDs with pending requests
+  const { data: pendingDeviceIds = [] } = usePendingDeviceIds();
 
   // Recently viewed tracking
   const { addToRecentlyViewed } = useRecentlyViewed();
@@ -181,6 +184,13 @@ const DeviceCatalog: React.FC = () => {
   // Favorites
   const { favorites, toggleFavorite, isFavorite, favoritesCount } =
     useFavorites();
+
+  // Helper to get effective status (considering pending requests)
+  const getEffectiveStatus = (device: DeviceWithDepartment): DeviceStatus => {
+    if (device.status !== "available") return device.status;
+    if (pendingDeviceIds.includes(device.id)) return "borrowed";
+    return "available";
+  };
 
   const filteredAndSortedDevices = useMemo(() => {
     const result = devices.filter((device) => {
@@ -191,8 +201,11 @@ const DeviceCatalog: React.FC = () => {
 
       const matchesCategory =
         categoryFilter === "all" || device.category === categoryFilter;
+      
+      // Use effective status for filtering
+      const effectiveStatus = getEffectiveStatus(device);
       const matchesStatus =
-        statusFilter === "all" || device.status === statusFilter;
+        statusFilter === "all" || effectiveStatus === statusFilter;
       const matchesFavorites =
         !showFavoritesOnly || favorites.includes(String(device.id));
 
@@ -243,7 +256,9 @@ const DeviceCatalog: React.FC = () => {
           );
         case "availability": {
           const statusOrder = { available: 0, borrowed: 1, maintenance: 2 };
-          return statusOrder[a.status] - statusOrder[b.status];
+          const aStatus = getEffectiveStatus(a);
+          const bStatus = getEffectiveStatus(b);
+          return statusOrder[aStatus] - statusOrder[bStatus];
         }
         case "favorites": {
           const aFav = favorites.includes(String(a.id)) ? 0 : 1;
@@ -267,6 +282,7 @@ const DeviceCatalog: React.FC = () => {
     priceFilter,
     minPrice,
     maxPrice,
+    pendingDeviceIds,
   ]);
 
   // Pagination
@@ -337,7 +353,7 @@ const DeviceCatalog: React.FC = () => {
         <div className="flex items-center gap-2 mb-1">
           <Laptop className="h-5 w-5 text-primary" aria-hidden="true" />
           <span className="text-sm text-muted-foreground">
-            {devices.filter((d) => d.status === "available").length}{" "}
+            {devices.filter((d) => getEffectiveStatus(d) === "available").length}{" "}
             {t("deviceCatalog.devicesAvailable")}
           </span>
         </div>
@@ -645,6 +661,7 @@ const DeviceCatalog: React.FC = () => {
                     onFavoriteToggle={handleFavoriteToggle}
                     isFavorite={isFavorite(String(device.id))}
                     showQuickRequest={true}
+                    effectiveStatus={getEffectiveStatus(device)}
                   />
                 </div>
               ))}
@@ -714,14 +731,14 @@ const DeviceCatalog: React.FC = () => {
                     </div>
                     <Badge
                       variant={
-                        device.status === "available" ? "default" : "secondary"
+                        getEffectiveStatus(device) === "available" ? "default" : "secondary"
                       }
                     >
-                      {t(`status.${device.status}` as any)}
+                      {t(`status.${getEffectiveStatus(device)}` as any)}
                     </Badge>
 
                     {/* Quick Request for list view */}
-                    {device.status === "available" && (
+                    {getEffectiveStatus(device) === "available" && (
                       <Button
                         size="sm"
                         variant="outline"

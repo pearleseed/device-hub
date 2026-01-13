@@ -55,6 +55,7 @@ export const queryKeys = {
     detail: (id: number) => ["devices", id] as const,
     filtered: (filters: DeviceFilters) =>
       ["devices", "filtered", filters] as const,
+    pendingIds: ["devices", "pendingIds"] as const,
   },
 
   // User queries
@@ -136,6 +137,18 @@ export function useDevice(id: number): UseQueryResult<DeviceWithDepartment> {
     staleTime: STALE_TIME,
     gcTime: GC_TIME,
     enabled: id > 0,
+  });
+}
+
+/**
+ * Fetch device IDs that have pending or approved borrow requests
+ */
+export function usePendingDeviceIds(): UseQueryResult<number[]> {
+  return useQuery({
+    queryKey: queryKeys.devices.pendingIds,
+    queryFn: () => apiClient.get<number[]>("/api/devices/pending-ids"),
+    staleTime: STALE_TIME,
+    gcTime: GC_TIME,
   });
 }
 

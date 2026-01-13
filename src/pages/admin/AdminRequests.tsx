@@ -36,6 +36,11 @@ import {
   useRenewals,
   useReturns,
 } from "@/hooks/use-api-queries";
+import {
+  useUpdateBorrowStatus,
+  useUpdateRenewalStatus,
+  useUpdateReturnCondition,
+} from "@/hooks/use-api-mutations";
 import { exportToCSV, requestExportColumns, renewalExportColumns, returnExportColumns } from "@/lib/exportUtils";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -239,6 +244,11 @@ const AdminRequests: React.FC = () => {
   const { toast } = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
 
+  // Mutation hooks
+  const updateBorrowStatus = useUpdateBorrowStatus();
+  const updateRenewalStatus = useUpdateRenewalStatus();
+  const updateReturnCondition = useUpdateReturnCondition();
+
   // Get initial tab from URL or default to "borrow"
   const tabFromUrl = searchParams.get("tab");
   const validTabs = ["borrow", "renewal", "return"];
@@ -247,85 +257,12 @@ const AdminRequests: React.FC = () => {
       ? (tabFromUrl as "borrow" | "renewal" | "return")
       : "borrow";
 
-  // Use API hook for borrow requests
-  const { data: apiRequests = [], isLoading: isLoadingRequests } =
+  // Use API hooks - data comes directly from API
+  const { data: requests = [], isLoading: isLoadingRequests } =
     useBorrowRequests();
-
-  // Local state for optimistic updates
-  const [localRequests, setLocalRequests] = useState<
-    BorrowRequestWithDetails[] | null
-  >(null);
-  const requests = localRequests ?? apiRequests;
-  const setRequests = useCallback(
-    (
-      updater:
-        | BorrowRequestWithDetails[]
-        | ((prev: BorrowRequestWithDetails[]) => BorrowRequestWithDetails[]),
-    ) => {
-      setLocalRequests((prev) => {
-        const currentRequests = prev ?? apiRequests;
-        if (typeof updater === "function") {
-          return updater(currentRequests);
-        } else {
-          return updater;
-        }
-      });
-    },
-    [apiRequests],
-  );
-
-  // Use API hook for renewal requests
-  const { data: apiRenewals = [], isLoading: isLoadingRenewals } =
+  const { data: renewals = [], isLoading: isLoadingRenewals } =
     useRenewals();
-
-  // Local state for optimistic updates
-  const [localRenewals, setLocalRenewals] = useState<
-    RenewalRequestWithDetails[] | null
-  >(null);
-  const renewals = localRenewals ?? apiRenewals;
-  const setRenewals = useCallback(
-    (
-      updater:
-        | RenewalRequestWithDetails[]
-        | ((prev: RenewalRequestWithDetails[]) => RenewalRequestWithDetails[]),
-    ) => {
-      setLocalRenewals((prev) => {
-        const currentRenewals = prev ?? apiRenewals;
-        if (typeof updater === "function") {
-          return updater(currentRenewals);
-        } else {
-          return updater;
-        }
-      });
-    },
-    [apiRenewals],
-  );
-
-  // Use API hook for return requests
-  const { data: apiReturns = [], isLoading: isLoadingReturns } = useReturns();
-
-  // Local state for optimistic updates
-  const [localReturns, setLocalReturns] = useState<
-    ReturnRequestWithDetails[] | null
-  >(null);
-  const returns = localReturns ?? apiReturns;
-  const setReturns = useCallback(
-    (
-      updater:
-        | ReturnRequestWithDetails[]
-        | ((prev: ReturnRequestWithDetails[]) => ReturnRequestWithDetails[]),
-    ) => {
-      setLocalReturns((prev) => {
-        const currentReturns = prev ?? apiReturns;
-        if (typeof updater === "function") {
-          return updater(currentReturns);
-        } else {
-          return updater;
-        }
-      });
-    },
-    [apiReturns],
-  );
+  const { data: returns = [], isLoading: isLoadingReturns } = useReturns();
 
   const [viewMode, setViewMode] = useState<"kanban" | "list">("kanban");
   const [activeTab, setActiveTab] = useState<"borrow" | "renewal" | "return">(
@@ -437,65 +374,45 @@ const AdminRequests: React.FC = () => {
   }, [returns]);
 
   const handleRenewalAction = useCallback(
-    (renewalId: number, action: RenewalStatus) => {
+    async (renewalId: number, action: RenewalStatus) => {
       if (action === "pending") return;
 
-      setRenewals((prev) =>
-        prev.map((r) =>
-          r.id === renewalId
-            ? {
-                ...r,
-                status: action,
-                reviewed_by: 1,
-                reviewed_at: new Date(),
-              }
-            : r,
-        ),
-      );
-
-      if (action === "approved") {
-        const renewal = renewals.find((r) => r.id === renewalId);
-        if (renewal) {
-          const borrowRequestId = renewal.borrow_request_id;
-          setRequests((prev) =>
-            prev.map((r) =>
-              r.id === borrowRequestId
-                ? { ...r, end_date: new Date(renewal.requested_end_date) }
-                : r,
-            ),
-          );
-        }
+      // Call API directly - React Query will handle cache invalidation
+      try {
+        await updateRenewalStatus.mutateAsync({ id: renewalId, status: action });
+        
+        toast({
+          title:
+            action === "approved"
+              ? t("requests.renewalApprovedTitle")
+              : t("requests.renewalRejectedTitle"),
+          description:
+            action === "approved"
+              ? t("requests.renewalApprovedDesc")
+              : t("requests.renewalRejectedDesc"),
+          variant: action,
+        });
+      } catch (error) {
+        console.error("Failed to update renewal status:", error);
       }
-
-      toast({
-        title:
-          action === "approved"
-            ? t("requests.renewalApprovedTitle")
-            : t("requests.renewalRejectedTitle"),
-        description:
-          action === "approved"
-            ? t("requests.renewalApprovedDesc")
-            : t("requests.renewalRejectedDesc"),
-        variant: action,
-      });
     },
-    [renewals, setRenewals, setRequests, toast, t],
+    [updateRenewalStatus, toast, t],
   );
 
   const handleReturnConditionChange = useCallback(
-    (returnId: number, condition: DeviceCondition) => {
-      setReturns((prev) =>
-        prev.map((r) =>
-          r.id === returnId ? { ...r, device_condition: condition } : r,
-        ),
-      );
-
-      toast({
-        title: t("requests.conditionUpdatedTitle"),
-        description: `${t("requests.conditionChangedTo")} ${condition}.`,
-      });
+    async (returnId: number, condition: DeviceCondition) => {
+      try {
+        await updateReturnCondition.mutateAsync({ id: returnId, condition });
+        toast({
+          title: t("requests.conditionUpdatedTitle"),
+          description: `${t("requests.conditionChangedTo")} ${condition}.`,
+          variant: condition,
+        });
+      } catch (error) {
+        console.error("Failed to update return condition:", error);
+      }
     },
-    [setReturns, toast, t],
+    [updateReturnCondition, toast, t],
   );
 
   // Renewal drag handlers
@@ -525,37 +442,11 @@ const AdminRequests: React.FC = () => {
     [renewalColumnStatusSet, renewalsById],
   );
 
-  const handleRenewalDragOver = (event: DragOverEvent) => {
-    const { active, over } = event;
-    if (!over) return;
-
-    const activeId = Number(active.id);
-    const overId = over.id as string;
-
-    const draggedRenewal = renewalsById.get(activeId);
-    if (!draggedRenewal) return;
-
-    const targetStatus = findRenewalTargetStatus(overId);
-
-    if (
-      targetStatus &&
-      originalRenewalStatus &&
-      targetStatus !== draggedRenewal.status
-    ) {
-      if (
-        targetStatus === originalRenewalStatus ||
-        isValidRenewalTransition(originalRenewalStatus, targetStatus)
-      ) {
-        setRenewals((prev) =>
-          prev.map((r) =>
-            r.id === activeId ? { ...r, status: targetStatus } : r,
-          ),
-        );
-      }
-    }
+  const handleRenewalDragOver = (_event: DragOverEvent) => {
+    // Visual feedback is handled by DragOverlay, no state update needed
   };
 
-  const handleRenewalDragEnd = (event: DragEndEvent) => {
+  const handleRenewalDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
     const draggedId = Number(active.id);
 
@@ -564,78 +455,38 @@ const AdminRequests: React.FC = () => {
     setOriginalRenewalStatus(null);
 
     if (!over || !capturedOriginalStatus) {
-      if (capturedOriginalStatus) {
-        setRenewals((prev) =>
-          prev.map((r) =>
-            r.id === draggedId ? { ...r, status: capturedOriginalStatus } : r,
-          ),
-        );
-      }
       return;
     }
 
     const overId = over.id as string;
     const targetStatus = findRenewalTargetStatus(overId);
 
-    if (targetStatus === capturedOriginalStatus) {
-      setRenewals((prev) =>
-        prev.map((r) =>
-          r.id === draggedId ? { ...r, status: capturedOriginalStatus } : r,
-        ),
-      );
+    if (!targetStatus || targetStatus === capturedOriginalStatus) {
       return;
     }
 
-    if (targetStatus && targetStatus !== capturedOriginalStatus) {
-      if (!isValidRenewalTransition(capturedOriginalStatus, targetStatus)) {
-        setRenewals((prev) =>
-          prev.map((r) =>
-            r.id === draggedId ? { ...r, status: capturedOriginalStatus } : r,
-          ),
-        );
-        toast({
-          title: t("requests.invalidTransitionTitle"),
-          description: getRenewalInvalidTransitionMessage(
-            capturedOriginalStatus,
-            targetStatus,
-          ),
-          variant: "destructive",
-        });
-        return;
-      }
-
-      setRenewals((prev) =>
-        prev.map((r) =>
-          r.id === draggedId
-            ? {
-                ...r,
-                status: targetStatus,
-                reviewed_by: 1,
-                reviewed_at: new Date(),
-              }
-            : r,
+    if (!isValidRenewalTransition(capturedOriginalStatus, targetStatus)) {
+      toast({
+        title: t("requests.invalidTransitionTitle"),
+        description: getRenewalInvalidTransitionMessage(
+          capturedOriginalStatus,
+          targetStatus,
         ),
-      );
+        variant: "destructive",
+      });
+      return;
+    }
 
-      if (targetStatus === "approved") {
-        const renewal = renewalsById.get(draggedId);
-        if (renewal) {
-          const borrowRequestId = renewal.borrow_request_id;
-          setRequests((prev) =>
-            prev.map((r) =>
-              r.id === borrowRequestId
-                ? { ...r, end_date: new Date(renewal.requested_end_date) }
-                : r,
-            ),
-          );
-        }
-      }
-
+    // Call API to update status
+    try {
+      await updateRenewalStatus.mutateAsync({ id: draggedId, status: targetStatus });
       toast({
         title: t("requests.statusUpdatedTitle"),
         description: `${t("requests.renewalMovedTo")} ${targetStatus}.`,
         variant: targetStatus,
       });
+    } catch (error) {
+      console.error("Failed to update renewal status:", error);
     }
   };
 
@@ -666,32 +517,11 @@ const AdminRequests: React.FC = () => {
     [returnColumnConditionSet, returnsById],
   );
 
-  const handleReturnDragOver = (event: DragOverEvent) => {
-    const { active, over } = event;
-    if (!over) return;
-
-    const activeId = Number(active.id);
-    const overId = over.id as string;
-
-    const draggedReturn = returnsById.get(activeId);
-    if (!draggedReturn) return;
-
-    const targetCondition = findReturnTargetCondition(overId);
-
-    if (
-      targetCondition &&
-      originalReturnCondition &&
-      targetCondition !== draggedReturn.device_condition
-    ) {
-      setReturns((prev) =>
-        prev.map((r) =>
-          r.id === activeId ? { ...r, device_condition: targetCondition } : r,
-        ),
-      );
-    }
+  const handleReturnDragOver = (_event: DragOverEvent) => {
+    // Visual feedback is handled by DragOverlay, no state update needed
   };
 
-  const handleReturnDragEnd = (event: DragEndEvent) => {
+  const handleReturnDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
     const draggedId = Number(active.id);
 
@@ -700,15 +530,6 @@ const AdminRequests: React.FC = () => {
     setOriginalReturnCondition(null);
 
     if (!over || !capturedOriginalCondition) {
-      if (capturedOriginalCondition) {
-        setReturns((prev) =>
-          prev.map((r) =>
-            r.id === draggedId
-              ? { ...r, device_condition: capturedOriginalCondition }
-              : r,
-          ),
-        );
-      }
       return;
     }
 
@@ -720,16 +541,17 @@ const AdminRequests: React.FC = () => {
     }
 
     if (targetCondition && targetCondition !== capturedOriginalCondition) {
-      setReturns((prev) =>
-        prev.map((r) =>
-          r.id === draggedId ? { ...r, device_condition: targetCondition } : r,
-        ),
-      );
-
-      toast({
-        title: t("requests.conditionUpdatedTitle"),
-        description: `${t("requests.conditionChangedTo")} ${targetCondition}.`,
-      });
+      // Call API to update return condition
+      try {
+        await updateReturnCondition.mutateAsync({ id: draggedId, condition: targetCondition });
+        toast({
+          title: t("requests.conditionUpdatedTitle"),
+          description: `${t("requests.conditionChangedTo")} ${targetCondition}.`,
+          variant: targetCondition,
+        });
+      } catch (error) {
+        console.error("Failed to update return condition:", error);
+      }
     }
   };
 
@@ -743,17 +565,19 @@ const AdminRequests: React.FC = () => {
   );
 
   const updateStatus = useCallback(
-    (id: number, newStatus: RequestStatus) => {
-      setRequests((prev) =>
-        prev.map((r) => (r.id === id ? { ...r, status: newStatus } : r)),
-      );
-      toast({
-        title: t("requests.statusUpdatedTitle"),
-        description: `${t("requests.movedTo")} ${newStatus}.`,
-        variant: newStatus,
-      });
+    async (id: number, newStatus: RequestStatus) => {
+      try {
+        await updateBorrowStatus.mutateAsync({ id, status: newStatus });
+        toast({
+          title: t("requests.statusUpdatedTitle"),
+          description: `${t("requests.movedTo")} ${newStatus}.`,
+          variant: newStatus,
+        });
+      } catch (error) {
+        console.error("Failed to update borrow status:", error);
+      }
     },
-    [setRequests, toast, t],
+    [updateBorrowStatus, toast, t],
   );
 
   const handleExportCSV = useCallback(() => {
@@ -811,37 +635,11 @@ const AdminRequests: React.FC = () => {
     [columnStatusSet, requestsById],
   );
 
-  const handleDragOver = (event: DragOverEvent) => {
-    const { active, over } = event;
-    if (!over) return;
-
-    const activeId = Number(active.id);
-    const overId = over.id as string;
-
-    const draggedRequest = requestsById.get(activeId);
-    if (!draggedRequest) return;
-
-    const targetStatus = findTargetStatus(overId);
-
-    if (
-      targetStatus &&
-      originalBorrowStatus &&
-      targetStatus !== draggedRequest.status
-    ) {
-      if (
-        targetStatus === originalBorrowStatus ||
-        isValidBorrowTransition(originalBorrowStatus, targetStatus)
-      ) {
-        setRequests((prev) =>
-          prev.map((r) =>
-            r.id === activeId ? { ...r, status: targetStatus } : r,
-          ),
-        );
-      }
-    }
+  const handleDragOver = (_event: DragOverEvent) => {
+    // Visual feedback is handled by DragOverlay, no state update needed
   };
 
-  const handleDragEnd = (event: DragEndEvent) => {
+  const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
     const draggedId = Number(active.id);
 
@@ -850,13 +648,6 @@ const AdminRequests: React.FC = () => {
     setOriginalBorrowStatus(null);
 
     if (!over || !capturedOriginalStatus) {
-      if (capturedOriginalStatus) {
-        setRequests((prev) =>
-          prev.map((r) =>
-            r.id === draggedId ? { ...r, status: capturedOriginalStatus } : r,
-          ),
-        );
-      }
       return;
     }
 
@@ -864,21 +655,11 @@ const AdminRequests: React.FC = () => {
     const targetStatus = findTargetStatus(overId);
 
     if (targetStatus === capturedOriginalStatus) {
-      setRequests((prev) =>
-        prev.map((r) =>
-          r.id === draggedId ? { ...r, status: capturedOriginalStatus } : r,
-        ),
-      );
       return;
     }
 
     if (targetStatus && targetStatus !== capturedOriginalStatus) {
       if (!isValidBorrowTransition(capturedOriginalStatus, targetStatus)) {
-        setRequests((prev) =>
-          prev.map((r) =>
-            r.id === draggedId ? { ...r, status: capturedOriginalStatus } : r,
-          ),
-        );
         toast({
           title: t("requests.invalidTransitionTitle"),
           description: getInvalidTransitionMessage(
@@ -890,16 +671,17 @@ const AdminRequests: React.FC = () => {
         return;
       }
 
-      setRequests((prev) =>
-        prev.map((r) =>
-          r.id === draggedId ? { ...r, status: targetStatus } : r,
-        ),
-      );
-      toast({
-        title: t("requests.statusUpdatedTitle"),
-        description: `${t("requests.movedTo")} ${targetStatus}.`,
-        variant: targetStatus,
-      });
+      // Call API to update status
+      try {
+        await updateBorrowStatus.mutateAsync({ id: draggedId, status: targetStatus });
+        toast({
+          title: t("requests.statusUpdatedTitle"),
+          description: `${t("requests.movedTo")} ${targetStatus}.`,
+          variant: targetStatus,
+        });
+      } catch (error) {
+        console.error("Failed to update borrow status:", error);
+      }
     }
   };
 
@@ -983,7 +765,7 @@ const AdminRequests: React.FC = () => {
                       className="flex flex-col p-3 rounded-xl min-h-[300px]"
                     >
                       <div
-                        className={`flex items-center gap-2 pb-2 border-b-2 rounded-t-lg px-2 mb-3 ${col.color}`}
+                        className={`flex items-center gap-2 pb-2 border-b-2 rounded-t-lg px-2 py-1 mb-3 ${col.color}`}
                       >
                         <Skeleton className="h-4 w-4" />
                         <Skeleton className="h-5 w-20" />
@@ -1069,7 +851,7 @@ const AdminRequests: React.FC = () => {
                       className="flex flex-col p-3 rounded-xl min-h-[300px]"
                     >
                       <div
-                        className={`flex items-center gap-2 pb-2 border-b-2 rounded-t-lg px-2 mb-3 ${col.color}`}
+                        className={`flex items-center gap-2 pb-2 border-b-2 rounded-t-lg px-2 py-1 mb-3 ${col.color}`}
                       >
                         <Skeleton className="h-4 w-4" />
                         <Skeleton className="h-5 w-20" />
@@ -1165,7 +947,7 @@ const AdminRequests: React.FC = () => {
                       className="flex flex-col p-3 rounded-xl min-h-[300px]"
                     >
                       <div
-                        className={`flex items-center gap-2 pb-2 border-b-2 rounded-t-lg px-2 mb-3 ${col.color}`}
+                        className={`flex items-center gap-2 pb-2 border-b-2 rounded-t-lg px-2 py-1 mb-3 ${col.color}`}
                       >
                         <Skeleton className="h-4 w-4" />
                         <Skeleton className="h-5 w-20" />

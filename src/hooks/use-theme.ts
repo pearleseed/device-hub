@@ -1,73 +1,41 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 
 type Theme = "dark" | "light" | "system";
 
-function getSystemTheme(): "dark" | "light" {
-  if (typeof window !== "undefined") {
-    return window.matchMedia("(prefers-color-scheme: dark)").matches
-      ? "dark"
-      : "light";
-  }
-  return "light";
-}
+const getSystemTheme = (): "dark" | "light" =>
+  typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 
 export function useTheme() {
-  const [theme, setThemeState] = useState<Theme>(() => {
-    if (typeof window !== "undefined") {
-      return (localStorage.getItem("theme") as Theme) || "light";
-    }
-    return "light";
-  });
-
-  const [resolvedTheme, setResolvedTheme] = useState<"dark" | "light">(() => {
-    if (theme === "system") {
-      return getSystemTheme();
-    }
-    return theme;
-  });
+  const [theme, setThemeState] = useState<Theme>(() =>
+    typeof window !== "undefined" ? (localStorage.getItem("theme") as Theme) || "light" : "light"
+  );
+  const [resolvedTheme, setResolvedTheme] = useState<"dark" | "light">(() =>
+    theme === "system" ? getSystemTheme() : theme
+  );
 
   useEffect(() => {
     const root = window.document.documentElement;
+    const resolved = theme === "system" ? getSystemTheme() : theme;
+    setResolvedTheme(resolved);
 
-    const applyTheme = (newTheme: Theme, enableTransition = true) => {
-      const resolved = newTheme === "system" ? getSystemTheme() : newTheme;
-      setResolvedTheme(resolved);
+    root.classList.add("theme-transitioning");
+    root.classList.remove("light", "dark");
+    root.classList.add(resolved);
+    localStorage.setItem("theme", theme);
 
-      // Enable smooth transitions during theme change
-      if (enableTransition) {
-        root.classList.add("theme-transitioning");
-      }
+    const timeout = setTimeout(() => root.classList.remove("theme-transitioning"), 350);
 
-      root.classList.remove("light", "dark");
-      root.classList.add(resolved);
-      localStorage.setItem("theme", newTheme);
-
-      // Remove transition class after animation completes
-      if (enableTransition) {
-        const timeout = setTimeout(() => {
-          root.classList.remove("theme-transitioning");
-        }, 350);
-        return () => clearTimeout(timeout);
-      }
-    };
-
-    applyTheme(theme);
-
-    // Listen for system theme changes
     const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
-    const handleChange = () => {
-      if (theme === "system") {
-        applyTheme("system");
-      }
-    };
-
+    const handleChange = () => theme === "system" && setResolvedTheme(getSystemTheme());
     mediaQuery.addEventListener("change", handleChange);
-    return () => mediaQuery.removeEventListener("change", handleChange);
+
+    return () => {
+      clearTimeout(timeout);
+      mediaQuery.removeEventListener("change", handleChange);
+    };
   }, [theme]);
 
-  const setTheme = (newTheme: Theme) => {
-    setThemeState(newTheme);
-  };
+  const setTheme = useCallback((newTheme: Theme) => setThemeState(newTheme), []);
 
-  return { theme, setTheme, resolvedTheme };
+  return useMemo(() => ({ theme, setTheme, resolvedTheme }), [theme, setTheme, resolvedTheme]);
 }
