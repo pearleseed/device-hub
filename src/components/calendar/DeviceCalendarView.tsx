@@ -125,7 +125,7 @@ export const DeviceCalendarView: React.FC<DeviceCalendarViewProps> = ({
       : bookings;
   }, [bookings, selectedDevices]);
 
-  // Get bookings for a specific date - only show bookings that START or END on this date
+  // Get bookings for a specific date - show all bookings that overlap with this date
   const getBookingsForDate = (date: Date) => {
     const checkDate = startOfDay(date);
     return filteredBookings.filter((booking) => {
@@ -134,8 +134,12 @@ export const DeviceCalendarView: React.FC<DeviceCalendarViewProps> = ({
       );
       const end = startOfDay(parseISO(booking.end_date as unknown as string));
 
-      // Only show if booking starts or ends on this specific date
-      return isSameDay(checkDate, start) || isSameDay(checkDate, end);
+      // Show all bookings that overlap with this date (consistent with calendar indicators)
+      return (
+        isWithinInterval(checkDate, { start, end }) ||
+        isSameDay(checkDate, start) ||
+        isSameDay(checkDate, end)
+      );
     });
   };
 

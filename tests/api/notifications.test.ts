@@ -7,7 +7,6 @@
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { TestApiClient } from "../utils/api-client";
-import { TEST_USERS } from "../setup";
 
 // ============================================================================
 // Test Setup
@@ -29,7 +28,7 @@ interface Notification {
 }
 
 // Store created notification IDs for cleanup
-let createdNotificationIds: number[] = [];
+const createdNotificationIds: number[] = [];
 let adminToken: string;
 let userToken: string;
 let userId: number;

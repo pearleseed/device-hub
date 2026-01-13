@@ -163,16 +163,23 @@ export const inAppNotificationsRoutes = {
         `;
       }
 
+
+
+      const mappedNotifications = notifications.map((n) => ({
+        ...n,
+        is_read: Boolean(n.is_read),
+      }));
+
       // Get unread count
       const countResult = await db<{ count: number }[]>`
         SELECT COUNT(*) as count FROM notifications 
         WHERE user_id = ${payload.userId} AND is_read = FALSE
       `;
-      const unreadCount = countResult[0]?.count || 0;
+      const unreadCount = Number(countResult[0]?.count || 0);
 
       return jsonResponse({
         success: true,
-        data: notifications,
+        data: mappedNotifications,
         unreadCount,
       });
     } catch (error) {
@@ -199,7 +206,7 @@ export const inAppNotificationsRoutes = {
         SELECT COUNT(*) as count FROM notifications 
         WHERE user_id = ${payload.userId} AND is_read = FALSE
       `;
-      const unreadCount = countResult[0]?.count || 0;
+      const unreadCount = Number(countResult[0]?.count || 0);
 
       return jsonResponse({
         success: true,
@@ -412,7 +419,10 @@ export const inAppNotificationsRoutes = {
 
       return jsonResponse({
         success: true,
-        data: notification,
+        data: {
+          ...notification,
+          is_read: Boolean(notification.is_read),
+        },
       }, 201);
     } catch (error) {
       console.error("Create notification error:", error);

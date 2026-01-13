@@ -36,7 +36,7 @@ import {
   useRenewals,
   useReturns,
 } from "@/hooks/use-api-queries";
-import { exportToCSV, requestExportColumns } from "@/lib/exportUtils";
+import { exportToCSV, requestExportColumns, renewalExportColumns, returnExportColumns } from "@/lib/exportUtils";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   List,
@@ -757,19 +757,33 @@ const AdminRequests: React.FC = () => {
   );
 
   const handleExportCSV = useCallback(() => {
-    const exportData = requests.map((request) => {
-      return {
+    if (activeTab === "borrow") {
+      const exportData = requests.map((request) => ({
         ...request,
         deviceName: request.device_name || t("common.unknown"),
         userName: request.user_name || t("common.unknown"),
-      };
-    });
-    exportToCSV(exportData, "request_history", requestExportColumns);
+      }));
+      exportToCSV(exportData, "borrow_requests", requestExportColumns);
+    } else if (activeTab === "renewal") {
+      const exportData = renewals.map((renewal) => ({
+        ...renewal,
+        deviceName: renewal.device_name || t("common.unknown"),
+        userName: renewal.user_name || t("common.unknown"),
+      }));
+      exportToCSV(exportData, "renewal_requests", renewalExportColumns);
+    } else if (activeTab === "return") {
+      const exportData = returns.map((returnReq) => ({
+        ...returnReq,
+        deviceName: returnReq.device_name || t("common.unknown"),
+        userName: returnReq.user_name || t("common.unknown"),
+      }));
+      exportToCSV(exportData, "return_requests", returnExportColumns);
+    }
     toast({
       title: t("requests.exportComplete"),
       description: t("requests.historyDownloaded"),
     });
-  }, [requests, toast, t]);
+  }, [activeTab, requests, renewals, returns, toast, t]);
 
   const handleDragStart = (event: DragStartEvent) => {
     const { active } = event;
@@ -908,11 +922,9 @@ const AdminRequests: React.FC = () => {
               <p className="text-muted-foreground">{t("requests.subtitle")}</p>
             </div>
             <div className="flex gap-2">
-              {activeTab === "borrow" && (
-                <Button variant="outline" size="sm" onClick={handleExportCSV}>
-                  <Download className="h-4 w-4 mr-1" /> {t("requests.export")}
-                </Button>
-              )}
+              <Button variant="outline" size="sm" onClick={handleExportCSV}>
+                <Download className="h-4 w-4 mr-1" /> {t("requests.export")}
+              </Button>
               <Button
                 variant={viewMode === "kanban" ? "default" : "outline"}
                 size="sm"
@@ -944,6 +956,13 @@ const AdminRequests: React.FC = () => {
                   {requestsByStatus.pending.length}
                 </Badge>
               </TabsTrigger>
+              <TabsTrigger value="return" className="gap-2">
+                <RotateCcw className="h-4 w-4" />
+                {t("requests.returnRequests")}
+                <Badge variant="destructive" className="ml-1">
+                  {returns.length}
+                </Badge>
+              </TabsTrigger>
               <TabsTrigger value="renewal" className="gap-2">
                 <CalendarClock className="h-4 w-4" />
                 {t("requests.renewalRequests")}
@@ -952,13 +971,6 @@ const AdminRequests: React.FC = () => {
                     {renewalsByStatus.pending.length}
                   </Badge>
                 )}
-              </TabsTrigger>
-              <TabsTrigger value="return" className="gap-2">
-                <RotateCcw className="h-4 w-4" />
-                {t("requests.returnRequests") || "Return Requests"}
-                <Badge variant="secondary" className="ml-1">
-                  {returns.length}
-                </Badge>
               </TabsTrigger>
             </TabsList>
 

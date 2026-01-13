@@ -82,6 +82,27 @@ export const requestExportColumns = [
   { key: "created_at" as const, header: "Created At" },
 ];
 
+export const renewalExportColumns = [
+  { key: "id" as const, header: "Renewal ID" },
+  { key: "deviceName" as const, header: "Device" },
+  { key: "userName" as const, header: "Requested By" },
+  { key: "current_end_date" as const, header: "Current End Date" },
+  { key: "requested_end_date" as const, header: "Requested End Date" },
+  { key: "status" as const, header: "Status" },
+  { key: "reason" as const, header: "Reason" },
+  { key: "created_at" as const, header: "Created At" },
+];
+
+export const returnExportColumns = [
+  { key: "id" as const, header: "Return ID" },
+  { key: "deviceName" as const, header: "Device" },
+  { key: "userName" as const, header: "Returned By" },
+  { key: "return_date" as const, header: "Return Date" },
+  { key: "device_condition" as const, header: "Condition" },
+  { key: "notes" as const, header: "Notes" },
+  { key: "created_at" as const, header: "Created At" },
+];
+
 // User export columns
 export const userExportColumns = [
   { key: "id" as const, header: "ID" },

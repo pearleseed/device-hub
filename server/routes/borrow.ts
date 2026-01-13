@@ -83,7 +83,7 @@ export const borrowRoutes = {
         );
       }
 
-      const borrowRequests = await db<BorrowRequestWithDetails>`
+      const borrowRequests = await db<BorrowRequestWithDetails[]>`
         SELECT * FROM v_borrow_details WHERE id = ${id}
       `;
       const borrowRequest = borrowRequests[0];
@@ -150,6 +150,17 @@ export const borrowRoutes = {
       // Check date validity
       const startDateObj = new Date(start_date);
       const endDateObj = new Date(end_date);
+
+      // String comparison for date-only check (YYYY-MM-DD)
+      const todayString = new Date().toISOString().split("T")[0];
+      
+      if (start_date < todayString) {
+        return jsonResponse(
+          { success: false, error: "Start date cannot be in the past" },
+          400,
+        );
+      }
+
       if (endDateObj < startDateObj) {
         return jsonResponse(
           { success: false, error: "End date must be after start date" },
@@ -158,23 +169,24 @@ export const borrowRoutes = {
       }
 
       // Check if device exists and is available
-      const deviceList = await db<{ id: number; status: string }>`
+      const deviceList = await db<{ id: number; status: string }[]>`
         SELECT id, status FROM devices WHERE id = ${device_id}
       `;
       const device = deviceList[0];
+      console.log(`[DEBUG] Device Lookup: ID=${device_id}, Found=${!!device}, Status=${device?.status}`);
 
       if (!device) {
         return jsonResponse({ success: false, error: "Device not found" }, 404);
       }
-      if (device.status !== "available") {
+      if (device.status === "maintenance") {
         return jsonResponse(
-          { success: false, error: "Device is not available" },
+          { success: false, error: "Device is under maintenance" },
           400,
         );
       }
 
-      // Check for conflicting bookings
-      const conflicts = await db<{ count: number }>`
+      // Check for conflict bookings
+      const conflicts = await db<{ count: number }[]>`
         SELECT COUNT(*) as count FROM borrow_requests 
         WHERE device_id = ${device_id} 
         AND status IN ('pending', 'approved', 'active')
@@ -199,7 +211,7 @@ export const borrowRoutes = {
       `;
 
       // Get the created request
-      const newRequests = await db<BorrowRequestWithDetails>`
+      const newRequests = await db<BorrowRequestWithDetails[]>`
         SELECT * FROM v_borrow_details 
         WHERE device_id = ${device_id} AND user_id = ${payload.userId} 
         ORDER BY created_at DESC LIMIT 1
@@ -269,7 +281,7 @@ export const borrowRoutes = {
       }
 
       // Get current request
-      const currentRequests = await db<BorrowRequest>`
+      const currentRequests = await db<BorrowRequest[]>`
         SELECT * FROM borrow_requests WHERE id = ${id}
       `;
       const currentRequest = currentRequests[0];
@@ -326,7 +338,7 @@ export const borrowRoutes = {
           await tx`UPDATE devices SET status = 'borrowed' WHERE id = ${currentRequest.device_id}`;
         } else if (status === "returned" || status === "rejected") {
           // Check if there are other active requests for this device
-          const otherActive = await tx<{ count: number }>`
+          const otherActive = await tx<{ count: number }[]>`
             SELECT COUNT(*) as count FROM borrow_requests 
             WHERE device_id = ${currentRequest.device_id} AND status = 'active' AND id != ${id}
           `;
@@ -336,7 +348,7 @@ export const borrowRoutes = {
         }
       });
 
-      const updatedRequests = await db<BorrowRequestWithDetails>`
+      const updatedRequests = await db<BorrowRequestWithDetails[]>`
         SELECT * FROM v_borrow_details WHERE id = ${id}
       `;
 
@@ -426,7 +438,7 @@ export const borrowRoutes = {
         return jsonResponse({ success: false, error: "Forbidden" }, 403);
       }
 
-      const requests = await db<BorrowRequestWithDetails>`
+      const requests = await db<BorrowRequestWithDetails[]>`
         SELECT * FROM v_borrow_details WHERE user_id = ${userId} ORDER BY created_at DESC
       `;
 

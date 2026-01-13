@@ -701,6 +701,131 @@ describe("Borrow Request API - User-Specific Requests", () => {
 });
 
 // ============================================================================
+// Real-World Scenarios
+// ============================================================================
+
+describe("Real-World Scenarios", () => {
+  it("should return 400 for start_date in the past", async () => {
+    const deviceId = await createTestDevice();
+    const borrowData = createBorrowRequest({
+      device_id: deviceId,
+      start_date: daysFromNow(-1), // Yesterday
+      end_date: daysFromNow(5),
+    });
+
+    const response = await api.post<BorrowRequestWithDetails>(
+      "/api/borrow",
+      borrowData,
+      userToken,
+    );
+
+    // This checks for the fix we plan to implement
+    expect(response.status).toBe(400); 
+    expect(response.data.success).toBe(false);
+    // expect(response.data.error).toMatch(/past/i); // Relaxed check for now
+  });
+
+  it("should return 400 for borrowing maintenance device", async () => {
+    // 1. Create device
+    const deviceId = await createTestDevice();
+    
+    // 2. Set to maintenance manually
+    const patchResponse = await api.put(
+      `/api/devices/${deviceId}`,
+      { status: "maintenance" },
+      adminToken
+    );
+    expect(patchResponse.status).toBe(200);
+
+    // Verify status persisted
+    const deviceResponse = await api.get<DeviceWithDepartment>(`/api/devices/${deviceId}`);
+    expect(deviceResponse.data.data?.status).toBe("maintenance");
+
+    // 3. Try to borrow
+    const borrowData = createBorrowRequest({
+      device_id: deviceId,
+      start_date: daysFromNow(1),
+      end_date: daysFromNow(7),
+    });
+
+    const response = await api.post<BorrowRequestWithDetails>(
+      "/api/borrow",
+      borrowData,
+      userToken,
+    );
+
+    expect(response.status).toBe(400);
+    expect(response.data.success).toBe(false);
+  });
+
+  it("should allow booking if start_date is same as today", async () => {
+    const deviceId = await createTestDevice();
+    const borrowData = createBorrowRequest({
+      device_id: deviceId,
+      start_date: today(), // Today
+      end_date: daysFromNow(5),
+    });
+
+    const response = await api.post<BorrowRequestWithDetails>(
+      "/api/borrow",
+      borrowData,
+      userToken,
+    );
+
+    expect(response.status).toBe(201);
+    expect(response.data.success).toBe(true);
+  });
+
+  it("should correctly handle 'sandwich' booking overlaps", async () => {
+    const deviceId = await createTestDevice();
+
+    // 1. Create Request A (Days 1-5)
+    // We used helper createTestBorrowRequest but let's manual it to control logic
+    const reqAData = createBorrowRequest({
+      device_id: deviceId,
+      start_date: daysFromNow(1),
+      end_date: daysFromNow(5),
+    });
+    const responseA = await api.post<BorrowRequestWithDetails>(
+      "/api/borrow", 
+      reqAData, 
+      userToken
+    );
+    expect(responseA.status).toBe(201);
+    const idA = responseA.data.data!.id;
+
+    // Approve A
+    await api.patch(`/api/borrow/${idA}/status`, { status: "approved" }, adminToken);
+
+    // 2. Request B: Days 6-10 (Should Succeed - Adjacent)
+    const reqBData = createBorrowRequest({
+      device_id: deviceId,
+      start_date: daysFromNow(6),
+      end_date: daysFromNow(10)
+    });
+    const responseB = await api.post<BorrowRequestWithDetails>(
+      "/api/borrow",
+      reqBData,
+      userToken
+    );
+    expect(responseB.status).toBe(201);
+
+    // 3. Request C: Days 4-7 (Should Fail - Overlaps A and B)
+    const reqCData = createBorrowRequest({
+      device_id: deviceId,
+      start_date: daysFromNow(4),
+      end_date: daysFromNow(7)
+    });
+    const responseC = await api.post<BorrowRequestWithDetails>(
+      "/api/borrow",
+      reqCData,
+      userToken
+    );
+    expect(responseC.status).toBe(400);
+  });
+});
+
+// ============================================================================
 // Property Tests
 // ============================================================================
 

@@ -522,7 +522,63 @@ describe("Return Request API - Creation", () => {
       expect(response.data.success).toBe(true);
     });
   });
+
+  });
+
+
+// ============================================================================
+// Real-World Scenarios
+// ============================================================================
+
+describe("Real-World Return Scenarios", () => {
+  it("should enforce notes when condition is damaged", async () => {
+    const deviceId = await createTestDevice();
+    const borrowRequest = await createActiveBorrowRequest(deviceId);
+
+    const returnData = createReturnRequest({
+      borrow_request_id: borrowRequest.id,
+      condition: "damaged",
+      notes: "", // Empty notes
+    });
+
+    const response = await api.post<ReturnRequestWithDetails>(
+      "/api/returns",
+      returnData,
+      userToken
+    );
+
+    // Should fail because notes are required for damaged items
+    expect(response.status).toBe(400);
+    expect(response.data.success).toBe(false);
+  });
+
+  it("should set device to available when condition is fair", async () => {
+    const deviceId = await createTestDevice();
+    const borrowRequest = await createActiveBorrowRequest(deviceId);
+
+    const returnData = createReturnRequest({
+      borrow_request_id: borrowRequest.id,
+      condition: "fair",
+      notes: "Scratches on surface",
+    });
+
+    const response = await api.post<ReturnRequestWithDetails>(
+      "/api/returns",
+      returnData,
+      userToken
+    );
+
+    expect(response.status).toBe(201);
+    expect(response.data.data?.device_condition).toBe("fair");
+
+    // Verify device status is available
+    const deviceResponse = await api.get<DeviceWithDepartment>(
+      `/api/devices/${deviceId}`
+    );
+    expect(deviceResponse.data.data?.status).toBe("available");
+  });
 });
+
 
 // ============================================================================
 // Property Tests

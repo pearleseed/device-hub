@@ -33,7 +33,7 @@ export const departmentsRoutes = {
   async getAll(): Promise<Response> {
     try {
       const departments = await db<
-        Department & { user_count: number; device_count: number }
+        (Department & { user_count: number; device_count: number })[]
       >`
         SELECT d.*, 
                COUNT(DISTINCT u.id) as user_count,
@@ -69,7 +69,7 @@ export const departmentsRoutes = {
       }
 
       const departments = await db<
-        Department & { user_count: number; device_count: number }
+        (Department & { user_count: number; device_count: number })[]
       >`
         SELECT d.*, 
                COUNT(DISTINCT u.id) as user_count,
@@ -133,7 +133,7 @@ export const departmentsRoutes = {
 
       // Check for duplicate code
       const existing =
-        (await db<Department>`SELECT id FROM departments WHERE code = ${codeUpper}`) as unknown as Department[];
+        (await db<Department[]>`SELECT id FROM departments WHERE code = ${codeUpper}`) as unknown as Department[];
       if (existing.length > 0) {
         return jsonResponse(
           { success: false, error: "Department code already exists" },
@@ -146,7 +146,7 @@ export const departmentsRoutes = {
       await db`INSERT INTO departments (name, code) VALUES (${nameTrimmed}, ${codeTrimmed})`;
 
       const newDepartments =
-        await db<Department>`SELECT * FROM departments WHERE code = ${codeUpper}`;
+        await db<Department[]>`SELECT * FROM departments WHERE code = ${codeUpper}`;
       const newDepartment = newDepartments[0];
 
       // Audit log
@@ -237,7 +237,7 @@ export const departmentsRoutes = {
 
       // Get current department state for audit log
       const currentDept =
-        await db<Department>`SELECT * FROM departments WHERE id = ${id}`;
+        await db<Department[]>`SELECT * FROM departments WHERE id = ${id}`;
       const beforeState = currentDept[0] ? { ...currentDept[0] } : undefined;
 
       values.push(id);
@@ -247,7 +247,7 @@ export const departmentsRoutes = {
       );
 
       const updated =
-        await db<Department>`SELECT * FROM departments WHERE id = ${id}`;
+        await db<Department[]>`SELECT * FROM departments WHERE id = ${id}`;
 
       // Audit log
       await auditLogger.log({
@@ -295,7 +295,7 @@ export const departmentsRoutes = {
       }
 
       // Check if department has users or devices
-      const counts = await db<{ user_count: number; device_count: number }>`
+      const counts = await db<{ user_count: number; device_count: number }[]>`
         SELECT 
           (SELECT COUNT(*) FROM users WHERE department_id = ${id}) as user_count,
           (SELECT COUNT(*) FROM devices WHERE department_id = ${id}) as device_count
@@ -316,7 +316,7 @@ export const departmentsRoutes = {
 
       // Get department info for audit log before deletion
       const deptToDelete =
-        await db<Department>`SELECT * FROM departments WHERE id = ${id}`;
+        await db<Department[]>`SELECT * FROM departments WHERE id = ${id}`;
       const deletedDept = deptToDelete[0] ? { ...deptToDelete[0] } : undefined;
 
       await db`DELETE FROM departments WHERE id = ${id}`;

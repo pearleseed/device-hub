@@ -79,7 +79,7 @@ export const renewalsRoutes = {
         );
       }
 
-      const renewals = await db<RenewalRequestWithDetails>`
+      const renewals = await db<RenewalRequestWithDetails[]>`
         SELECT * FROM v_renewal_details WHERE id = ${id}
       `;
       const renewal = renewals[0];
@@ -138,7 +138,7 @@ export const renewalsRoutes = {
       }
 
       // Check if borrow request exists and is active
-      const borrowRequests = await db<BorrowRequest>`
+      const borrowRequests = await db<BorrowRequest[]>`
         SELECT * FROM borrow_requests WHERE id = ${borrow_request_id}
       `;
       const borrowRequest = borrowRequests[0];
@@ -185,7 +185,7 @@ export const renewalsRoutes = {
       }
 
       // Check if there's already a pending renewal for this borrow request
-      const existingRenewals = await db<{ count: number }>`
+      const existingRenewals = await db<{ count: number }[]>`
         SELECT COUNT(*) as count FROM renewal_requests 
         WHERE borrow_request_id = ${borrow_request_id} AND status = 'pending'
       `;
@@ -210,7 +210,7 @@ export const renewalsRoutes = {
       `;
 
       // Get the created renewal request
-      const newRenewals = await db<RenewalRequestWithDetails>`
+      const newRenewals = await db<RenewalRequestWithDetails[]>`
         SELECT * FROM v_renewal_details 
         WHERE borrow_request_id = ${borrow_request_id} AND user_id = ${payload.userId}
         ORDER BY created_at DESC LIMIT 1
@@ -283,7 +283,7 @@ export const renewalsRoutes = {
       }
 
       // Get current renewal request
-      const currentRenewals = await db<RenewalRequest>`
+      const currentRenewals = await db<RenewalRequest[]>`
         SELECT * FROM renewal_requests WHERE id = ${id}
       `;
       const currentRenewal = currentRenewals[0];
@@ -308,6 +308,37 @@ export const renewalsRoutes = {
 
       // Use transaction for atomicity
       await db.begin(async (tx) => {
+        if (status === "approved") {
+          // Check for conflict bookings before approving
+          const borrowRequest = await tx<{ device_id: number, end_date: Date }[]>`
+            SELECT device_id, end_date FROM borrow_requests WHERE id = ${currentRenewal.borrow_request_id}
+          `;
+          
+          if (borrowRequest.length > 0) {
+            const { device_id, end_date } = borrowRequest[0];
+            const currentEndDate = new Date(end_date);
+            const requestedEndDate = new Date(currentRenewal.requested_end_date);
+            
+            // Allow 1 day overlap for substantial overlap check
+             // Logic: Check if any OTHER active/approved request overlaps with the NEW extension period
+            // The extension period is from (Current End Date) to (Requested End Date)
+            
+            const conflicts = await tx<{ count: number }[]>`
+              SELECT COUNT(*) as count FROM borrow_requests 
+              WHERE device_id = ${device_id} 
+              AND status IN ('pending', 'approved', 'active')
+              AND id != ${currentRenewal.borrow_request_id}
+              AND (
+                  (start_date <= ${requestedEndDate} AND end_date >= ${currentEndDate})
+              )
+            `;
+
+            if (conflicts[0].count > 0) {
+               throw new Error("Device is booked for the requested renewal period");
+            }
+          }
+        }
+
         // Update renewal request status
         await tx`
           UPDATE renewal_requests 
@@ -328,7 +359,7 @@ export const renewalsRoutes = {
         }
       });
 
-      const updatedRenewals = await db<RenewalRequestWithDetails>`
+      const updatedRenewals = await db<RenewalRequestWithDetails[]>`
         SELECT * FROM v_renewal_details WHERE id = ${id}
       `;
 
@@ -430,7 +461,7 @@ export const renewalsRoutes = {
 
       sql += " ORDER BY created_at DESC";
 
-      const renewals = await db.unsafe<RenewalRequestWithDetails>(
+      const renewals = await db.unsafe<RenewalRequestWithDetails[]>(
         sql,
         sqlParams,
       );
@@ -478,7 +509,7 @@ export const renewalsRoutes = {
 
       sql += " ORDER BY created_at DESC";
 
-      const renewals = await db.unsafe<RenewalRequestWithDetails>(
+      const renewals = await db.unsafe<RenewalRequestWithDetails[]>(
         sql,
         sqlParams,
       );

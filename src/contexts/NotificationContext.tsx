@@ -130,6 +130,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({
   // Initial fetch and polling
   useEffect(() => {
     if (isAuthenticated && user) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       fetchNotifications();
 
       // Poll every 30 seconds for new notifications

@@ -48,7 +48,7 @@ export const returnsRoutes = {
 
       sql += " ORDER BY created_at DESC";
 
-      const returns = await db.unsafe<ReturnRequestWithDetails>(sql, params);
+      const returns = await db.unsafe<ReturnRequestWithDetails[]>(sql, params);
       return jsonResponse({ success: true, data: returns });
     } catch (error) {
       console.error("Get return requests error:", error);
@@ -78,7 +78,7 @@ export const returnsRoutes = {
         );
       }
 
-      const returnRequests = await db<ReturnRequestWithDetails>`
+      const returnRequests = await db<ReturnRequestWithDetails[]>`
         SELECT * FROM v_return_details WHERE id = ${id}
       `;
       const returnRequest = returnRequests[0];
@@ -137,13 +137,20 @@ export const returnsRoutes = {
         );
       }
 
+      if (condition === "damaged" && (!notes || notes.trim() === "")) {
+        return jsonResponse(
+          { success: false, error: "Notes are required when device is returned in damaged condition" },
+          400,
+        );
+      }
+
       // Get the borrow request
       const borrowRequests = await db<{
         id: number;
         user_id: number;
         status: string;
         device_id: number;
-      }>`
+      }[]>`
         SELECT id, user_id, status, device_id FROM borrow_requests WHERE id = ${borrow_request_id}
       `;
       const borrowRequest = borrowRequests[0];
@@ -172,7 +179,7 @@ export const returnsRoutes = {
       }
 
       // Check if return request already exists
-      const existingReturns = (await db<ReturnRequest>`
+      const existingReturns = (await db<ReturnRequest[]>`
         SELECT id FROM return_requests WHERE borrow_request_id = ${borrow_request_id}
       `) as unknown as ReturnRequest[];
       if (existingReturns.length > 0) {
@@ -204,7 +211,7 @@ export const returnsRoutes = {
       });
 
       // Get the created return request
-      const newReturns = await db<ReturnRequestWithDetails>`
+      const newReturns = await db<ReturnRequestWithDetails[]>`
         SELECT * FROM v_return_details WHERE borrow_request_id = ${borrow_request_id}
       `;
 

@@ -9,7 +9,7 @@ import {
   DeviceInfo,
   sendBorrowApprovalNotification,
   sendReturnConfirmationNotification,
-  sendExtendApprovalNotification,
+  sendRenewalApprovalNotification,
   getServiceStatus,
   getAllUserStates,
   getAllIdempotencyRecords,
@@ -155,17 +155,17 @@ export const notificationsRoutes = {
           });
           break;
 
-        case NotificationAction.EXTEND:
+        case NotificationAction.RENEWAL:
           if (!previousEndDate || !newEndDate) {
             return jsonResponse(
               {
                 success: false,
-                error: "Previous and new end dates are required for EXTEND",
+                error: "Previous and new end dates are required for RENEWAL",
               },
               400,
             );
           }
-          result = await sendExtendApprovalNotification({
+          result = await sendRenewalApprovalNotification({
             userId,
             mattermostUsername,
             device,

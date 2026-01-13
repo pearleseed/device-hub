@@ -377,6 +377,9 @@ export const ja: TranslationData = {
   "calendar.subtitle": "デバイスの予約と空き状況を確認",
   "calendar.calendarView": "カレンダー",
   "calendar.timelineView": "タイムライン表示",
+  "calendar.filters": "フィルター",
+  "calendar.categories": "カテゴリー",
+  "calendar.devices": "デバイス一覧",
   "calendar.device": "デバイス",
   "calendar.selectDate": "日付を選択",
   "calendar.noBookingsForDate": "この日の予約はありません",
@@ -607,11 +610,13 @@ export const ja: TranslationData = {
   "deviceModal.enterProcessor": "例：Intel Core i7、M2 Pro",
   "deviceModal.enterRAM": "例：16GB、32GB",
   "deviceModal.enterStorage": "例：512GB SSD、1TB SSD",
+  "deviceModal.deviceImage": "デバイス画像",
 
   // Table
   "table.assetTag": "資産タグ",
   "table.category": "カテゴリー",
   "table.assignedTo": "割り当て先",
+  "table.department": "部署",
   "table.purchasePrice": "購入価格",
   "table.purchaseDate": "購入日",
   "table.device": "デバイス",
@@ -963,6 +968,10 @@ export const ja: TranslationData = {
   "analytics.activeLegend": "アクティブ",
   "analytics.utilizationRate": "稼働率",
   "analytics.days": "日",
+  "analytics.statusDistribution": "ステータス分布",
+  "analytics.conditionStatus": "状態ステータス",
+  "analytics.byCategory": "カテゴリー別",
+  "analytics.topBorrowedDevices": "最も借りられたデバイス",
 
   // Loan Management
   "loanManagement.title": "貸出管理",
@@ -1071,6 +1080,7 @@ export const ja: TranslationData = {
   "deviceDetail.confirmRequestDesc": "送信する前に詳細を確認してください。",
   "deviceDetail.deviceLabel": "デバイス",
   "deviceDetail.loanPeriod": "貸出期間",
+  "deviceDetail.basicInfo": "基本情報",
   "deviceDetail.reasonLabel": "リクエストの理由",
   "deviceDetail.editRequest": "リクエストを編集",
   "deviceDetail.submitRequest": "リクエストを送信",

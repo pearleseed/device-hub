@@ -364,6 +364,9 @@ export const en: TranslationData = {
   "calendar.subtitle": "View device bookings and availability",
   "calendar.calendarView": "Calendar",
   "calendar.timelineView": "Timeline View",
+  "calendar.filters": "Filters",
+  "calendar.categories": "Categories",
+  "calendar.devices": "Devices",
   "calendar.device": "Device",
   "calendar.selectDate": "Select a date",
   "calendar.noBookingsForDate": "No bookings for this date",
@@ -598,11 +601,13 @@ export const en: TranslationData = {
   "deviceModal.enterProcessor": "e.g., Intel Core i7, M2 Pro",
   "deviceModal.enterRAM": "e.g., 16GB, 32GB",
   "deviceModal.enterStorage": "e.g., 512GB SSD, 1TB SSD",
+  "deviceModal.deviceImage": "Device Image",
 
   // Table
   "table.assetTag": "Asset Tag",
   "table.category": "Category",
   "table.assignedTo": "Assigned To",
+  "table.department": "Department",
   "table.purchasePrice": "Purchase Price",
   "table.purchaseDate": "Purchase Date",
   "table.device": "Device",
@@ -951,6 +956,10 @@ export const en: TranslationData = {
   "analytics.activeLegend": "Active",
   "analytics.utilizationRate": "Utilization Rate",
   "analytics.days": "days",
+  "analytics.statusDistribution": "Status Distribution",
+  "analytics.conditionStatus": "Condition Status",
+  "analytics.byCategory": "By Category",
+  "analytics.topBorrowedDevices": "Top Borrowed Devices",
 
   // Loan Management
   "loanManagement.title": "Loan Management",
@@ -1105,6 +1114,7 @@ export const en: TranslationData = {
     "Please review the details before submitting.",
   "deviceDetail.deviceLabel": "Device",
   "deviceDetail.loanPeriod": "Loan Period",
+  "deviceDetail.basicInfo": "Basic Information",
   "deviceDetail.reasonLabel": "Reason for Request",
   "deviceDetail.editRequest": "Edit Request",
   "deviceDetail.submitRequest": "Submit Request",
@@ -1345,6 +1355,14 @@ export const en: TranslationData = {
     "Rejected renewals cannot be changed.",
   "requests.error.renewalToPending":
     "Requests cannot be moved back to pending.",
+
+  // Price Ranges
+  "priceRange.all": "All Prices",
+  "priceRange.under5": "Under 5M",
+  "priceRange.5to10": "5M - 10M",
+  "priceRange.10to20": "10M - 20M",
+  "priceRange.20to50": "20M - 50M",
+  "priceRange.over50": "Over 50M",
 
   "deviceCatalog.priceRange": "Price Range",
   "deviceCatalog.sortBy": "Sort by",

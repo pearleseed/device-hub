@@ -204,7 +204,7 @@ export const DeviceTimelineView: React.FC<DeviceTimelineViewProps> = ({
             <div className="relative w-full">
               {/* Header - Days */}
               <div className="flex border-b border-border/30 sticky top-0 bg-card/95 backdrop-blur-sm z-10">
-                <div className="w-[180px] shrink-0 px-4 py-3 font-semibold text-xs text-muted-foreground border-r border-border/30 bg-muted/30 flex items-center gap-2">
+                <div className="w-[240px] shrink-0 px-4 py-3 font-semibold text-xs text-muted-foreground border-r border-border/30 bg-muted/30 flex items-center gap-2">
                   <Calendar className="h-3.5 w-3.5" />
                   {t("calendar.device")}
                 </div>
@@ -260,7 +260,7 @@ export const DeviceTimelineView: React.FC<DeviceTimelineViewProps> = ({
                       deviceIndex % 2 === 0 && "bg-muted/10",
                     )}
                   >
-                    <div className="w-[180px] shrink-0 px-4 py-2 border-r border-border/20 flex items-center gap-3">
+                    <div className="w-[240px] shrink-0 px-4 py-2 border-r border-border/20 flex items-center gap-3">
                       <div className="w-10 h-10 rounded-xl bg-muted/50 flex items-center justify-center overflow-hidden">
                         <img
                           src={getDeviceThumbnailUrl(

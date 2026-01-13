@@ -321,24 +321,69 @@ const AdminAnalytics: React.FC = () => {
   }, [users, bookingRequests, t]);
 
   // Monthly trends data
-  const trendData = [
-    { month: t("months.jan"), requests: 12, returns: 10 },
-    { month: t("months.feb"), requests: 19, returns: 15 },
-    { month: t("months.mar"), requests: 15, returns: 18 },
-    { month: t("months.apr"), requests: 22, returns: 20 },
-    { month: t("months.may"), requests: 18, returns: 16 },
-    { month: t("months.jun"), requests: 25, returns: 22 },
-  ];
+  const trendData = useMemo(() => {
+    const last12Months = Array.from({ length: 12 }, (_, i) => {
+      const date = subDays(new Date(), i * 30);
+      return {
+        month: format(date, "MMM"),
+        monthKey: format(date, "yyyy-MM"),
+        date: date,
+      };
+    }).reverse();
+
+    return last12Months.map(({ month, monthKey }) => {
+      const requestsCount = bookingRequests.filter((r) =>
+        format(new Date(r.created_at), "yyyy-MM") === monthKey
+      ).length;
+
+      const returnsCount = bookingRequests.filter((r) =>
+        r.status === "returned" && 
+        format(new Date(r.updated_at), "yyyy-MM") === monthKey
+      ).length;
+
+      return {
+        month,
+        requests: requestsCount,
+        returns: returnsCount,
+      };
+    });
+  }, [bookingRequests]);
 
   // Compliance trend data
-  const complianceTrendData = [
-    { month: t("months.jan"), onTime: 85, late: 15 },
-    { month: t("months.feb"), onTime: 88, late: 12 },
-    { month: t("months.mar"), onTime: 82, late: 18 },
-    { month: t("months.apr"), onTime: 90, late: 10 },
-    { month: t("months.may"), onTime: 87, late: 13 },
-    { month: t("months.jun"), onTime: 92, late: 8 },
-  ];
+  const complianceTrendData = useMemo(() => {
+    const last12Months = Array.from({ length: 12 }, (_, i) => {
+      const date = subDays(new Date(), i * 30);
+      return {
+        month: format(date, "MMM"),
+        monthKey: format(date, "yyyy-MM"),
+      };
+    }).reverse();
+
+    return last12Months.map(({ month, monthKey }) => {
+      const returnedInMonth = bookingRequests.filter((r) =>
+        r.status === "returned" && 
+        format(new Date(r.updated_at), "yyyy-MM") === monthKey
+      );
+
+      if (returnedInMonth.length === 0) {
+        return { month, onTime: 100, late: 0 };
+      }
+
+      const onTimeCount = returnedInMonth.filter((r) => {
+        // Assume updated_at is return time. Check if <= end_date
+        return new Date(r.updated_at) <= new Date(r.end_date);
+      }).length;
+
+      const lateCount = returnedInMonth.length - onTimeCount;
+      const onTimePct = Math.round((onTimeCount / returnedInMonth.length) * 100);
+
+      return {
+        month,
+        onTime: onTimePct,
+        late: 100 - onTimePct,
+      };
+    });
+  }, [bookingRequests]);
 
   // ==================== HANDLERS ====================
 

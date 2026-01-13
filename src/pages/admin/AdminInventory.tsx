@@ -53,7 +53,6 @@ import {
   PaginationNav,
 } from "@/components/ui/pagination-controls";
 import { AddDeviceModal } from "@/components/admin/AddDeviceModal";
-import { EditDeviceModal } from "@/components/admin/EditDeviceModal";
 import { useToast } from "@/hooks/use-toast";
 
 // Category icon mapping
@@ -229,9 +228,6 @@ const AdminInventory: React.FC = () => {
 
   // Modal states
   const [addModalOpen, setAddModalOpen] = useState(false);
-  const [editModalOpen, setEditModalOpen] = useState(false);
-  const [selectedDevice, setSelectedDevice] =
-    useState<DeviceWithDepartment | null>(null);
   const [selectedDevices, setSelectedDevices] = useState<
     DeviceWithDepartment[]
   >([]);
@@ -292,16 +288,6 @@ const AdminInventory: React.FC = () => {
     toast({
       title: t("inventory.deviceAdded"),
       description: `${device.name} ${t("inventory.hasBeenAdded")}`,
-    });
-  };
-
-  const handleEditDevice = (updatedDevice: DeviceWithDepartment) => {
-    setLocalDevices(
-      devices.map((d) => (d.id === updatedDevice.id ? updatedDevice : d)),
-    );
-    toast({
-      title: t("inventory.deviceUpdated"),
-      description: `${updatedDevice.name} ${t("inventory.hasBeenUpdated")}`,
     });
   };
 
@@ -378,9 +364,8 @@ const AdminInventory: React.FC = () => {
     });
   };
 
-  const openEditModal = (device: DeviceWithDepartment) => {
-    setSelectedDevice(device);
-    setEditModalOpen(true);
+  const handleEditDevice = (device: DeviceWithDepartment) => {
+    navigate(`/admin/inventory/${device.id}?edit=true`);
   };
 
   const handleDeviceClick = (device: DeviceWithDepartment) => {
@@ -622,7 +607,7 @@ const AdminInventory: React.FC = () => {
                           <DropdownMenuItem
                             onClick={(e) => {
                               e.stopPropagation();
-                              openEditModal(device);
+                              handleEditDevice(device);
                             }}
                           >
                             <Pencil className="mr-2 h-4 w-4" />
@@ -698,12 +683,6 @@ const AdminInventory: React.FC = () => {
           open={addModalOpen}
           onOpenChange={setAddModalOpen}
           onAdd={handleAddDevice}
-        />
-        <EditDeviceModal
-          open={editModalOpen}
-          onOpenChange={setEditModalOpen}
-          device={selectedDevice}
-          onSave={handleEditDevice}
         />
       </main>
     </div>

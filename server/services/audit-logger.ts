@@ -10,7 +10,11 @@ export type AuditAction =
   | "status_change"
   | "password_reset"
   | "account_lock"
-  | "account_unlock";
+  | "account_unlock"
+  | "bulk_import"
+  | "bulk_export"
+  | "admin_export"
+  | "clear_temp_passwords";
 
 export type AuditObjectType =
   | "device"

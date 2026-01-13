@@ -587,6 +587,7 @@ export const vi: TranslationData = {
   "deviceModal.enterProcessor": "VD: Intel Core i7, M2 Pro",
   "deviceModal.enterRAM": "VD: 16GB, 32GB",
   "deviceModal.enterStorage": "VD: 512GB SSD, 1TB SSD",
+  "deviceModal.deviceImage": "Hình ảnh thiết bị",
 
   // Table
   "table.assetTag": "Mã tài sản",
@@ -612,6 +613,7 @@ export const vi: TranslationData = {
   "table.brand": "Thương hiệu",
   "table.model": "Mẫu mã",
   "table.assignedTo": "Giao cho",
+  "table.department": "Phòng ban",
   "table.dueDate": "Hạn trả",
   "table.returnDate": "Ngày trả",
   "table.actions": "Hành động",
@@ -933,6 +935,10 @@ export const vi: TranslationData = {
   "analytics.activeLegend": "Đang hoạt động",
   "analytics.utilizationRate": "Tỷ lệ sử dụng",
   "analytics.days": "ngày",
+  "analytics.statusDistribution": "Phân bố trạng thái",
+  "analytics.conditionStatus": "Tình trạng thiết bị",
+  "analytics.byCategory": "Theo danh mục",
+  "analytics.topBorrowedDevices": "Thiết bị được mượn nhiều nhất",
 
   // Loan Management
   "loanManagement.title": "Quản lý mượn thiết bị",
@@ -1035,6 +1041,7 @@ export const vi: TranslationData = {
     "Vui lòng xem lại thông tin trước khi gửi.",
   "deviceDetail.deviceLabel": "Thiết bị",
   "deviceDetail.loanPeriod": "Thời gian mượn",
+  "deviceDetail.basicInfo": "Thông tin cơ bản",
   "deviceDetail.reasonLabel": "Lý do mượn",
   "deviceDetail.editRequest": "Chỉnh sửa yêu cầu",
   "deviceDetail.submitRequest": "Gửi yêu cầu",
@@ -1305,6 +1312,14 @@ export const vi: TranslationData = {
     "Yêu cầu gia hạn đã bị từ chối không thể thay đổi.",
   "requests.error.renewalToPending":
     "Yêu cầu không thể chuyển lại trạng thái chờ xử lý.",
+
+  // Price Ranges
+  "priceRange.all": "Tất cả giá",
+  "priceRange.under5": "Dưới 5 triệu",
+  "priceRange.5to10": "5 - 10 triệu",
+  "priceRange.10to20": "10 - 20 triệu",
+  "priceRange.20to50": "20 - 50 triệu",
+  "priceRange.over50": "Trên 50 triệu",
 
   "deviceCatalog.priceRange": "Khoảng giá",
   "deviceCatalog.sortBy": "Sắp xếp theo",

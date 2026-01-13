@@ -69,10 +69,10 @@ export const devicesRoutes = {
 
       sql += " ORDER BY name";
 
-      const devices = (await db.unsafe<DeviceWithDepartment>(
+      const devices = await db.unsafe<DeviceWithDepartment[]>(
         sql,
         params,
-      )) as unknown as DeviceWithDepartment[];
+      );
 
       // Parse JSON specs (handle both string and already-parsed object)
       const devicesWithSpecs = devices.map((e) => ({
@@ -108,9 +108,9 @@ export const devicesRoutes = {
         );
       }
 
-      const devices = (await db<DeviceWithDepartment>`
+      const devices = await db<DeviceWithDepartment[]>`
         SELECT * FROM v_device_details WHERE id = ${id}
-      `) as unknown as DeviceWithDepartment[];
+      `;
 
       if (devices.length === 0) {
         return jsonResponse({ success: false, error: "Device not found" }, 404);
@@ -208,8 +208,7 @@ export const devicesRoutes = {
       const assetTagUpper = asset_tag.toUpperCase();
 
       // Check for duplicate asset tag
-      const existing =
-        (await db<Device>`SELECT id FROM devices WHERE asset_tag = ${assetTagUpper}`) as unknown as Device[];
+      const existing = await db<Device[]>`SELECT id FROM devices WHERE asset_tag = ${assetTagUpper}`;
       if (existing.length > 0) {
         return jsonResponse(
           { success: false, error: "Asset tag already exists" },
@@ -232,7 +231,7 @@ export const devicesRoutes = {
       `;
 
       const newDevice =
-        await db<Device>`SELECT * FROM devices WHERE asset_tag = ${assetTagUpper}`;
+        await db<Device[]>`SELECT * FROM devices WHERE asset_tag = ${assetTagUpper}`;
 
       // Audit log
       await auditLogger.log({
@@ -297,9 +296,9 @@ export const devicesRoutes = {
       if (body.asset_tag !== undefined) {
         const assetTagUpper = body.asset_tag.toUpperCase();
         // Check for duplicate
-        const existing = (await db<Device>`
+        const existing = await db<Device[]>`
           SELECT id FROM devices WHERE asset_tag = ${assetTagUpper} AND id != ${id}
-        `) as unknown as Device[];
+        `;
         if (existing.length > 0) {
           return jsonResponse(
             { success: false, error: "Asset tag already exists" },
@@ -355,7 +354,7 @@ export const devicesRoutes = {
 
       // Get current device state for audit log
       const currentDevice =
-        await db<DeviceWithDepartment>`SELECT * FROM v_device_details WHERE id = ${id}`;
+        await db<DeviceWithDepartment[]>`SELECT * FROM v_device_details WHERE id = ${id}`;
       const beforeState = currentDevice[0]
         ? { ...currentDevice[0] }
         : undefined;
@@ -367,7 +366,7 @@ export const devicesRoutes = {
       );
 
       const updated =
-        await db<DeviceWithDepartment>`SELECT * FROM v_device_details WHERE id = ${id}`;
+        await db<DeviceWithDepartment[]>`SELECT * FROM v_device_details WHERE id = ${id}`;
 
       // Audit log
       await auditLogger.log({
@@ -377,7 +376,7 @@ export const devicesRoutes = {
         actor: auditLogger.createActorFromPayload(payload),
         changes: {
           before: beforeState,
-          after: body,
+          after: body as Record<string, unknown>,
         },
       });
 
@@ -415,7 +414,7 @@ export const devicesRoutes = {
       }
 
       // Check for active borrow requests
-      const activeRequests = await db<{ count: number }>`
+      const activeRequests = await db<{ count: number }[]>`
         SELECT COUNT(*) as count FROM borrow_requests 
         WHERE device_id = ${id} AND status IN ('pending', 'approved', 'active')
       `;
@@ -431,7 +430,7 @@ export const devicesRoutes = {
 
       // Get device info for audit log before deletion
       const deviceToDelete =
-        await db<DeviceWithDepartment>`SELECT * FROM v_device_details WHERE id = ${id}`;
+        await db<DeviceWithDepartment[]>`SELECT * FROM v_device_details WHERE id = ${id}`;
       const deletedDevice = deviceToDelete[0]
         ? { ...deviceToDelete[0] }
         : undefined;
@@ -480,9 +479,9 @@ export const devicesRoutes = {
         return jsonResponse({ success: false, error: "Invalid category" }, 400);
       }
 
-      const devices = (await db<DeviceWithDepartment>`
+      const devices = await db<DeviceWithDepartment[]>`
         SELECT * FROM v_device_details WHERE category = ${category} ORDER BY name
-      `) as unknown as DeviceWithDepartment[];
+      `;
 
       const devicesWithSpecs = devices.map((e) => ({
         ...e,
@@ -516,9 +515,9 @@ export const devicesRoutes = {
         return jsonResponse({ success: false, error: "Invalid status" }, 400);
       }
 
-      const devices = (await db<DeviceWithDepartment>`
+      const devices = await db<DeviceWithDepartment[]>`
         SELECT * FROM v_device_details WHERE status = ${status} ORDER BY name
-      `) as unknown as DeviceWithDepartment[];
+      `;
 
       const devicesWithSpecs = devices.map((e) => ({
         ...e,
