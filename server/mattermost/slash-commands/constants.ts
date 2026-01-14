@@ -167,7 +167,7 @@ export const SLASH_COMMAND_ENDPOINTS = {
  * Gets the full URL for an endpoint
  */
 export function getEndpointUrl(endpoint: string): string {
-  const baseUrl = MATTERMOST_CONFIG.appBaseUrl || "http://localhost:3001";
+  const baseUrl = MATTERMOST_CONFIG.appBaseUrl || "https://localhost:3001";
   return `${baseUrl}${endpoint}`;
 }
 

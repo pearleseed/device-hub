@@ -9,6 +9,7 @@
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import * as fc from "fast-check";
+import { testApiClient as api } from "../utils/api-client";
 import { TestApiClient } from "../utils/api-client";
 import { createDevice } from "../utils/factories";
 import {
@@ -16,40 +17,31 @@ import {
   invalidCategoryArb,
   validIdArb,
 } from "../utils/generators";
-import { DEVICE_CATEGORIES } from "../setup";
+import { DEVICE_CATEGORIES } from "../test-config";
 import type {
   DeviceWithDepartment,
   CreateDeviceRequest,
 } from "../../src/types/api";
+import {
+  setupTestContext,
+  type TestContext,
+  cleanupResources,
+  createdDeviceIds,
+} from "../utils/helpers";
 
 // ============================================================================
 // Test Setup
 // ============================================================================
 
-const api = new TestApiClient();
-
-let adminToken: string;
-let userToken: string;
-const createdDeviceIds: number[] = [];
+// Use the singleton API client
+let ctx: TestContext;
 
 beforeAll(async () => {
-  const [adminResult, userResult] = await Promise.all([
-    api.loginAsAdmin(),
-    api.loginAsUser(),
-  ]);
-  adminToken = adminResult.token;
-  userToken = userResult.token;
+  ctx = await setupTestContext();
 });
 
 afterAll(async () => {
-  // Cleanup created devices
-  for (const deviceId of createdDeviceIds) {
-    try {
-      await api.delete(`/api/devices/${deviceId}`, adminToken);
-    } catch {
-      // Ignore cleanup errors
-    }
-  }
+  await cleanupResources(ctx.adminToken, ctx.superuserToken);
 });
 
 // ============================================================================
@@ -59,7 +51,7 @@ afterAll(async () => {
 describe("Device API - Listing", () => {
   describe("GET /api/devices", () => {
     it("should return all devices with department information (Req 2.1)", async () => {
-      const response = await api.get<DeviceWithDepartment[]>("/api/devices");
+      const response = await api.get<DeviceWithDepartment[]>("/api/devices", ctx.adminToken);
 
       expect(response.status).toBe(200);
       expect(response.data.success).toBe(true);
@@ -81,7 +73,7 @@ describe("Device API - Listing", () => {
       const category = "laptop";
       const response = await api.get<DeviceWithDepartment[]>(
         "/api/devices",
-        undefined,
+        ctx.adminToken,
         { category },
       );
 
@@ -101,7 +93,7 @@ describe("Device API - Listing", () => {
       const status = "available";
       const response = await api.get<DeviceWithDepartment[]>(
         "/api/devices",
-        undefined,
+        ctx.adminToken,
         { status },
       );
 
@@ -257,6 +249,7 @@ describe("Device API - Retrieval", () => {
 
         const response = await api.get<DeviceWithDepartment>(
           `/api/devices/${deviceId}`,
+          ctx.adminToken,
         );
 
         expect(response.status).toBe(200);
@@ -307,7 +300,7 @@ describe("Device API - CRUD Operations", () => {
       const response = await api.post<DeviceWithDepartment>(
         "/api/devices",
         deviceData,
-        adminToken,
+        ctx.adminToken,
       );
 
       expect(response.status).toBe(201);
@@ -325,24 +318,26 @@ describe("Device API - CRUD Operations", () => {
       }
     });
 
-    it("should return 401 for non-admin creating device (Req 2.9)", async () => {
+    it("should return 403 for non-admin creating device (Req 2.9)", async () => {
       const deviceData = createDevice();
 
       const response = await api.post<DeviceWithDepartment>(
         "/api/devices",
         deviceData,
-        userToken,
+        ctx.userToken,
       );
 
-      expect(response.status).toBe(401);
+      expect(response.status).toBe(403);
       expect(response.data.success).toBe(false);
       expect(response.data.error).toBeDefined();
     });
 
     it("should return 401 for unauthenticated user creating device", async () => {
       const deviceData = createDevice();
+      const freshApi = api;
+      freshApi.clearAuth();
 
-      const response = await api.post<DeviceWithDepartment>(
+      const response = await freshApi.post<DeviceWithDepartment>(
         "/api/devices",
         deviceData,
       );
@@ -357,7 +352,7 @@ describe("Device API - CRUD Operations", () => {
       const createResponse = await api.post<DeviceWithDepartment>(
         "/api/devices",
         deviceData,
-        adminToken,
+        ctx.adminToken,
       );
 
       if (createResponse.data.data?.id) {
@@ -369,7 +364,7 @@ describe("Device API - CRUD Operations", () => {
       const response = await api.post<DeviceWithDepartment>(
         "/api/devices",
         duplicateDevice,
-        adminToken,
+        ctx.adminToken,
       );
 
       expect(response.status).toBe(400);
@@ -386,7 +381,7 @@ describe("Device API - CRUD Operations", () => {
       const response = await api.post<DeviceWithDepartment>(
         "/api/devices",
         incompleteDevice,
-        adminToken,
+        ctx.adminToken,
       );
 
       expect(response.status).toBe(400);
@@ -401,7 +396,7 @@ describe("Device API - CRUD Operations", () => {
       const createResponse = await api.post<DeviceWithDepartment>(
         "/api/devices",
         deviceData,
-        adminToken,
+        ctx.adminToken,
       );
 
       const deviceId = createResponse.data.data?.id;
@@ -412,7 +407,7 @@ describe("Device API - CRUD Operations", () => {
         const response = await api.put<DeviceWithDepartment>(
           `/api/devices/${deviceId}`,
           { name: updatedName },
-          adminToken,
+          ctx.adminToken,
         );
 
         expect(response.status).toBe(200);
@@ -421,7 +416,7 @@ describe("Device API - CRUD Operations", () => {
       }
     });
 
-    it("should return 401 for non-admin updating device", async () => {
+    it("should return 403 for non-admin updating device", async () => {
       // Get an existing device
       const allDevicesResponse =
         await api.get<DeviceWithDepartment[]>("/api/devices");
@@ -435,10 +430,10 @@ describe("Device API - CRUD Operations", () => {
         const response = await api.put<DeviceWithDepartment>(
           `/api/devices/${deviceId}`,
           { name: "Unauthorized Update" },
-          userToken,
+          ctx.userToken,
         );
 
-        expect(response.status).toBe(401);
+        expect(response.status).toBe(403);
         expect(response.data.success).toBe(false);
       }
     });
@@ -451,12 +446,12 @@ describe("Device API - CRUD Operations", () => {
       const create1Response = await api.post<DeviceWithDepartment>(
         "/api/devices",
         device1Data,
-        adminToken,
+        ctx.adminToken,
       );
       const create2Response = await api.post<DeviceWithDepartment>(
         "/api/devices",
         device2Data,
-        adminToken,
+        ctx.adminToken,
       );
 
       if (create1Response.data.data?.id) {
@@ -471,7 +466,7 @@ describe("Device API - CRUD Operations", () => {
         const response = await api.put<DeviceWithDepartment>(
           `/api/devices/${create2Response.data.data.id}`,
           { asset_tag: device1Data.asset_tag },
-          adminToken,
+          ctx.adminToken,
         );
 
         expect(response.status).toBe(400);
@@ -488,14 +483,14 @@ describe("Device API - CRUD Operations", () => {
       const createResponse = await api.post<DeviceWithDepartment>(
         "/api/devices",
         deviceData,
-        adminToken,
+        ctx.adminToken,
       );
 
       const deviceId = createResponse.data.data?.id;
       if (deviceId) {
         const response = await api.delete<{ message: string }>(
           `/api/devices/${deviceId}`,
-          adminToken,
+          ctx.adminToken,
         );
 
         expect(response.status).toBe(200);
@@ -509,13 +504,13 @@ describe("Device API - CRUD Operations", () => {
       }
     });
 
-    it("should return 401 for non-admin deleting device", async () => {
+    it("should return 403 for non-admin deleting device", async () => {
       // Create a device
       const deviceData = createDevice();
       const createResponse = await api.post<DeviceWithDepartment>(
         "/api/devices",
         deviceData,
-        adminToken,
+        ctx.adminToken,
       );
 
       const deviceId = createResponse.data.data?.id;
@@ -524,10 +519,10 @@ describe("Device API - CRUD Operations", () => {
 
         const response = await api.delete<{ message: string }>(
           `/api/devices/${deviceId}`,
-          userToken,
+          ctx.userToken,
         );
 
-        expect(response.status).toBe(401);
+        expect(response.status).toBe(403);
         expect(response.data.success).toBe(false);
       }
     });
@@ -535,7 +530,7 @@ describe("Device API - CRUD Operations", () => {
     it("should return 400 for invalid device ID format on delete", async () => {
       const response = await api.delete<{ message: string }>(
         "/api/devices/invalid",
-        adminToken,
+        ctx.adminToken,
       );
 
       expect(response.status).toBe(400);
@@ -551,12 +546,6 @@ describe("Device API - CRUD Operations", () => {
 describe("Device API - Property Tests", () => {
   /**
    * Property 4: Device Filtering Consistency
-   *
-   * For any filter parameter (category, status, search, price range),
-   * all devices returned by GET /api/devices should match the specified
-   * filter criteria.
-   *
-   * **Validates: Requirements 2.2, 2.3, 2.4, 2.5**
    */
   describe("Property 4: Device Filtering Consistency", () => {
     it("for any valid category filter, all returned devices should match that category", async () => {
@@ -571,7 +560,6 @@ describe("Device API - Property Tests", () => {
           expect(response.status).toBe(200);
           expect(response.data.success).toBe(true);
 
-          // All returned devices must match the category filter
           if (response.data.data && response.data.data.length > 0) {
             response.data.data.forEach((device) => {
               expect(device.category).toBe(category);
@@ -598,7 +586,6 @@ describe("Device API - Property Tests", () => {
           expect(response.status).toBe(200);
           expect(response.data.success).toBe(true);
 
-          // All returned devices must match the status filter
           if (response.data.data && response.data.data.length > 0) {
             response.data.data.forEach((device) => {
               expect(device.status).toBe(status);
@@ -632,7 +619,6 @@ describe("Device API - Property Tests", () => {
             expect(response.status).toBe(200);
             expect(response.data.success).toBe(true);
 
-            // All returned devices must be within the price range
             if (response.data.data && response.data.data.length > 0) {
               response.data.data.forEach((device) => {
                 const price = Number(device.purchase_price);
@@ -651,16 +637,9 @@ describe("Device API - Property Tests", () => {
 
   /**
    * Property 5: Device Retrieval by ID
-   *
-   * For any valid device ID in the database, GET /api/devices/:id should
-   * return that device with parsed specs. For any non-existent ID, it
-   * should return 404.
-   *
-   * **Validates: Requirements 2.6, 2.7**
    */
   describe("Property 5: Device Retrieval by ID", () => {
     it("for any existing device ID, retrieval should return that device", async () => {
-      // First get all devices to have valid IDs to test with
       const allDevicesResponse =
         await api.get<DeviceWithDepartment[]>("/api/devices");
 
@@ -668,7 +647,6 @@ describe("Device API - Property Tests", () => {
         !allDevicesResponse.data.data ||
         allDevicesResponse.data.data.length === 0
       ) {
-        // Skip if no devices exist
         return;
       }
 
@@ -684,7 +662,6 @@ describe("Device API - Property Tests", () => {
           expect(response.data.success).toBe(true);
           expect(response.data.data).toBeDefined();
           expect(response.data.data?.id).toBe(deviceId);
-          // API returns specs_json field, not specs
           expect(response.data.data).toHaveProperty("specs_json");
 
           return true;
@@ -694,7 +671,6 @@ describe("Device API - Property Tests", () => {
     });
 
     it("for any non-existent device ID, retrieval should return 404", async () => {
-      // First get all devices to know which IDs exist
       const allDevicesResponse =
         await api.get<DeviceWithDepartment[]>("/api/devices");
       const existingIds = new Set(
@@ -705,7 +681,6 @@ describe("Device API - Property Tests", () => {
         fc.asyncProperty(
           fc.integer({ min: 100000, max: 999999 }),
           async (randomId) => {
-            // Skip if this ID happens to exist
             if (existingIds.has(randomId)) {
               return true;
             }

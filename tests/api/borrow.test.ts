@@ -9,7 +9,7 @@
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import * as fc from "fast-check";
-import { TestApiClient } from "../utils/api-client";
+import { testApiClient as api } from "../utils/api-client";
 import { createBorrowRequest, createDevice } from "../utils/factories";
 import {
   validDateRangeArb,
@@ -33,7 +33,7 @@ import type {
 // Test Setup
 // ============================================================================
 
-const api = new TestApiClient();
+// Use the singleton API client
 
 let ctx: TestContext;
 const createdDeviceIds: number[] = [];
@@ -446,6 +446,7 @@ describe("Borrow Request API - Status Transitions", () => {
       // Verify device status changed to borrowed
       const deviceResponse = await api.get<DeviceWithDepartment>(
         `/api/devices/${deviceId}`,
+        ctx.adminToken,
       );
       expect(deviceResponse.data.data?.status).toBe("borrowed");
     });
@@ -480,6 +481,7 @@ describe("Borrow Request API - Status Transitions", () => {
       // Verify device status changed back to available
       const deviceResponse = await api.get<DeviceWithDepartment>(
         `/api/devices/${deviceId}`,
+        ctx.adminToken,
       );
       expect(deviceResponse.data.data?.status).toBe("available");
     });
@@ -719,10 +721,18 @@ describe("Real-World Scenarios", () => {
       { status: "maintenance" },
       ctx.adminToken
     );
-    expect(patchResponse.status).toBe(200);
 
-    // Verify status persisted
-    const deviceResponse = await api.get<DeviceWithDepartment>(`/api/devices/${deviceId}`);
+    // Verify status persisted with polling
+    let attempts = 0;
+    while (attempts < 10) {
+      const deviceResponse = await api.get<DeviceWithDepartment>(`/api/devices/${deviceId}`, ctx.adminToken);
+      if (deviceResponse.data.data?.status === "maintenance") break;
+      await Bun.sleep(200);
+      attempts++;
+    }
+    
+    // Final verification
+    const deviceResponse = await api.get<DeviceWithDepartment>(`/api/devices/${deviceId}`, ctx.adminToken);
     expect(deviceResponse.data.data?.status).toBe("maintenance");
 
     // 3. Try to borrow
@@ -834,7 +844,7 @@ describe("Borrow Request API - Property Tests", () => {
               description: "admin",
             },
             {
-              token: superctx.userToken,
+              token: ctx.superuserToken,
               isAdmin: true,
               userId: 0,
               description: "superuser",

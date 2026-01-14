@@ -52,8 +52,6 @@ Device Hub is an enterprise device management system built with React (frontend)
 | Method | Endpoint      | Description                            |
 | ------ | ------------- | -------------------------------------- |
 | GET    | `/api/health` | Check system and database health status|
-| GET    | `/api/ready`  | Readiness check                        |
-| GET    | `/api/live`   | Liveness check                         |
 
 ### Authentication (`/api/auth`)
 

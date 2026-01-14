@@ -11,7 +11,7 @@ import {
   VALID_STATUS_TRANSITIONS,
   DEVICE_CATEGORIES,
   DEPARTMENT_NAMES,
-} from "../setup";
+} from "../test-config";
 
 // ============================================================================
 // Email Generators

@@ -9,15 +9,15 @@
 
 import { describe, it, expect, beforeAll } from "vitest";
 import * as fc from "fast-check";
-import { TestApiClient } from "../utils/api-client";
+import { testApiClient as api } from "../utils/api-client";
 import { setupTestContext, type TestContext } from "../utils/helpers";
-import { TEST_CONFIG } from "../setup";
+import { TEST_CONFIG } from "../test-config";
 
 // ============================================================================
 // Test Setup
 // ============================================================================
 
-const api = new TestApiClient();
+// Use the singleton API client
 let ctx: TestContext;
 
 beforeAll(async () => {
@@ -50,7 +50,7 @@ describe("Error Handling - Malformed JSON (Req 10.1)", () => {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${ctx.adminToken}`,
+        Cookie: `auth_token=${ctx.adminToken}`,
       },
       body: '{ "name": "test", invalid }',
     });
@@ -66,7 +66,7 @@ describe("Error Handling - Malformed JSON (Req 10.1)", () => {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${ctx.userToken}`,
+        Cookie: `auth_token=${ctx.userToken}`,
       },
       body: "not valid json at all",
     });
@@ -302,7 +302,7 @@ describe("Error Handling - Invalid ID Format (Req 10.3)", () => {
 
     it("should return 400 for empty device ID", async () => {
       const response = await fetch(`${TEST_CONFIG.API_BASE_URL}/api/devices/`, {
-        headers: { Authorization: `Bearer ${ctx.userToken}` },
+        headers: { Cookie: `auth_token=${ctx.userToken}` },
       });
       // Empty ID typically returns 404 (route not found) or 400
       expect([400, 404]).toContain(response.status);

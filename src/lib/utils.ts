@@ -26,3 +26,14 @@ export function getDeviceThumbnailUrl(
 ): string {
   return thumbnailUrl?.trim() || getDeviceImageUrl(imageUrl, category);
 }
+
+export function parseSpecs(specsJson: string | Record<string, string> | null | undefined): Record<string, string> {
+  if (!specsJson) return {};
+  if (typeof specsJson === "object") return specsJson;
+  try {
+    return JSON.parse(specsJson);
+  } catch (e) {
+    console.error("Failed to parse specs_json:", e);
+    return {};
+  }
+}

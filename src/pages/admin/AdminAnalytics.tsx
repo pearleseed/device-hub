@@ -41,7 +41,6 @@ import {
   BarChart3,
   Activity,
   FileText,
-  Percent,
 } from "lucide-react";
 import {
   PieChart,
@@ -83,9 +82,39 @@ const AdminAnalytics: React.FC = () => {
     to: new Date(),
   });
 
+  // ==================== FILTERED DATA BY DATE RANGE ====================
+
+  // Filter booking requests by date range
+  const filteredBookingRequests = useMemo(() => {
+    if (!dateRange?.from || !dateRange?.to) return bookingRequests;
+    const fromDate = new Date(dateRange.from);
+    fromDate.setHours(0, 0, 0, 0);
+    const toDate = new Date(dateRange.to);
+    toDate.setHours(23, 59, 59, 999);
+    
+    return bookingRequests.filter((r) => {
+      const createdAt = new Date(r.created_at);
+      return createdAt >= fromDate && createdAt <= toDate;
+    });
+  }, [bookingRequests, dateRange]);
+
+  // Filter returns by date range
+  const filteredReturns = useMemo(() => {
+    if (!dateRange?.from || !dateRange?.to) return returns;
+    const fromDate = new Date(dateRange.from);
+    fromDate.setHours(0, 0, 0, 0);
+    const toDate = new Date(dateRange.to);
+    toDate.setHours(23, 59, 59, 999);
+    
+    return returns.filter((r) => {
+      const returnDate = new Date(r.return_date);
+      return returnDate >= fromDate && returnDate <= toDate;
+    });
+  }, [returns, dateRange]);
+
   // ==================== COMPUTED DATA ====================
 
-  // Device statistics
+  // Device statistics (current state - not filtered by date)
   const deviceStats = useMemo(() => {
     const available = devices.filter((d) => d.status === "available").length;
     const borrowed = devices.filter((d) => d.status === "borrowed").length;
@@ -95,19 +124,19 @@ const AdminAnalytics: React.FC = () => {
     return { available, borrowed, maintenance, total: devices.length };
   }, [devices]);
 
-  // Request statistics
+  // Request statistics - filtered by date range
   const requestStats = useMemo(() => {
-    const pending = bookingRequests.filter(
+    const pending = filteredBookingRequests.filter(
       (r) => r.status === "pending",
     ).length;
-    const approved = bookingRequests.filter(
+    const approved = filteredBookingRequests.filter(
       (r) => r.status === "approved",
     ).length;
-    const active = bookingRequests.filter((r) => r.status === "active").length;
-    const returned = bookingRequests.filter(
+    const active = filteredBookingRequests.filter((r) => r.status === "active").length;
+    const returned = filteredBookingRequests.filter(
       (r) => r.status === "returned",
     ).length;
-    const rejected = bookingRequests.filter(
+    const rejected = filteredBookingRequests.filter(
       (r) => r.status === "rejected",
     ).length;
     return {
@@ -116,19 +145,19 @@ const AdminAnalytics: React.FC = () => {
       active,
       returned,
       rejected,
-      total: bookingRequests.length,
+      total: filteredBookingRequests.length,
     };
-  }, [bookingRequests]);
+  }, [filteredBookingRequests]);
 
-  // Average loan duration - calculated from completed loans
+  // Average loan duration - calculated from completed loans (filtered)
   const avgLoanDuration = useMemo(() => {
-    const completedLoans = bookingRequests.filter((r) => r.status === "returned");
+    const completedLoans = filteredBookingRequests.filter((r) => r.status === "returned");
     if (completedLoans.length === 0) return 0;
     const totalDays = completedLoans.reduce((acc, loan) => {
       return acc + differenceInDays(new Date(loan.end_date), new Date(loan.start_date));
     }, 0);
     return Math.round(totalDays / completedLoans.length);
-  }, [bookingRequests]);
+  }, [filteredBookingRequests]);
 
   // Device status pie data
   const deviceStatusData = useMemo(
@@ -179,7 +208,7 @@ const AdminAnalytics: React.FC = () => {
     [devices, t],
   );
 
-  // Request status distribution
+  // Request status distribution (filtered)
   const requestStatusData = useMemo(
     () => [
       {
@@ -211,10 +240,10 @@ const AdminAnalytics: React.FC = () => {
     [requestStats, t],
   );
 
-  // Device condition data - calculated from actual return requests
+  // Device condition data - calculated from filtered return requests
   const deviceConditionData = useMemo(() => {
     const conditionCounts = { excellent: 0, good: 0, fair: 0, damaged: 0 };
-    returns.forEach((r) => {
+    filteredReturns.forEach((r) => {
       if (r.device_condition && conditionCounts[r.device_condition] !== undefined) {
         conditionCounts[r.device_condition]++;
       }
@@ -225,11 +254,11 @@ const AdminAnalytics: React.FC = () => {
       { name: t("condition.fair"), value: conditionCounts.fair, color: "hsl(var(--chart-4))" },
       { name: t("condition.damaged"), value: conditionCounts.damaged, color: "hsl(var(--chart-5))" },
     ];
-  }, [returns, t]);
+  }, [filteredReturns, t]);
 
-  // Return compliance data - calculated from actual borrow/return data
+  // Return compliance data - calculated from filtered borrow/return data
   const returnComplianceData = useMemo(() => {
-    const returnedRequests = bookingRequests.filter((r) => r.status === "returned");
+    const returnedRequests = filteredBookingRequests.filter((r) => r.status === "returned");
     let onTime = 0;
     let late = 0;
     returnedRequests.forEach((req) => {
@@ -251,15 +280,15 @@ const AdminAnalytics: React.FC = () => {
       { name: t("analytics.onTime"), value: onTime, color: "hsl(var(--chart-2))" },
       { name: t("analytics.late"), value: late, color: "hsl(var(--chart-5))" },
     ];
-  }, [bookingRequests, returns, t]);
+  }, [filteredBookingRequests, returns, t]);
 
-  // Top borrowed devices
+  // Top borrowed devices (filtered by date range)
   const topBorrowedDevices = useMemo(() => {
     const deviceBorrowCount: Record<
       number,
       { device: (typeof devices)[0]; count: number }
     > = {};
-    bookingRequests.forEach((req) => {
+    filteredBookingRequests.forEach((req) => {
       const device = devices.find((d) => d.id === req.device_id);
       if (device) {
         if (!deviceBorrowCount[device.id]) {
@@ -277,15 +306,15 @@ const AdminAnalytics: React.FC = () => {
         count: item.count,
         assetTag: item.device.asset_tag,
       }));
-  }, [devices, bookingRequests]);
+  }, [devices, filteredBookingRequests]);
 
-  // Top users by borrowing frequency
+  // Top users by borrowing frequency (filtered by date range)
   const topUsers = useMemo(() => {
     const userBorrowCount: Record<
       number,
       { user: (typeof users)[0]; count: number }
     > = {};
-    bookingRequests.forEach((req) => {
+    filteredBookingRequests.forEach((req) => {
       const user = users.find((u) => u.id === req.user_id);
       if (user) {
         if (!userBorrowCount[user.id]) {
@@ -303,9 +332,9 @@ const AdminAnalytics: React.FC = () => {
         count: item.count,
         avatar: item.user.avatar_url,
       }));
-  }, [users, bookingRequests]);
+  }, [users, filteredBookingRequests]);
 
-  // Department activity
+  // Department activity (filtered by date range)
   const departmentActivity = useMemo(() => {
     const deptStats: Record<string, { requests: number; activeLoans: number }> =
       {};
@@ -315,7 +344,7 @@ const AdminAnalytics: React.FC = () => {
         deptStats[deptName] = { requests: 0, activeLoans: 0 };
       }
     });
-    bookingRequests.forEach((req) => {
+    filteredBookingRequests.forEach((req) => {
       const user = users.find((u) => u.id === req.user_id);
       const deptName = user?.department_name || t("common.unknown");
       if (user && deptStats[deptName]) {
@@ -330,60 +359,145 @@ const AdminAnalytics: React.FC = () => {
       requests: stats.requests,
       activeLoans: stats.activeLoans,
     }));
-  }, [users, bookingRequests, t]);
+  }, [users, filteredBookingRequests, t]);
 
-  // Monthly trends data
+  // Monthly/Weekly/Daily trends data - based on dateRange and reportPeriod
   const trendData = useMemo(() => {
-    const last12Months = Array.from({ length: 12 }, (_, i) => {
-      const date = subDays(new Date(), i * 30);
+    if (!dateRange?.from || !dateRange?.to) return [];
+    
+    const fromDate = new Date(dateRange.from);
+    const toDate = new Date(dateRange.to);
+    const daysDiff = differenceInDays(toDate, fromDate);
+    
+    // Generate time periods based on reportPeriod
+    const periods: { label: string; key: string; start: Date; end: Date }[] = [];
+    
+    if (reportPeriod === "daily") {
+      // Show each day
+      const numDays = Math.min(daysDiff + 1, 31); // Max 31 days for daily view
+      for (let i = numDays - 1; i >= 0; i--) {
+        const date = subDays(toDate, i);
+        periods.push({
+          label: format(date, "MMM d"),
+          key: format(date, "yyyy-MM-dd"),
+          start: new Date(date.setHours(0, 0, 0, 0)),
+          end: new Date(date.setHours(23, 59, 59, 999)),
+        });
+      }
+    } else if (reportPeriod === "weekly") {
+      // Show each week
+      const numWeeks = Math.min(Math.ceil(daysDiff / 7), 12); // Max 12 weeks
+      for (let i = numWeeks - 1; i >= 0; i--) {
+        const weekEnd = subDays(toDate, i * 7);
+        const weekStart = subDays(weekEnd, 6);
+        periods.push({
+          label: `${format(weekStart, "MMM d")} - ${format(weekEnd, "d")}`,
+          key: format(weekStart, "yyyy-MM-dd"),
+          start: new Date(weekStart.setHours(0, 0, 0, 0)),
+          end: new Date(weekEnd.setHours(23, 59, 59, 999)),
+        });
+      }
+    } else {
+      // Monthly - show each month
+      const numMonths = Math.min(Math.ceil(daysDiff / 30), 12); // Max 12 months
+      for (let i = numMonths - 1; i >= 0; i--) {
+        const date = subDays(toDate, i * 30);
+        const monthStart = startOfMonth(date);
+        const monthEnd = endOfMonth(date);
+        periods.push({
+          label: format(date, "MMM yyyy"),
+          key: format(date, "yyyy-MM"),
+          start: monthStart,
+          end: monthEnd,
+        });
+      }
+    }
+
+    return periods.map(({ label, start, end }) => {
+      const requestsCount = bookingRequests.filter((r) => {
+        const createdAt = new Date(r.created_at);
+        return createdAt >= start && createdAt <= end;
+      }).length;
+
+      const returnsCount = bookingRequests.filter((r) => {
+        if (r.status !== "returned") return false;
+        const updatedAt = new Date(r.updated_at);
+        return updatedAt >= start && updatedAt <= end;
+      }).length;
+
       return {
-        month: format(date, "MMM"),
-        monthKey: format(date, "yyyy-MM"),
-        date: date,
-      };
-    }).reverse();
-
-    return last12Months.map(({ month, monthKey }) => {
-      const requestsCount = bookingRequests.filter((r) =>
-        format(new Date(r.created_at), "yyyy-MM") === monthKey
-      ).length;
-
-      const returnsCount = bookingRequests.filter((r) =>
-        r.status === "returned" && 
-        format(new Date(r.updated_at), "yyyy-MM") === monthKey
-      ).length;
-
-      return {
-        month,
+        month: label,
         requests: requestsCount,
         returns: returnsCount,
       };
     });
-  }, [bookingRequests]);
+  }, [bookingRequests, dateRange, reportPeriod]);
 
-  // Compliance trend data - calculated from actual data
+  // Compliance trend data - based on dateRange and reportPeriod
   const complianceTrendData = useMemo(() => {
-    const last12Months = Array.from({ length: 12 }, (_, i) => {
-      const date = subDays(new Date(), i * 30);
-      return { month: format(date, "MMM"), monthKey: format(date, "yyyy-MM") };
-    }).reverse();
+    if (!dateRange?.from || !dateRange?.to) return [];
+    
+    const fromDate = new Date(dateRange.from);
+    const toDate = new Date(dateRange.to);
+    const daysDiff = differenceInDays(toDate, fromDate);
+    
+    // Generate time periods based on reportPeriod
+    const periods: { label: string; start: Date; end: Date }[] = [];
+    
+    if (reportPeriod === "daily") {
+      const numDays = Math.min(daysDiff + 1, 31);
+      for (let i = numDays - 1; i >= 0; i--) {
+        const date = subDays(toDate, i);
+        periods.push({
+          label: format(date, "MMM d"),
+          start: new Date(new Date(date).setHours(0, 0, 0, 0)),
+          end: new Date(new Date(date).setHours(23, 59, 59, 999)),
+        });
+      }
+    } else if (reportPeriod === "weekly") {
+      const numWeeks = Math.min(Math.ceil(daysDiff / 7), 12);
+      for (let i = numWeeks - 1; i >= 0; i--) {
+        const weekEnd = subDays(toDate, i * 7);
+        const weekStart = subDays(weekEnd, 6);
+        periods.push({
+          label: `${format(weekStart, "MMM d")}`,
+          start: new Date(new Date(weekStart).setHours(0, 0, 0, 0)),
+          end: new Date(new Date(weekEnd).setHours(23, 59, 59, 999)),
+        });
+      }
+    } else {
+      const numMonths = Math.min(Math.ceil(daysDiff / 30), 12);
+      for (let i = numMonths - 1; i >= 0; i--) {
+        const date = subDays(toDate, i * 30);
+        const monthStart = startOfMonth(date);
+        const monthEnd = endOfMonth(date);
+        periods.push({
+          label: format(date, "MMM"),
+          start: monthStart,
+          end: monthEnd,
+        });
+      }
+    }
 
-    return last12Months.map(({ month, monthKey }) => {
-      const returnedInMonth = bookingRequests.filter(
-        (r) => r.status === "returned" && format(new Date(r.updated_at), "yyyy-MM") === monthKey
-      );
-      if (returnedInMonth.length === 0) return { month, onTime: 100, late: 0 };
+    return periods.map(({ label, start, end }) => {
+      const returnedInPeriod = bookingRequests.filter((r) => {
+        if (r.status !== "returned") return false;
+        const updatedAt = new Date(r.updated_at);
+        return updatedAt >= start && updatedAt <= end;
+      });
+      
+      if (returnedInPeriod.length === 0) return { month: label, onTime: 100, late: 0 };
 
       let onTimeCount = 0;
-      returnedInMonth.forEach((req) => {
+      returnedInPeriod.forEach((req) => {
         const returnRecord = returns.find((r) => r.borrow_request_id === req.id);
         const returnDate = returnRecord ? new Date(returnRecord.return_date) : new Date(req.updated_at);
         if (returnDate <= new Date(req.end_date)) onTimeCount++;
       });
-      const onTimePct = Math.round((onTimeCount / returnedInMonth.length) * 100);
-      return { month, onTime: onTimePct, late: 100 - onTimePct };
+      const onTimePct = Math.round((onTimeCount / returnedInPeriod.length) * 100);
+      return { month: label, onTime: onTimePct, late: 100 - onTimePct };
     });
-  }, [bookingRequests, returns]);
+  }, [bookingRequests, returns, dateRange, reportPeriod]);
 
   // ==================== HANDLERS ====================
 
@@ -458,9 +572,9 @@ const AdminAnalytics: React.FC = () => {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-2xl font-bold">{t("analytics.title")}</h1>
-            <p className="text-muted-foreground">{t("analytics.subtitle")}</p>
+            {/* <p className="text-muted-foreground">{t("analytics.subtitle")}</p> */}
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 py-2">
             <Select
               value={reportPeriod}
               onValueChange={(v) => setReportPeriod(v as ReportPeriod)}
@@ -1096,7 +1210,7 @@ const AdminAnalytics: React.FC = () => {
                   </thead>
                   <tbody>
                     {users.slice(0, 6).map((user) => {
-                      const userRequests = bookingRequests.filter(
+                      const userRequests = filteredBookingRequests.filter(
                         (r) => r.user_id === user.id,
                       );
                       const activeLoans = userRequests.filter(

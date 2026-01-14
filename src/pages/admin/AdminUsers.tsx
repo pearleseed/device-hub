@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { AdminSidebar } from "@/components/layout/AdminSidebar";
 import { BreadcrumbNav } from "@/components/ui/breadcrumb-nav";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -43,23 +43,26 @@ import {
   useDeleteUser,
   useResetUserPassword,
   useCreateUser,
+  useBulkCreateDepartments,
 } from "@/hooks/use-api-mutations";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   Plus,
-  MoreHorizontal,
-  Pencil,
-  Trash2,
-  Mail,
-  Shield,
-  ShieldCheck,
-  Crown,
-  Undo2,
   Eye,
   Lock,
   Unlock,
   Key,
+  Building2,
+  X,
+  Crown,
+  ShieldCheck,
+  Shield,
+  Mail,
+  MoreHorizontal,
+  Pencil,
+  Trash2,
+  Search,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { UserDetailModal } from "@/components/admin/UserDetailModal";
@@ -101,10 +104,142 @@ const AdminUsers: React.FC = () => {
   const [editPassword, setEditPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Department creation state
+  const [addDeptModalOpen, setAddDeptModalOpen] = useState(false);
+  const [newDepts, setNewDepts] = useState([{ name: "", code: "" }]);
+  const bulkCreateDepartments = useBulkCreateDepartments();
+
+  const handleAddDeptRow = () => {
+    setNewDepts([...newDepts, { name: "", code: "" }]);
+  };
+
+  const handleRemoveDeptRow = (index: number) => {
+    if (newDepts.length === 1) return;
+    const updated = [...newDepts];
+    updated.splice(index, 1);
+    setNewDepts(updated);
+  };
+
+  const handleDeptChange = (index: number, field: "name" | "code", value: string) => {
+    const updated = [...newDepts];
+    updated[index][field] = value;
+    setNewDepts(updated);
+  };
+
+  const handleCreateDepartments = async () => {
+    // Basic validation
+    const validDepts = newDepts.filter(d => d.name.trim() && d.code.trim());
+    if (validDepts.length === 0) {
+      toast({
+        title: "Validation Error",
+        description: "Please enter at least one valid department with Name and Code",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      await bulkCreateDepartments.mutateAsync(
+        validDepts.map(d => ({
+          name: d.name.trim(),
+          code: d.code.trim().toUpperCase(),
+        }))
+      );
+      setNewDepts([{ name: "", code: "" }]);
+      setAddDeptModalOpen(false);
+    } catch (error) {
+      console.error("Failed to create departments:", error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const currentUserRole = currentUser?.role || "user";
   const isSuperuser = currentUserRole === "superuser";
   const isAdmin = currentUserRole === "admin";
   const canManageUsers = isSuperuser || isAdmin; // Admin và Superuser đều có thể quản lý users
+
+  // Filter states
+  const [searchQuery, setSearchQuery] = useState("");
+  const [departmentFilter, setDepartmentFilter] = useState<string>("all");
+  const [roleFilter, setRoleFilter] = useState<UserRole | "all">("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "locked">("all");
+
+  // Get unique departments from users
+  const departmentOptions = useMemo(() => {
+    const deps = new Set<string>();
+    users.forEach((user) => {
+      if (user.department_name) deps.add(user.department_name);
+    });
+    return Array.from(deps).sort();
+  }, [users]);
+
+  const roleOptions = useMemo(
+    () => [
+      { value: "all", label: t("filter.all"), icon: <Shield className="h-4 w-4" /> },
+      { value: "user", label: t("users.user"), icon: <Shield className="h-4 w-4" /> },
+      { value: "admin", label: t("users.admin"), icon: <ShieldCheck className="h-4 w-4" /> },
+      { value: "superuser", label: "Superuser", icon: <Crown className="h-4 w-4" /> },
+    ],
+    [t]
+  );
+
+  const statusOptions = useMemo(
+    () => [
+      { value: "all", label: t("status.all") },
+      { value: "active", label: t("users.statusActive") },
+      { value: "locked", label: t("users.statusLocked") },
+    ],
+    [t]
+  );
+
+  // Filtered users
+  const filteredUsers = useMemo(() => {
+    return users.filter((user) => {
+      // Search filter
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase();
+        const matchesSearch =
+          user.name.toLowerCase().includes(query) ||
+          user.email.toLowerCase().includes(query) ||
+          (user.department_name?.toLowerCase().includes(query) ?? false);
+        if (!matchesSearch) return false;
+      }
+
+      // Department filter
+      if (departmentFilter !== "all" && user.department_name !== departmentFilter) {
+        return false;
+      }
+
+      // Role filter
+      if (roleFilter !== "all" && user.role !== roleFilter) {
+        return false;
+      }
+
+      // Status filter
+      if (statusFilter !== "all") {
+        if (statusFilter === "active" && !user.is_active) return false;
+        if (statusFilter === "locked" && user.is_active) return false;
+      }
+
+      return true;
+    });
+  }, [users, searchQuery, departmentFilter, roleFilter, statusFilter]);
+
+  const hasActiveFilters = !!(
+    searchQuery ||
+    departmentFilter !== "all" ||
+    roleFilter !== "all" ||
+    statusFilter !== "all"
+  );
+
+  const clearFilters = () => {
+    setSearchQuery("");
+    setDepartmentFilter("all");
+    setRoleFilter("all");
+    setStatusFilter("all");
+  };
 
   const handleToggleUserActive = async (userId: number, isActive: boolean) => {
     try {
@@ -437,7 +572,7 @@ const AdminUsers: React.FC = () => {
 
       <main
         id="main-content"
-        className="flex-1 p-8"
+        className="flex-1 p-8 min-w-0 overflow-hidden"
         tabIndex={-1}
         role="main"
         aria-label="User management"
@@ -447,9 +582,9 @@ const AdminUsers: React.FC = () => {
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-2xl font-bold">{t("users.title")}</h1>
-            <p className="text-muted-foreground">{t("users.subtitle")}</p>
+            {/* <p className="text-muted-foreground">{t("users.subtitle")}</p> */}
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 py-2">
             {selectedUsers.length > 0 && (
               <Button variant="destructive" onClick={handleBulkDelete}>
                 <Trash2 className="mr-2 h-4 w-4" />
@@ -457,6 +592,10 @@ const AdminUsers: React.FC = () => {
               </Button>
             )}
             <UserImportExport onImportComplete={refreshUsers} />
+            <Button variant="outline" onClick={() => setAddDeptModalOpen(true)}>
+              <Building2 className="mr-2 h-4 w-4" />
+              {t("common.add") + " Department"}
+            </Button>
             <Button onClick={() => setAddModalOpen(true)}>
               <Plus className="mr-2 h-4 w-4" />
               {t("users.addUser")}
@@ -467,22 +606,157 @@ const AdminUsers: React.FC = () => {
         <Card>
           <CardHeader>
             <CardTitle>
-              {t("users.allUsers")} ({users.length})
+              {t("users.allUsers")} ({filteredUsers.length})
             </CardTitle>
           </CardHeader>
+
+          {/* Filters */}
+          <div className="px-6 pb-4">
+            <div className="flex items-center gap-2">
+              {/* Search */}
+              <div className="relative flex-1 min-w-[200px]">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="search"
+                  placeholder={`${t("common.search")} ${t("users.title").toLowerCase()}...`}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9 h-9 text-sm"
+                />
+              </div>
+
+              {/* Department Dropdown */}
+              <Select
+                value={departmentFilter}
+                onValueChange={(v) => setDepartmentFilter(v)}
+              >
+                <SelectTrigger className="flex-1 min-w-[140px] max-w-[180px] h-9 text-sm">
+                  <SelectValue placeholder={t("common.department")} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">{t("filter.all")}</SelectItem>
+                  {departmentOptions.map((dept) => (
+                    <SelectItem key={dept} value={dept}>
+                      {dept}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              {/* Role Dropdown */}
+              <Select
+                value={roleFilter}
+                onValueChange={(v) => setRoleFilter(v as UserRole | "all")}
+              >
+                <SelectTrigger className="flex-1 min-w-[120px] max-w-[150px] h-9 text-sm">
+                  <SelectValue placeholder={t("common.role")} />
+                </SelectTrigger>
+                <SelectContent>
+                  {roleOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      <div className="flex items-center gap-2">
+                        {option.icon}
+                        {option.label}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              {/* Status Filter */}
+              <Select
+                value={statusFilter}
+                onValueChange={(v) => setStatusFilter(v as "all" | "active" | "locked")}
+              >
+                <SelectTrigger className="flex-1 min-w-[120px] max-w-[150px] h-9 text-sm">
+                  <SelectValue placeholder={t("common.status")} />
+                </SelectTrigger>
+                <SelectContent>
+                  {statusOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Active Filters - Only show when filters are applied */}
+            {hasActiveFilters && (
+              <div className="flex items-center gap-1.5 mt-2.5 pt-2.5 border-t border-dashed overflow-x-auto">
+                <span className="text-xs text-muted-foreground shrink-0">
+                  {t("deviceCatalog.filters")}:
+                </span>
+                {searchQuery && (
+                  <Badge
+                    variant="secondary"
+                    className="h-6 text-xs gap-1 pl-2 pr-1 shrink-0"
+                  >
+                    "{searchQuery}"
+                    <X
+                      className="h-3 w-3 cursor-pointer hover:text-destructive"
+                      onClick={() => setSearchQuery("")}
+                    />
+                  </Badge>
+                )}
+                {departmentFilter !== "all" && (
+                  <Badge
+                    variant="secondary"
+                    className="h-6 text-xs gap-1 pl-2 pr-1 shrink-0"
+                  >
+                    {departmentFilter}
+                    <X
+                      className="h-3 w-3 cursor-pointer hover:text-destructive"
+                      onClick={() => setDepartmentFilter("all")}
+                    />
+                  </Badge>
+                )}
+                {roleFilter !== "all" && (
+                  <Badge
+                    variant="secondary"
+                    className="h-6 text-xs gap-1 pl-2 pr-1 shrink-0"
+                  >
+                    {roleOptions.find((r) => r.value === roleFilter)?.label}
+                    <X
+                      className="h-3 w-3 cursor-pointer hover:text-destructive"
+                      onClick={() => setRoleFilter("all")}
+                    />
+                  </Badge>
+                )}
+                {statusFilter !== "all" && (
+                  <Badge
+                    variant="secondary"
+                    className="h-6 text-xs gap-1 pl-2 pr-1 shrink-0"
+                  >
+                    {statusOptions.find((s) => s.value === statusFilter)?.label}
+                    <X
+                      className="h-3 w-3 cursor-pointer hover:text-destructive"
+                      onClick={() => setStatusFilter("all")}
+                    />
+                  </Badge>
+                )}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground shrink-0"
+                  onClick={clearFilters}
+                >
+                  {t("deviceCatalog.clear")}
+                </Button>
+              </div>
+            )}
+          </div>
+
           <CardContent>
             <DataTable
-              data={users}
+              data={filteredUsers}
               columns={columns}
               getRowId={(user) => String(user.id)}
-              searchable
-              searchPlaceholder={`${t("common.search")}...`}
-              searchKeys={["name", "email", "department_name"]}
               paginated
               pageSize={10}
               selectable
               onSelectionChange={setSelectedUsers}
-              emptyMessage={t("table.noData")}
+              emptyMessage={hasActiveFilters ? t("inventory.noMatchingDevices") : t("table.noData")}
               emptyDescription={t("inventory.addFirstDevice")}
             />
           </CardContent>
@@ -593,6 +867,92 @@ const AdminUsers: React.FC = () => {
                   </>
                 ) : (
                   t("common.add")
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Add Department Modal */}
+        <Dialog open={addDeptModalOpen} onOpenChange={setAddDeptModalOpen}>
+          <DialogContent className="sm:max-w-[500px] max-h-[85vh] flex flex-col">
+            <DialogHeader>
+              <DialogTitle>Add Departments</DialogTitle>
+            </DialogHeader>
+            
+            <div className="flex-1 overflow-y-auto pr-2 -mr-2 py-4 px-1">
+              <div className="space-y-3">
+                <div className="grid grid-cols-12 gap-3 font-medium text-xs uppercase text-muted-foreground px-1">
+                  <div className="col-span-6">Name</div>
+                  <div className="col-span-5">Code</div>
+                </div>
+                
+                {newDepts.map((dept, index) => (
+                  <div key={index} className="grid grid-cols-12 gap-3 items-start animate-in fade-in slide-in-from-top-2 duration-200">
+                    <div className="col-span-6">
+                      <Input
+                        value={dept.name}
+                        onChange={(e) => handleDeptChange(index, "name", e.target.value)}
+                        placeholder="Department Name"
+                        className="h-9"
+                        autoFocus={index === newDepts.length - 1 && index > 0} 
+                      />
+                    </div>
+                    <div className="col-span-5">
+                      <Input
+                        value={dept.code}
+                        onChange={(e) => handleDeptChange(index, "code", e.target.value)}
+                        placeholder="CODE"
+                        className="uppercase h-9 font-mono"
+                        maxLength={10}
+                      />
+                    </div>
+                    <div className="col-span-1 flex justify-center pt-0.5">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleRemoveDeptRow(index)}
+                        disabled={newDepts.length === 1}
+                        className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                        title="Remove"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="pt-2">
+                <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={handleAddDeptRow} 
+                    className="w-full border-dashed text-muted-foreground hover:text-foreground"
+                >
+                <Plus className="mr-2 h-3.5 w-3.5" /> Add Another Department
+                </Button>
+            </div>
+
+            <DialogFooter className="gap-2 sm:gap-0 pt-4 border-t mt-2">
+              <Button
+                variant="outline"
+                onClick={() => setAddDeptModalOpen(false)}
+                disabled={isSubmitting}
+              >
+                {t("common.cancel")}
+              </Button>
+              <Button onClick={handleCreateDepartments} disabled={isSubmitting}>
+                {isSubmitting ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                    Adding...
+                  </>
+                ) : (
+                  <>
+                    {t("common.add")} {newDepts.length > 1 ? `(${newDepts.length})` : ""}
+                  </>
                 )}
               </Button>
             </DialogFooter>

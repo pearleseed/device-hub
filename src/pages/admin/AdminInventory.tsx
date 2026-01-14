@@ -227,6 +227,16 @@ const AdminInventory: React.FC = () => {
     "all",
   );
   const [statusFilter, setStatusFilter] = useState<DeviceStatus | "all">("all");
+  const [departmentFilter, setDepartmentFilter] = useState<string>("all");
+
+  // Get unique departments from devices
+  const departments = useMemo(() => {
+    const deps = new Set<string>();
+    devices.forEach((device) => {
+      if (device.department_name) deps.add(device.department_name);
+    });
+    return Array.from(deps).sort();
+  }, [devices]);
 
   // Modal states
   const [addModalOpen, setAddModalOpen] = useState(false);
@@ -258,27 +268,39 @@ const AdminInventory: React.FC = () => {
         return false;
       }
 
+      // Department filter
+      if (departmentFilter !== "all") {
+        // Filter by device's assigned department (if any) or check if assigned user is in that department
+        // device.department_name usually comes from the joined query
+        if (device.department_name !== departmentFilter) {
+          return false;
+        }
+      }
+
       return true;
     });
-  }, [devices, searchQuery, categoryFilter, statusFilter]);
+  }, [devices, searchQuery, categoryFilter, statusFilter, departmentFilter]);
 
   // Pagination
   const pagination = usePagination(filteredDevices, [
     searchQuery,
     categoryFilter,
     statusFilter,
+    departmentFilter,
   ]);
 
   const hasActiveFilters = !!(
     searchQuery ||
     categoryFilter !== "all" ||
-    statusFilter !== "all"
+    statusFilter !== "all" ||
+    departmentFilter !== "all"
   );
 
   const clearFilters = () => {
     setSearchQuery("");
     setCategoryFilter("all");
     setStatusFilter("all");
+    setDepartmentFilter("all");
   };
 
   // handleAddDevice is handled by AddDeviceModal which uses useCreateDevice mutation
@@ -347,9 +369,9 @@ const AdminInventory: React.FC = () => {
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-2xl font-bold">{t("adminInventory.title")}</h1>
-            <p className="text-muted-foreground">
+            {/* <p className="text-muted-foreground">
               {t("adminInventory.subtitle")}
-            </p>
+            </p> */}
           </div>
           <div className="flex gap-2">
             {selectedDevices.length > 0 && (
@@ -369,7 +391,7 @@ const AdminInventory: React.FC = () => {
           </div>
         </div>
 
-        {/* Filters - Compact Sticky Header like Catalog */}
+        {/* Filters*/}
         <section className="border-b bg-background shadow-sm sticky top-0 z-40 -mx-8 px-8 mb-6">
           <div className="py-3">
             <div className="flex items-center gap-2">
@@ -384,6 +406,24 @@ const AdminInventory: React.FC = () => {
                   className="pl-9 h-9 text-sm"
                 />
               </div>
+
+              {/* Department Dropdown */}
+              <Select
+                value={departmentFilter}
+                onValueChange={(v) => setDepartmentFilter(v)}
+              >
+                <SelectTrigger className="flex-1 min-w-[140px] max-w-[180px] h-9 text-sm">
+                  <SelectValue placeholder={t("table.department")} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">{t("filter.all")}</SelectItem>
+                  {departments.map((dept) => (
+                    <SelectItem key={dept} value={dept}>
+                      {dept}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
 
               {/* Category Dropdown */}
               <Select
@@ -442,6 +482,18 @@ const AdminInventory: React.FC = () => {
                     <X
                       className="h-3 w-3 cursor-pointer hover:text-destructive"
                       onClick={() => setSearchQuery("")}
+                    />
+                  </Badge>
+                )}
+                {departmentFilter !== "all" && (
+                  <Badge
+                    variant="secondary"
+                    className="h-6 text-xs gap-1 pl-2 pr-1 shrink-0"
+                  >
+                    {departmentFilter}
+                    <X
+                      className="h-3 w-3 cursor-pointer hover:text-destructive"
+                      onClick={() => setDepartmentFilter("all")}
                     />
                   </Badge>
                 )}
@@ -608,12 +660,19 @@ const AdminInventory: React.FC = () => {
                       ))}
                     </div>
 
-                    {/* Assigned User */}
-                    {assignedUser && (
-                      <div className="mt-3 pt-3 border-t">
-                        <p className="text-xs text-muted-foreground truncate">
-                          {t("table.assignedTo")}: {assignedUser.name}
-                        </p>
+                    {/* Assigned User & Department */}
+                    {(assignedUser || device.department_name) && (
+                      <div className="mt-3 pt-3 border-t space-y-1">
+                        {assignedUser && (
+                          <p className="text-xs text-muted-foreground truncate flex items-center gap-1">
+                            <span className="opacity-70">{t("table.assignedTo")}:</span> {assignedUser.name}
+                          </p>
+                        )}
+                        {device.department_name && (
+                          <p className="text-xs text-muted-foreground truncate flex items-center gap-1">
+                            <span className="opacity-70">{t("table.department")}:</span> {device.department_name}
+                          </p>
+                        )}
                       </div>
                     )}
                   </CardContent>

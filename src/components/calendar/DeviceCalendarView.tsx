@@ -30,6 +30,7 @@ import {
   isSameMonth,
   isToday,
 } from "date-fns";
+import { enUS, vi, ja } from "date-fns/locale";
 import {
   CalendarDays,
   Clock,
@@ -106,7 +107,10 @@ export const DeviceCalendarView: React.FC<DeviceCalendarViewProps> = ({
   onApprove,
   onReject,
 }) => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  const locales = { en: enUS, vi: vi, ja: ja };
+  const currentLocale = locales[language as keyof typeof locales] || enUS;
+
   const { data: devices = [] } = useDevices();
   const { data: users = [] } = useUsers();
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
@@ -527,7 +531,9 @@ export const DeviceCalendarView: React.FC<DeviceCalendarViewProps> = ({
               <div className="flex items-center justify-between mb-3 shrink-0">
                 <div>
                   <h3 className="font-bold text-base">
-                    {format(selectedDate, "EEEE, MMMM d")}
+                    {format(selectedDate, t("common.dateFormatWithWeekday"), {
+                      locale: currentLocale,
+                    })}
                   </h3>
                   <p className="text-xs text-muted-foreground">
                     {bookingsForSelectedDate.length === 0

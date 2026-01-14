@@ -10,6 +10,16 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const USERNAME_REGEX = /^[a-zA-Z0-9._-]+$/;
 const isValidEmailOrUsername = (s: string) => EMAIL_REGEX.test(s) || USERNAME_REGEX.test(s);
 
+// Helper to build cookie header - works for localhost and private IPs (10.x, 192.168.x, 172.16-31.x)
+function buildCookieHeader(name: string, value: string, maxAge: number): string {
+  const isProd = process.env.NODE_ENV === "production";
+  // Use SameSite=None with Secure for cross-origin in dev (IP access), Strict for production
+  // SameSite=None requires Secure flag, which works with HTTPS
+  const sameSite = isProd ? "Strict" : "None";
+  const secure = isProd || sameSite === "None" ? "; Secure" : "";
+  return `${name}=${value}; Max-Age=${maxAge}; Path=/; HttpOnly; SameSite=${sameSite}${secure}`;
+}
+
 export const authRoutes = {
   async login(request: Request): Promise<Response> {
     try {
@@ -30,8 +40,15 @@ export const authRoutes = {
       await db`UPDATE users SET last_login_at = NOW() WHERE id = ${user.id}`;
       const token = await generateToken(user.id, user.email, user.role, rememberMe || false);
       const [userPublic] = await db<UserPublicWithPwdFlag[]>`SELECT * FROM v_users_public WHERE id = ${user.id}`;
+      
+      const maxAge = rememberMe ? 30 * 24 * 60 * 60 : 24 * 60 * 60;
+      const cookieHeader = buildCookieHeader("auth_token", token, maxAge);
 
-      return json({ success: true, token, user: userPublic, mustChangePassword: user.must_change_password || false } as AuthResponse & { mustChangePassword?: boolean });
+      return json(
+        { success: true, user: userPublic, mustChangePassword: user.must_change_password || false },
+        200,
+        { "Set-Cookie": cookieHeader }
+      );
     } catch (e) {
       console.error("Login error:", e);
       return err("Login failed", 500);
@@ -66,7 +83,10 @@ export const authRoutes = {
       const token = await generateToken(newUser.id, newUser.email, newUser.role);
       const [userPublic] = await db<UserPublic[]>`SELECT * FROM v_users_public WHERE id = ${newUser.id}`;
 
-      return json({ success: true, token, user: userPublic } as AuthResponse, 201);
+      const maxAge = 24 * 60 * 60;
+      const cookieHeader = buildCookieHeader("auth_token", token, maxAge);
+
+      return json({ success: true, user: userPublic } as AuthResponse, 201, { "Set-Cookie": cookieHeader });
     } catch (e) {
       console.error("Signup error:", e);
       return err("Signup failed", 500);
@@ -106,5 +126,11 @@ export const authRoutes = {
         return err("Failed to change password", 500);
       }
     });
+  },
+
+
+  async logout(request: Request): Promise<Response> {
+    const cookieHeader = buildCookieHeader("auth_token", "", 0);
+    return json({ success: true }, 200, { "Set-Cookie": cookieHeader });
   },
 };

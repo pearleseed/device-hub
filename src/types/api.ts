@@ -24,12 +24,8 @@ export type RequestStatus =
 export type DeviceCondition = "excellent" | "good" | "fair" | "damaged";
 export type RenewalStatus = "pending" | "approved" | "rejected";
 
-export type DepartmentName =
-  | "QA"
-  | "DEV"
-  | "CG"
-  | "ADMIN"
-  | "STG";
+// Department name is now a string to allow dynamic creation
+export type DepartmentName = string;
 
 // ============================================================================
 // Constants
@@ -86,7 +82,7 @@ export interface Device {
   mac_address: string | null;
   ip_address: string | null;
   hostname: string | null;
-  specs_json: string;
+  specs_json: string | Record<string, string>;
   image_url: string;
   image_thumbnail_url: string | null;
   created_at: Date;
@@ -209,7 +205,7 @@ export interface CreateDeviceRequest {
   department_id: number;
   purchase_price: number;
   purchase_date: string;
-  specs_json: string;
+  specs_json: string | Record<string, string>;
   image_url: string;
 }
 

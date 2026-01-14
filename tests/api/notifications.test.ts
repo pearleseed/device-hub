@@ -6,13 +6,13 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import { TestApiClient } from "../utils/api-client";
+import { testApiClient as api } from "../utils/api-client";
 
 // ============================================================================
 // Test Setup
 // ============================================================================
 
-const api = new TestApiClient();
+// Use the singleton API client
 
 interface Notification {
   id: number;

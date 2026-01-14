@@ -28,59 +28,59 @@ INSERT INTO departments (name, code) VALUES
 ('STG', 'STG');
 
 -- Insert Users
--- Password for all users is 'password123' (hashed using PBKDF2 with 100k iterations)
+-- Password for all users is 'password123' (hashed using Argon2id)
 -- Departments: 1=QA, 2=DEV, 3=CG, 4=ADMIN, 5=STG
 INSERT INTO users (name, email, password_hash, department_id, role, avatar_url) VALUES
 -- QA Department (Superuser and Admins)
-('System Admin', 'superuser@company.com', '0022cf9fcfdd23e880e887eefe0066bc:63786b678eef5d82c74e97d0d976c526022a9aebb58dbaadab1c41da14885179', 1, 'superuser', 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=100&h=100&fit=crop&crop=face'),
-('Alex Johnson', 'alex.johnson@company.com', '0022cf9fcfdd23e880e887eefe0066bc:63786b678eef5d82c74e97d0d976c526022a9aebb58dbaadab1c41da14885179', 1, 'admin', 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=face'),
-('James Wilson', 'james.wilson@company.com', '0022cf9fcfdd23e880e887eefe0066bc:63786b678eef5d82c74e97d0d976c526022a9aebb58dbaadab1c41da14885179', 1, 'admin', 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&h=100&fit=crop&crop=face'),
+('System Admin', 'superuser@company.com', '$argon2id$v=19$m=19456,t=2,p=1$VLjWR/Tpf/7gCZgNo4C25urAr+1PXoyeAPeF2Ub4auc$VDTkoJqYb8X3OnMvlmWQjnsek00Hq737pDIzRezR07w', 1, 'superuser', 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=100&h=100&fit=crop&crop=face'),
+('Alex Johnson', 'alex.johnson@company.com', '$argon2id$v=19$m=19456,t=2,p=1$VLjWR/Tpf/7gCZgNo4C25urAr+1PXoyeAPeF2Ub4auc$VDTkoJqYb8X3OnMvlmWQjnsek00Hq737pDIzRezR07w', 1, 'admin', 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=face'),
+('James Wilson', 'james.wilson@company.com', '$argon2id$v=19$m=19456,t=2,p=1$VLjWR/Tpf/7gCZgNo4C25urAr+1PXoyeAPeF2Ub4auc$VDTkoJqYb8X3OnMvlmWQjnsek00Hq737pDIzRezR07w', 1, 'admin', 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&h=100&fit=crop&crop=face'),
 -- DEV
-('Sarah Chen', 'sarah.chen@company.com', '0022cf9fcfdd23e880e887eefe0066bc:63786b678eef5d82c74e97d0d976c526022a9aebb58dbaadab1c41da14885179', 2, 'user', 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop&crop=face'),
-('David Kim', 'david.kim@company.com', '0022cf9fcfdd23e880e887eefe0066bc:63786b678eef5d82c74e97d0d976c526022a9aebb58dbaadab1c41da14885179', 2, 'user', 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop&crop=face'),
-('Lisa Wang', 'lisa.wang@company.com', '0022cf9fcfdd23e880e887eefe0066bc:63786b678eef5d82c74e97d0d976c526022a9aebb58dbaadab1c41da14885179', 2, 'user', 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&h=100&fit=crop&crop=face'),
+('Sarah Chen', 'sarah.chen@company.com', '$argon2id$v=19$m=19456,t=2,p=1$VLjWR/Tpf/7gCZgNo4C25urAr+1PXoyeAPeF2Ub4auc$VDTkoJqYb8X3OnMvlmWQjnsek00Hq737pDIzRezR07w', 2, 'user', 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop&crop=face'),
+('David Kim', 'david.kim@company.com', '$argon2id$v=19$m=19456,t=2,p=1$VLjWR/Tpf/7gCZgNo4C25urAr+1PXoyeAPeF2Ub4auc$VDTkoJqYb8X3OnMvlmWQjnsek00Hq737pDIzRezR07w', 2, 'user', 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop&crop=face'),
+('Lisa Wang', 'lisa.wang@company.com', '$argon2id$v=19$m=19456,t=2,p=1$VLjWR/Tpf/7gCZgNo4C25urAr+1PXoyeAPeF2Ub4auc$VDTkoJqYb8X3OnMvlmWQjnsek00Hq737pDIzRezR07w', 2, 'user', 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&h=100&fit=crop&crop=face'),
 -- CG
-('Michael Park', 'michael.park@company.com', '0022cf9fcfdd23e880e887eefe0066bc:63786b678eef5d82c74e97d0d976c526022a9aebb58dbaadab1c41da14885179', 3, 'user', 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=100&h=100&fit=crop&crop=face'),
-('Emma Rodriguez', 'emma.rodriguez@company.com', '0022cf9fcfdd23e880e887eefe0066bc:63786b678eef5d82c74e97d0d976c526022a9aebb58dbaadab1c41da14885179', 3, 'user', 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop&crop=face'),
+('Michael Park', 'michael.park@company.com', '$argon2id$v=19$m=19456,t=2,p=1$VLjWR/Tpf/7gCZgNo4C25urAr+1PXoyeAPeF2Ub4auc$VDTkoJqYb8X3OnMvlmWQjnsek00Hq737pDIzRezR07w', 3, 'user', 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=100&h=100&fit=crop&crop=face'),
+('Emma Rodriguez', 'emma.rodriguez@company.com', '$argon2id$v=19$m=19456,t=2,p=1$VLjWR/Tpf/7gCZgNo4C25urAr+1PXoyeAPeF2Ub4auc$VDTkoJqYb8X3OnMvlmWQjnsek00Hq737pDIzRezR07w', 3, 'user', 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop&crop=face'),
 -- ADMIN
-('Emily Davis', 'emily.davis@company.com', '0022cf9fcfdd23e880e887eefe0066bc:63786b678eef5d82c74e97d0d976c526022a9aebb58dbaadab1c41da14885179', 4, 'user', 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100&h=100&fit=crop&crop=face'),
-('Tom Anderson', 'tom.anderson@company.com', '0022cf9fcfdd23e880e887eefe0066bc:63786b678eef5d82c74e97d0d976c526022a9aebb58dbaadab1c41da14885179', 4, 'user', 'https://images.unsplash.com/photo-1552058544-f2b08422138a?w=100&h=100&fit=crop&crop=face'),
+('Emily Davis', 'emily.davis@company.com', '$argon2id$v=19$m=19456,t=2,p=1$VLjWR/Tpf/7gCZgNo4C25urAr+1PXoyeAPeF2Ub4auc$VDTkoJqYb8X3OnMvlmWQjnsek00Hq737pDIzRezR07w', 4, 'user', 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100&h=100&fit=crop&crop=face'),
+('Tom Anderson', 'tom.anderson@company.com', '$argon2id$v=19$m=19456,t=2,p=1$VLjWR/Tpf/7gCZgNo4C25urAr+1PXoyeAPeF2Ub4auc$VDTkoJqYb8X3OnMvlmWQjnsek00Hq737pDIzRezR07w', 4, 'user', 'https://images.unsplash.com/photo-1552058544-f2b08422138a?w=100&h=100&fit=crop&crop=face'),
 -- STG
-('Jennifer Lee', 'jennifer.lee@company.com', '0022cf9fcfdd23e880e887eefe0066bc:63786b678eef5d82c74e97d0d976c526022a9aebb58dbaadab1c41da14885179', 5, 'user', 'https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?w=100&h=100&fit=crop&crop=face'),
-('Robert Martinez', 'robert.martinez@company.com', '0022cf9fcfdd23e880e887eefe0066bc:63786b678eef5d82c74e97d0d976c526022a9aebb58dbaadab1c41da14885179', 5, 'user', 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=100&h=100&fit=crop&crop=face'),
+('Jennifer Lee', 'jennifer.lee@company.com', '$argon2id$v=19$m=19456,t=2,p=1$VLjWR/Tpf/7gCZgNo4C25urAr+1PXoyeAPeF2Ub4auc$VDTkoJqYb8X3OnMvlmWQjnsek00Hq737pDIzRezR07w', 5, 'user', 'https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?w=100&h=100&fit=crop&crop=face'),
+('Robert Martinez', 'robert.martinez@company.com', '$argon2id$v=19$m=19456,t=2,p=1$VLjWR/Tpf/7gCZgNo4C25urAr+1PXoyeAPeF2Ub4auc$VDTkoJqYb8X3OnMvlmWQjnsek00Hq737pDIzRezR07w', 5, 'user', 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=100&h=100&fit=crop&crop=face'),
 -- Additional QA
-('Amanda Foster', 'amanda.foster@company.com', '0022cf9fcfdd23e880e887eefe0066bc:63786b678eef5d82c74e97d0d976c526022a9aebb58dbaadab1c41da14885179', 1, 'user', 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=100&h=100&fit=crop&crop=face'),
-('Kevin Brown', 'kevin.brown@company.com', '0022cf9fcfdd23e880e887eefe0066bc:63786b678eef5d82c74e97d0d976c526022a9aebb58dbaadab1c41da14885179', 1, 'user', 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=100&h=100&fit=crop&crop=face'),
-('Rachel Green', 'rachel.green@company.com', '0022cf9fcfdd23e880e887eefe0066bc:63786b678eef5d82c74e97d0d976c526022a9aebb58dbaadab1c41da14885179', 1, 'admin', 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=100&h=100&fit=crop&crop=face'),
+('Amanda Foster', 'amanda.foster@company.com', '$argon2id$v=19$m=19456,t=2,p=1$VLjWR/Tpf/7gCZgNo4C25urAr+1PXoyeAPeF2Ub4auc$VDTkoJqYb8X3OnMvlmWQjnsek00Hq737pDIzRezR07w', 1, 'user', 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=100&h=100&fit=crop&crop=face'),
+('Kevin Brown', 'kevin.brown@company.com', '$argon2id$v=19$m=19456,t=2,p=1$VLjWR/Tpf/7gCZgNo4C25urAr+1PXoyeAPeF2Ub4auc$VDTkoJqYb8X3OnMvlmWQjnsek00Hq737pDIzRezR07w', 1, 'user', 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=100&h=100&fit=crop&crop=face'),
+('Rachel Green', 'rachel.green@company.com', '$argon2id$v=19$m=19456,t=2,p=1$VLjWR/Tpf/7gCZgNo4C25urAr+1PXoyeAPeF2Ub4auc$VDTkoJqYb8X3OnMvlmWQjnsek00Hq737pDIzRezR07w', 1, 'admin', 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=100&h=100&fit=crop&crop=face'),
 -- Additional DEV
-('Daniel Thompson', 'daniel.thompson@company.com', '0022cf9fcfdd23e880e887eefe0066bc:63786b678eef5d82c74e97d0d976c526022a9aebb58dbaadab1c41da14885179', 2, 'user', 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=face'),
-('Michelle Wong', 'michelle.wong@company.com', '0022cf9fcfdd23e880e887eefe0066bc:63786b678eef5d82c74e97d0d976c526022a9aebb58dbaadab1c41da14885179', 2, 'user', 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop&crop=face'),
-('Chris Taylor', 'chris.taylor@company.com', '0022cf9fcfdd23e880e887eefe0066bc:63786b678eef5d82c74e97d0d976c526022a9aebb58dbaadab1c41da14885179', 2, 'admin', 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop&crop=face'),
+('Daniel Thompson', 'daniel.thompson@company.com', '$argon2id$v=19$m=19456,t=2,p=1$VLjWR/Tpf/7gCZgNo4C25urAr+1PXoyeAPeF2Ub4auc$VDTkoJqYb8X3OnMvlmWQjnsek00Hq737pDIzRezR07w', 2, 'user', 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=face'),
+('Michelle Wong', 'michelle.wong@company.com', '$argon2id$v=19$m=19456,t=2,p=1$VLjWR/Tpf/7gCZgNo4C25urAr+1PXoyeAPeF2Ub4auc$VDTkoJqYb8X3OnMvlmWQjnsek00Hq737pDIzRezR07w', 2, 'user', 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop&crop=face'),
+('Chris Taylor', 'chris.taylor@company.com', '$argon2id$v=19$m=19456,t=2,p=1$VLjWR/Tpf/7gCZgNo4C25urAr+1PXoyeAPeF2Ub4auc$VDTkoJqYb8X3OnMvlmWQjnsek00Hq737pDIzRezR07w', 2, 'admin', 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop&crop=face'),
 -- Additional CG
-('Jessica Miller', 'jessica.miller@company.com', '0022cf9fcfdd23e880e887eefe0066bc:63786b678eef5d82c74e97d0d976c526022a9aebb58dbaadab1c41da14885179', 3, 'user', 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop&crop=face'),
-('Brian Clark', 'brian.clark@company.com', '0022cf9fcfdd23e880e887eefe0066bc:63786b678eef5d82c74e97d0d976c526022a9aebb58dbaadab1c41da14885179', 3, 'user', 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&h=100&fit=crop&crop=face'),
-('Sophia Nguyen', 'sophia.nguyen@company.com', '0022cf9fcfdd23e880e887eefe0066bc:63786b678eef5d82c74e97d0d976c526022a9aebb58dbaadab1c41da14885179', 3, 'user', 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&h=100&fit=crop&crop=face'),
+('Jessica Miller', 'jessica.miller@company.com', '$argon2id$v=19$m=19456,t=2,p=1$VLjWR/Tpf/7gCZgNo4C25urAr+1PXoyeAPeF2Ub4auc$VDTkoJqYb8X3OnMvlmWQjnsek00Hq737pDIzRezR07w', 3, 'user', 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop&crop=face'),
+('Brian Clark', 'brian.clark@company.com', '$argon2id$v=19$m=19456,t=2,p=1$VLjWR/Tpf/7gCZgNo4C25urAr+1PXoyeAPeF2Ub4auc$VDTkoJqYb8X3OnMvlmWQjnsek00Hq737pDIzRezR07w', 3, 'user', 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&h=100&fit=crop&crop=face'),
+('Sophia Nguyen', 'sophia.nguyen@company.com', '$argon2id$v=19$m=19456,t=2,p=1$VLjWR/Tpf/7gCZgNo4C25urAr+1PXoyeAPeF2Ub4auc$VDTkoJqYb8X3OnMvlmWQjnsek00Hq737pDIzRezR07w', 3, 'user', 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&h=100&fit=crop&crop=face'),
 -- Additional DEV
-('Andrew Scott', 'andrew.scott@company.com', '0022cf9fcfdd23e880e887eefe0066bc:63786b678eef5d82c74e97d0d976c526022a9aebb58dbaadab1c41da14885179', 2, 'user', 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=100&h=100&fit=crop&crop=face'),
-('Olivia Harris', 'olivia.harris@company.com', '0022cf9fcfdd23e880e887eefe0066bc:63786b678eef5d82c74e97d0d976c526022a9aebb58dbaadab1c41da14885179', 2, 'user', 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100&h=100&fit=crop&crop=face'),
+('Andrew Scott', 'andrew.scott@company.com', '$argon2id$v=19$m=19456,t=2,p=1$VLjWR/Tpf/7gCZgNo4C25urAr+1PXoyeAPeF2Ub4auc$VDTkoJqYb8X3OnMvlmWQjnsek00Hq737pDIzRezR07w', 2, 'user', 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=100&h=100&fit=crop&crop=face'),
+('Olivia Harris', 'olivia.harris@company.com', '$argon2id$v=19$m=19456,t=2,p=1$VLjWR/Tpf/7gCZgNo4C25urAr+1PXoyeAPeF2Ub4auc$VDTkoJqYb8X3OnMvlmWQjnsek00Hq737pDIzRezR07w', 2, 'user', 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100&h=100&fit=crop&crop=face'),
 -- Additional CG
-('Nathan Lee', 'nathan.lee@company.com', '0022cf9fcfdd23e880e887eefe0066bc:63786b678eef5d82c74e97d0d976c526022a9aebb58dbaadab1c41da14885179', 3, 'user', 'https://images.unsplash.com/photo-1552058544-f2b08422138a?w=100&h=100&fit=crop&crop=face'),
+('Nathan Lee', 'nathan.lee@company.com', '$argon2id$v=19$m=19456,t=2,p=1$VLjWR/Tpf/7gCZgNo4C25urAr+1PXoyeAPeF2Ub4auc$VDTkoJqYb8X3OnMvlmWQjnsek00Hq737pDIzRezR07w', 3, 'user', 'https://images.unsplash.com/photo-1552058544-f2b08422138a?w=100&h=100&fit=crop&crop=face'),
 -- Additional ADMIN
-('Victoria Adams', 'victoria.adams@company.com', '0022cf9fcfdd23e880e887eefe0066bc:63786b678eef5d82c74e97d0d976c526022a9aebb58dbaadab1c41da14885179', 4, 'user', 'https://images.unsplash.com/photo-1489424731084-a5d8b219a5bb?w=100&h=100&fit=crop&crop=face'),
-('Marcus Johnson', 'marcus.johnson@company.com', '0022cf9fcfdd23e880e887eefe0066bc:63786b678eef5d82c74e97d0d976c526022a9aebb58dbaadab1c41da14885179', 4, 'admin', 'https://images.unsplash.com/photo-1463453091185-61582044d556?w=100&h=100&fit=crop&crop=face'),
+('Victoria Adams', 'victoria.adams@company.com', '$argon2id$v=19$m=19456,t=2,p=1$VLjWR/Tpf/7gCZgNo4C25urAr+1PXoyeAPeF2Ub4auc$VDTkoJqYb8X3OnMvlmWQjnsek00Hq737pDIzRezR07w', 4, 'user', 'https://images.unsplash.com/photo-1489424731084-a5d8b219a5bb?w=100&h=100&fit=crop&crop=face'),
+('Marcus Johnson', 'marcus.johnson@company.com', '$argon2id$v=19$m=19456,t=2,p=1$VLjWR/Tpf/7gCZgNo4C25urAr+1PXoyeAPeF2Ub4auc$VDTkoJqYb8X3OnMvlmWQjnsek00Hq737pDIzRezR07w', 4, 'admin', 'https://images.unsplash.com/photo-1463453091185-61582044d556?w=100&h=100&fit=crop&crop=face'),
 -- Additional QA
-('Peter Zhang', 'peter.zhang@company.com', '0022cf9fcfdd23e880e887eefe0066bc:63786b678eef5d82c74e97d0d976c526022a9aebb58dbaadab1c41da14885179', 1, 'user', 'https://images.unsplash.com/photo-1507591064344-4c6ce005b128?w=100&h=100&fit=crop&crop=face'),
-('Linda Chen', 'linda.chen@company.com', '0022cf9fcfdd23e880e887eefe0066bc:63786b678eef5d82c74e97d0d976c526022a9aebb58dbaadab1c41da14885179', 1, 'user', 'https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=100&h=100&fit=crop&crop=face'),
+('Peter Zhang', 'peter.zhang@company.com', '$argon2id$v=19$m=19456,t=2,p=1$VLjWR/Tpf/7gCZgNo4C25urAr+1PXoyeAPeF2Ub4auc$VDTkoJqYb8X3OnMvlmWQjnsek00Hq737pDIzRezR07w', 1, 'user', 'https://images.unsplash.com/photo-1507591064344-4c6ce005b128?w=100&h=100&fit=crop&crop=face'),
+('Linda Chen', 'linda.chen@company.com', '$argon2id$v=19$m=19456,t=2,p=1$VLjWR/Tpf/7gCZgNo4C25urAr+1PXoyeAPeF2Ub4auc$VDTkoJqYb8X3OnMvlmWQjnsek00Hq737pDIzRezR07w', 1, 'user', 'https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=100&h=100&fit=crop&crop=face'),
 -- Additional STG
-('Grace Kim', 'grace.kim@company.com', '0022cf9fcfdd23e880e887eefe0066bc:63786b678eef5d82c74e97d0d976c526022a9aebb58dbaadab1c41da14885179', 5, 'admin', 'https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?w=100&h=100&fit=crop&crop=face'),
+('Grace Kim', 'grace.kim@company.com', '$argon2id$v=19$m=19456,t=2,p=1$VLjWR/Tpf/7gCZgNo4C25urAr+1PXoyeAPeF2Ub4auc$VDTkoJqYb8X3OnMvlmWQjnsek00Hq737pDIzRezR07w', 5, 'admin', 'https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?w=100&h=100&fit=crop&crop=face'),
 -- Additional QA
-('Steven Wright', 'steven.wright@company.com', '0022cf9fcfdd23e880e887eefe0066bc:63786b678eef5d82c74e97d0d976c526022a9aebb58dbaadab1c41da14885179', 1, 'user', 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&h=100&fit=crop&crop=face'),
+('Steven Wright', 'steven.wright@company.com', '$argon2id$v=19$m=19456,t=2,p=1$VLjWR/Tpf/7gCZgNo4C25urAr+1PXoyeAPeF2Ub4auc$VDTkoJqYb8X3OnMvlmWQjnsek00Hq737pDIzRezR07w', 1, 'user', 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&h=100&fit=crop&crop=face'),
 -- Additional DEV
-('Amy Liu', 'amy.liu@company.com', '0022cf9fcfdd23e880e887eefe0066bc:63786b678eef5d82c74e97d0d976c526022a9aebb58dbaadab1c41da14885179', 2, 'user', 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100&h=100&fit=crop&crop=face'),
-('Jason Park', 'jason.park@company.com', '0022cf9fcfdd23e880e887eefe0066bc:63786b678eef5d82c74e97d0d976c526022a9aebb58dbaadab1c41da14885179', 2, 'user', 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=face'),
+('Amy Liu', 'amy.liu@company.com', '$argon2id$v=19$m=19456,t=2,p=1$VLjWR/Tpf/7gCZgNo4C25urAr+1PXoyeAPeF2Ub4auc$VDTkoJqYb8X3OnMvlmWQjnsek00Hq737pDIzRezR07w', 2, 'user', 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100&h=100&fit=crop&crop=face'),
+('Jason Park', 'jason.park@company.com', '$argon2id$v=19$m=19456,t=2,p=1$VLjWR/Tpf/7gCZgNo4C25urAr+1PXoyeAPeF2Ub4auc$VDTkoJqYb8X3OnMvlmWQjnsek00Hq737pDIzRezR07w', 2, 'user', 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=face'),
 -- Additional CG
-('Diana Ross', 'diana.ross@company.com', '0022cf9fcfdd23e880e887eefe0066bc:63786b678eef5d82c74e97d0d976c526022a9aebb58dbaadab1c41da14885179', 3, 'admin', 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop&crop=face'),
-('Ryan Cooper', 'ryan.cooper@company.com', '0022cf9fcfdd23e880e887eefe0066bc:63786b678eef5d82c74e97d0d976c526022a9aebb58dbaadab1c41da14885179', 3, 'user', 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=100&h=100&fit=crop&crop=face');
+('Diana Ross', 'diana.ross@company.com', '$argon2id$v=19$m=19456,t=2,p=1$VLjWR/Tpf/7gCZgNo4C25urAr+1PXoyeAPeF2Ub4auc$VDTkoJqYb8X3OnMvlmWQjnsek00Hq737pDIzRezR07w', 3, 'admin', 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop&crop=face'),
+('Ryan Cooper', 'ryan.cooper@company.com', '$argon2id$v=19$m=19456,t=2,p=1$VLjWR/Tpf/7gCZgNo4C25urAr+1PXoyeAPeF2Ub4auc$VDTkoJqYb8X3OnMvlmWQjnsek00Hq737pDIzRezR07w', 3, 'user', 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=100&h=100&fit=crop&crop=face');
 
 -- Insert Devices
 INSERT INTO devices (name, asset_tag, category, brand, model, status, department_id, purchase_price, purchase_date, warranty_date, vendor, hostname, ip_address, mac_address, specs_json, image_url) VALUES

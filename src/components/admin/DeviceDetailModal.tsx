@@ -10,6 +10,7 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { Separator } from "@/components/ui/separator";
 import type { DeviceWithDepartment } from "@/types/api";
 import { format } from "date-fns";
+import { cn, getDeviceImageUrl, getDeviceThumbnailUrl, parseSpecs } from "@/lib/utils";
 import { useLanguage } from "@/contexts/LanguageContext";
 import {
   Cpu,
@@ -29,12 +30,6 @@ interface DeviceDetailModalProps {
   device: DeviceWithDepartment | null;
 }
 
-interface SpecItem {
-  label: string;
-  value: string;
-  icon?: React.ReactNode;
-}
-
 export const DeviceDetailModal: React.FC<DeviceDetailModalProps> = ({
   open,
   onOpenChange,
@@ -44,24 +39,18 @@ export const DeviceDetailModal: React.FC<DeviceDetailModalProps> = ({
 
   if (!device) return null;
 
-  // Parse specs_json
-  let specs: Record<string, string> = {};
-  try {
-    if (device.specs_json) {
-      specs =
-        typeof device.specs_json === "string"
-          ? JSON.parse(device.specs_json)
-          : device.specs_json;
-    }
-  } catch {
-    specs = {};
-  }
+  const specs = parseSpecs(device.specs_json);
 
   const specIcons: Record<string, React.ReactNode> = {
     processor: <Cpu className="h-4 w-4" />,
+    cpu: <Cpu className="h-4 w-4" />,
     ram: <HardDrive className="h-4 w-4" />,
+    memory: <HardDrive className="h-4 w-4" />,
     storage: <HardDrive className="h-4 w-4" />,
+    ssd: <HardDrive className="h-4 w-4" />,
+    hdd: <HardDrive className="h-4 w-4" />,
     display: <Monitor className="h-4 w-4" />,
+    screen: <Monitor className="h-4 w-4" />,
     battery: <Battery className="h-4 w-4" />,
   };
 

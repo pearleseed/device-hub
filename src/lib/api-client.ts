@@ -13,8 +13,8 @@ import type { ApiResponse } from "@/types/api";
 // Configuration
 // ============================================================================
 
-const DEFAULT_BASE_URL = "http://localhost:3001";
-const AUTH_TOKEN_KEY = "auth-token";
+// Use empty string in development to leverage Vite proxy, or VITE_API_URL for production
+const DEFAULT_BASE_URL = import.meta.env.PROD ? (import.meta.env.VITE_API_URL || "") : "";
 
 // ============================================================================
 // Error Classes
@@ -53,7 +53,6 @@ export class NetworkError extends Error {
 
 export interface ApiClientConfig {
   baseUrl: string;
-  getToken: () => string | null;
   onUnauthorized: () => void;
 }
 
@@ -68,20 +67,14 @@ export class ApiClient {
 
   constructor(config: ApiClientConfig) {
     this.baseUrl = config.baseUrl;
-    this.getToken = config.getToken;
     this.onUnauthorized = config.onUnauthorized;
   }
 
   /**
-   * Build headers for requests, including auth token if available
+   * Build headers for requests
    */
   private buildHeaders(includeContentType: boolean = false): HeadersInit {
     const headers: HeadersInit = {};
-
-    const token = this.getToken();
-    if (token) {
-      headers["Authorization"] = `Bearer ${token}`;
-    }
 
     if (includeContentType) {
       headers["Content-Type"] = "application/json";
@@ -94,17 +87,36 @@ export class ApiClient {
    * Build URL with query parameters
    */
   private buildUrl(endpoint: string, params?: Record<string, string>): string {
-    const url = new URL(endpoint, this.baseUrl);
-
-    if (params) {
-      Object.entries(params).forEach(([key, value]) => {
-        if (value !== undefined && value !== null && value !== "") {
-          url.searchParams.append(key, value);
+    // If baseUrl is empty (using proxy), just use the endpoint directly
+    let urlString: string;
+    if (this.baseUrl) {
+      const url = new URL(endpoint, this.baseUrl);
+      if (params) {
+        Object.entries(params).forEach(([key, value]) => {
+          if (value !== undefined && value !== null && value !== "") {
+            url.searchParams.append(key, value);
+          }
+        });
+      }
+      urlString = url.toString();
+    } else {
+      // Using relative URL (Vite proxy)
+      urlString = endpoint;
+      if (params) {
+        const searchParams = new URLSearchParams();
+        Object.entries(params).forEach(([key, value]) => {
+          if (value !== undefined && value !== null && value !== "") {
+            searchParams.append(key, value);
+          }
+        });
+        const queryString = searchParams.toString();
+        if (queryString) {
+          urlString += `?${queryString}`;
         }
-      });
+      }
     }
 
-    return url.toString();
+    return urlString;
   }
 
   /**
@@ -168,6 +180,7 @@ export class ApiClient {
         method,
         headers: this.buildHeaders(shouldIncludeContentType),
         body: hasBody ? JSON.stringify(options.body) : undefined,
+        credentials: "include", // Required for HttpOnly cookies
       });
 
       return await this.handleResponse<T>(response, endpoint);
@@ -268,32 +281,18 @@ export function clearUnauthorizedCallback(): void {
  * Get the base URL from environment or use default
  */
 function getBaseUrl(): string {
-  // Vite exposes env variables on import.meta.env
-  if (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_URL) {
+  // In development, use empty string to leverage Vite proxy
+  // In production, use VITE_API_URL
+  if (import.meta.env.PROD && import.meta.env.VITE_API_URL) {
     return import.meta.env.VITE_API_URL;
   }
   return DEFAULT_BASE_URL;
 }
 
 /**
- * Get the auth token from localStorage
- */
-function getToken(): string | null {
-  if (typeof window === "undefined") {
-    return null;
-  }
-  return localStorage.getItem(AUTH_TOKEN_KEY);
-}
-
-/**
  * Handle unauthorized response
  */
 function handleUnauthorized(): void {
-  // Clear the token
-  if (typeof window !== "undefined") {
-    localStorage.removeItem(AUTH_TOKEN_KEY);
-  }
-
   // Call the registered callback if available
   if (unauthorizedCallback) {
     unauthorizedCallback();
@@ -305,35 +304,5 @@ function handleUnauthorized(): void {
  */
 export const apiClient = new ApiClient({
   baseUrl: getBaseUrl(),
-  getToken,
   onUnauthorized: handleUnauthorized,
 });
-
-// ============================================================================
-// Token Management Utilities
-// ============================================================================
-
-/**
- * Store the auth token in localStorage
- */
-export function setAuthToken(token: string): void {
-  if (typeof window !== "undefined") {
-    localStorage.setItem(AUTH_TOKEN_KEY, token);
-  }
-}
-
-/**
- * Remove the auth token from localStorage
- */
-export function clearAuthToken(): void {
-  if (typeof window !== "undefined") {
-    localStorage.removeItem(AUTH_TOKEN_KEY);
-  }
-}
-
-/**
- * Check if an auth token exists
- */
-export function hasAuthToken(): boolean {
-  return getToken() !== null;
-}

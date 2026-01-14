@@ -11,7 +11,7 @@ vi.mock("../../server/db/connection", () => ({
 
 vi.mock("../../server/services/audit-logger", () => ({
   auditLogger: {
-    log: vi.fn(),
+    log: vi.fn().mockResolvedValue(undefined),
     createActorFromPayload: vi.fn(),
   },
 }));
@@ -52,20 +52,12 @@ describe("returnsRoutes.updateCondition", () => {
     // Call 3: Update devices (ignored return)
     // Call 4: Select updated return request
 
-    dbMock.mockImplementation((strings, ...values) => {
-      const query = strings.join("?");
+    dbMock.mockImplementation(async (strings, ...values) => {
+      const query = typeof strings === 'string' ? strings : strings.join("?");
       if (query.includes("SELECT * FROM v_return_details")) {
-        // Return existing or updated depending on context? 
-        // For simplicity, return mockReturnRequest always or updated one
-        return Promise.resolve([mockReturnRequest]);
+        return [mockReturnRequest];
       }
-      if (query.includes("UPDATE return_requests")) {
-        return Promise.resolve([]);
-      }
-      if (query.includes("UPDATE devices")) {
-        return Promise.resolve([]);
-      }
-      return Promise.resolve([]);
+      return [];
     });
 
     const response = await returnsRoutes.updateCondition(req, { id: "1" });
@@ -75,7 +67,11 @@ describe("returnsRoutes.updateCondition", () => {
     expect(data.success).toBe(true);
     
     // Verify db calls
-    expect(dbMock).toHaveBeenCalledTimes(4); // Select, Update RR, Update Device, Select Updated
+    // 1. SELECT return request
+    // 2. UPDATE return_requests
+    // 3. UPDATE devices (since mockReturnRequest has device_id)
+    // 4. SELECT updated
+    expect(dbMock).toHaveBeenCalledTimes(4);
   });
 
   it("should warn and skip device update if device_id is missing", async () => {
@@ -93,12 +89,12 @@ describe("returnsRoutes.updateCondition", () => {
       
     const dbMock = db as unknown as Mock;
       
-      dbMock.mockImplementation((strings, ...values) => {
-        const query = strings.join("?");
+      dbMock.mockImplementation(async (strings, ...values) => {
+        const query = typeof strings === 'string' ? strings : strings.join("?");
         if (query.includes("SELECT * FROM v_return_details")) {
-          return Promise.resolve([mockReturnRequestNoDevice]);
+          return [mockReturnRequestNoDevice];
         }
-        return Promise.resolve([]);
+        return [];
       });
   
       const consoleSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
@@ -110,10 +106,14 @@ describe("returnsRoutes.updateCondition", () => {
       
       // Verify Update Device was NOT called (Update RR is called, Select calls)
       // We expect 3 calls: Select, Update RR, Select Updated. (Missing Update Device)
-      // Actually, we must check if UPDATE devices was called.
+      expect(dbMock).toHaveBeenCalledTimes(3);
       
       const calls = dbMock.mock.calls;
-      const updateDeviceCall = calls.find(call => call[0].join("?").includes("UPDATE devices"));
+      const updateDeviceCall = calls.find(call => {
+        const query = typeof call[0] === 'string' ? call[0] : call[0].join("?");
+        return query.includes("UPDATE devices");
+      });
       expect(updateDeviceCall).toBeUndefined();
+      consoleSpy.mockRestore();
   });
 });

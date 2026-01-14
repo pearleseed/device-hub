@@ -6,7 +6,7 @@
  */
 
 import type { ApiResponse, UserPublic } from "../../src/types/api";
-import { TEST_CONFIG, TEST_USERS } from "../setup";
+import { TEST_CONFIG, TEST_USERS } from "../test-config";
 
 // ============================================================================
 // Types
@@ -29,22 +29,21 @@ export interface LoginResult {
 
 export class TestApiClient {
   private baseUrl: string;
+  private authToken: string | null = null;
 
   constructor(baseUrl: string = TEST_CONFIG.API_BASE_URL) {
     this.baseUrl = baseUrl;
   }
 
-  /**
-   * Build headers for requests
-   */
   private buildHeaders(
     token?: string,
     includeContentType: boolean = false,
   ): HeadersInit {
-    const headers: HeadersInit = {};
+    const headers: Record<string, string> = {};
 
-    if (token) {
-      headers["Authorization"] = `Bearer ${token}`;
+    const activeToken = token || this.authToken;
+    if (activeToken) {
+      headers["Cookie"] = `auth_token=${activeToken}`;
     }
 
     if (includeContentType) {
@@ -90,6 +89,10 @@ export class TestApiClient {
       method,
       headers: this.buildHeaders(options.token, hasBody),
       body: hasBody ? JSON.stringify(options.body) : undefined,
+      // @ts-ignore - Bun-specific fetch option
+      tls: {
+        rejectUnauthorized: false,
+      },
     });
 
     const data = (await response.json()) as ApiResponse<T>;
@@ -169,14 +172,20 @@ export class TestApiClient {
       error?: string;
     };
 
-    if (!authResponse.success || !authResponse.token || !authResponse.user) {
-      throw new Error(authResponse.error || "Login failed");
+    // Extract token from Set-Cookie header
+    const setCookie = response.headers.get("set-cookie");
+    if (setCookie) {
+      const match = setCookie.match(/auth_token=([^;]+)/);
+      if (match && authResponse.user) {
+        this.authToken = match[1];
+        return {
+          token: match[1],
+          user: authResponse.user,
+        };
+      }
     }
 
-    return {
-      token: authResponse.token,
-      user: authResponse.user,
-    };
+    throw new Error("Login failed: No auth cookie received");
   }
 
   /**
@@ -201,6 +210,20 @@ export class TestApiClient {
    */
   async loginAsUser(): Promise<LoginResult> {
     return this.login(TEST_USERS.user.email, TEST_USERS.user.password);
+  }
+
+  /**
+   * Clear authentication token
+   */
+  clearAuth(): void {
+    this.authToken = null;
+  }
+
+  /**
+   * Set authentication token manually
+   */
+  setToken(token: string | null): void {
+    this.authToken = token;
   }
 }
 

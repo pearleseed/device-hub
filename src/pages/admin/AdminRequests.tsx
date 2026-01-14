@@ -701,9 +701,9 @@ const AdminRequests: React.FC = () => {
           <div className="flex items-center justify-between mb-8">
             <div>
               <h1 className="text-2xl font-bold">{t("requests.title")}</h1>
-              <p className="text-muted-foreground">{t("requests.subtitle")}</p>
+              {/* <p className="text-muted-foreground">{t("requests.subtitle")}</p> */}
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 py-2">
               <Button variant="outline" size="sm" onClick={handleExportCSV}>
                 <Download className="h-4 w-4 mr-1" /> {t("requests.export")}
               </Button>

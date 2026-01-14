@@ -515,7 +515,7 @@ describe("Scenario: Multiple Users Competing for Same Device", () => {
     );
     // Should fail due to booking conflict
     expect(secondResponse.status).toBe(400);
-    expect(secondResponse.data.error).toContain("booked");
+    expect(secondResponse.data.error).toContain("already booked");
 
     // Step 4: Second user requests for non-overlapping dates
     const nonOverlappingRequest = createBorrowRequest({

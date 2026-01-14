@@ -35,84 +35,79 @@ export async function notifyAdmins(type: NotificationType, title: string, messag
 export const inAppNotificationsRoutes = {
   async getAll(request: Request): Promise<Response> {
     return withAuth(request, async (payload) => {
-      try {
-        const url = new URL(request.url);
-        const unreadOnly = url.searchParams.get("unread") === "true";
-        const limit = +(url.searchParams.get("limit") || 50);
-        const offset = +(url.searchParams.get("offset") || 0);
-
-        const notifications = unreadOnly
-          ? await db<NotificationWithDetails[]>`SELECT * FROM v_notification_details WHERE user_id = ${payload.userId} AND is_read = FALSE ORDER BY created_at DESC LIMIT ${limit} OFFSET ${offset}`
-          : await db<NotificationWithDetails[]>`SELECT * FROM v_notification_details WHERE user_id = ${payload.userId} ORDER BY created_at DESC LIMIT ${limit} OFFSET ${offset}`;
-
-        const [countRes] = await db<{ count: number }[]>`SELECT COUNT(*) as count FROM notifications WHERE user_id = ${payload.userId} AND is_read = FALSE`;
-        return json({ success: true, data: notifications.map(n => ({ ...n, is_read: Boolean(n.is_read) })), unreadCount: Number(countRes?.count || 0) });
-      } catch (e) { console.error("Get notifications error:", e); return err("Failed to get notifications", 500); }
+      const url = new URL(request.url);
+      const { unread, limit, offset } = Object.fromEntries(url.searchParams);
+      let sql = "SELECT * FROM v_notification_details WHERE user_id = ?";
+      const params: unknown[] = [payload.userId];
+      if (unread === "true") sql += " AND is_read = FALSE";
+      sql += " ORDER BY created_at DESC";
+      if (limit) { sql += " LIMIT ?"; params.push(+limit); }
+      if (offset) { sql += " OFFSET ?"; params.push(+offset); }
+      const notifications = await db.unsafe<NotificationWithDetails[]>(sql, params);
+      const [unreadResult] = await db<{ count: number }[]>`SELECT COUNT(*) as count FROM notifications WHERE user_id = ${payload.userId} AND is_read = FALSE`;
+      
+      const mapped = notifications.map(n => ({ ...n, is_read: !!n.is_read }));
+      return json({ 
+        success: true, 
+        data: mapped, 
+        unreadCount: unreadResult.count 
+      });
     });
   },
 
   async getUnreadCount(request: Request): Promise<Response> {
     return withAuth(request, async (payload) => {
-      try {
-        const [res] = await db<{ count: number }[]>`SELECT COUNT(*) as count FROM notifications WHERE user_id = ${payload.userId} AND is_read = FALSE`;
-        return ok({ unreadCount: Number(res?.count || 0) });
-      } catch (e) { console.error("Get unread count error:", e); return err("Failed to get unread count", 500); }
+      const [result] = await db<{ count: number }[]>`SELECT COUNT(*) as count FROM notifications WHERE user_id = ${payload.userId} AND is_read = FALSE`;
+      return ok({ unreadCount: result.count });
     });
   },
 
   async markAsRead(request: Request, params: Record<string, string>): Promise<Response> {
     return withAuth(request, async (payload) => {
-      try {
-        const id = parseId(params.id);
-        if (!id) return err("Invalid notification ID");
-        const [existing] = await db<Notification[]>`SELECT * FROM notifications WHERE id = ${id} AND user_id = ${payload.userId}`;
-        if (!existing) return notFound("Notification");
-        await db`UPDATE notifications SET is_read = TRUE WHERE id = ${id}`;
-        return ok(null, "Notification marked as read");
-      } catch (e) { console.error("Mark as read error:", e); return err("Failed to mark notification as read", 500); }
+      const id = parseId(params.id);
+      if (!id) return err("Invalid notification ID");
+      const [notif] = await db<Notification[]>`SELECT * FROM notifications WHERE id = ${id}`;
+      if (!notif) return notFound("Notification");
+      if (notif.user_id !== payload.userId) return notFound("Notification");
+      await db`UPDATE notifications SET is_read = TRUE WHERE id = ${id}`;
+      return ok(null, "Notification marked as read");
     });
   },
 
   async markAllAsRead(request: Request): Promise<Response> {
     return withAuth(request, async (payload) => {
-      try {
-        await db`UPDATE notifications SET is_read = TRUE WHERE user_id = ${payload.userId} AND is_read = FALSE`;
-        return ok(null, "All notifications marked as read");
-      } catch (e) { console.error("Mark all as read error:", e); return err("Failed to mark all notifications as read", 500); }
+      await db`UPDATE notifications SET is_read = TRUE WHERE user_id = ${payload.userId}`;
+      return ok(null, "All notifications marked as read");
     });
   },
 
   async delete(request: Request, params: Record<string, string>): Promise<Response> {
     return withAuth(request, async (payload) => {
-      try {
-        const id = parseId(params.id);
-        if (!id) return err("Invalid notification ID");
-        const [existing] = await db<Notification[]>`SELECT * FROM notifications WHERE id = ${id} AND user_id = ${payload.userId}`;
-        if (!existing) return notFound("Notification");
-        await db`DELETE FROM notifications WHERE id = ${id}`;
-        return ok(null, "Notification deleted");
-      } catch (e) { console.error("Delete notification error:", e); return err("Failed to delete notification", 500); }
+      const id = parseId(params.id);
+      if (!id) return err("Invalid notification ID");
+      const [notif] = await db<Notification[]>`SELECT * FROM notifications WHERE id = ${id}`;
+      if (!notif) return notFound("Notification");
+      if (notif.user_id !== payload.userId) return notFound("Notification");
+      await db`DELETE FROM notifications WHERE id = ${id}`;
+      return ok(null, "Notification deleted");
     });
   },
 
   async clearAll(request: Request): Promise<Response> {
     return withAuth(request, async (payload) => {
-      try {
-        await db`DELETE FROM notifications WHERE user_id = ${payload.userId}`;
-        return ok(null, "All notifications cleared");
-      } catch (e) { console.error("Clear all notifications error:", e); return err("Failed to clear notifications", 500); }
+      await db`DELETE FROM notifications WHERE user_id = ${payload.userId}`;
+      return ok(null, "All notifications cleared");
     });
   },
 
   async create(request: Request): Promise<Response> {
-    return withAdmin(request, async () => {
-      try {
-        const body: CreateNotificationRequest = await request.json();
-        if (!body.user_id || !body.type || !body.title || !body.message) return err("user_id, type, title, and message are required");
-        const notification = await createNotification(body);
-        if (!notification) return err("Failed to create notification", 500);
-        return created({ ...notification, is_read: Boolean(notification.is_read) });
-      } catch (e) { console.error("Create notification error:", e); return err("Failed to create notification", 500); }
+    return withAdmin(request, async (payload) => {
+      const body = await request.json();
+      const { user_id, type, title, message, link, related_request_id, related_device_id } = body;
+      if (!user_id || !type || !title || !message) return err("Required fields missing");
+      const notification = await createNotification({ user_id, type, title, message, link, related_request_id, related_device_id });
+      if (!notification) return err("Failed to create notification", 500);
+      return created(notification, "Notification created");
     });
   },
 };

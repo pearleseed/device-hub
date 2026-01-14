@@ -32,13 +32,15 @@ import {
 } from "@/components/ui/collapsible";
 import { useDevice, useDevices } from "@/hooks/use-api-queries";
 import { useCreateBorrowRequest } from "@/hooks/use-api-mutations";
-import { cn, getDeviceImageUrl, getDeviceThumbnailUrl } from "@/lib/utils";
+import { cn, getDeviceImageUrl, getDeviceThumbnailUrl, parseSpecs } from "@/lib/utils";
 import { getCategoryIcon } from "@/lib/constants";
 import { useToast } from "@/hooks/use-toast";
 import { useFavorites } from "@/hooks/use-favorites";
 import { useRecentlyViewed } from "@/hooks/use-recently-viewed";
 import type { DateRange } from "react-day-picker";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useAuth } from "@/contexts/AuthContext";
+import { useSearchParams } from "react-router-dom";
 import {
   ArrowLeft,
   CalendarIcon,
@@ -59,7 +61,13 @@ import {
   ChevronDown,
   CalendarDays,
   X,
+  ArrowLeftRight,
+  CalendarClock,
 } from "lucide-react";
+
+import { useUserBorrowRequests } from "@/hooks/use-api-queries";
+import { ReturnDeviceForm } from "@/components/forms/ReturnDeviceForm";
+import { RenewalRequestForm } from "@/components/forms/RenewalRequestForm";
 
 type PageStep = "details" | "confirm" | "success";
 
@@ -355,6 +363,7 @@ const DeviceDetail: React.FC = () => {
   const { isFavorite, toggleFavorite } = useFavorites();
   const { addToRecentlyViewed } = useRecentlyViewed();
   const { t } = useLanguage();
+  const { user } = useAuth();
 
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const [reason, setReason] = useState("");
@@ -365,9 +374,45 @@ const DeviceDetail: React.FC = () => {
   const deviceId = id ? parseInt(id, 10) : 0;
   const { data: device, isLoading } = useDevice(deviceId);
   const { data: allDevices = [] } = useDevices();
+  const { data: userBorrowRequests = [] } = useUserBorrowRequests(user?.id ?? 0);
   
   // Mutation hook for creating borrow request
   const createBorrowRequest = useCreateBorrowRequest();
+
+  // Find active loan for this device
+  const activeLoan = useMemo(() => {
+    if (!device) return null;
+    return userBorrowRequests.find(r => 
+      r.device_id === device.id && 
+      (r.status === 'active' || r.status === 'pending' || r.status === 'approved')
+    );
+  }, [device, userBorrowRequests]);
+
+
+  const [returnModalOpen, setReturnModalOpen] = useState(false);
+  const [renewalModalOpen, setRenewalModalOpen] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const actionParam = searchParams.get("action");
+  
+  // Local state for active internal view - sync with URL or use as override
+  const [activeAction, setActiveAction] = useState<"return" | "renew" | null>(null);
+
+  // Sync state with URL param
+  React.useEffect(() => {
+    if (actionParam === "return") setActiveAction("return");
+    else if (actionParam === "renew") setActiveAction("renew");
+    else setActiveAction(null);
+  }, [actionParam]);
+
+  // Handler to update URL and state
+  const handleActionChange = (action: "return" | "renew" | null) => {
+    setActiveAction(action);
+    if (action) {
+      setSearchParams({ action });
+    } else {
+      setSearchParams({});
+    }
+  };
 
   // Track view
   React.useEffect(() => {
@@ -399,13 +444,7 @@ const DeviceDetail: React.FC = () => {
   }, [device, allDevices]);
 
   // Parse specs from JSON string - must be before early returns to maintain hooks order
-  const specs = useMemo(() => {
-    try {
-      return device?.specs_json ? JSON.parse(device.specs_json) : {};
-    } catch {
-      return {};
-    }
-  }, [device]);
+  const specs = useMemo(() => parseSpecs(device?.specs_json), [device?.specs_json]);
 
   // Show loading state while fetching
   if (isLoading) {
@@ -445,13 +484,6 @@ const DeviceDetail: React.FC = () => {
       </div>
     );
   }
-
-  const specItems = [
-    { icon: Cpu, label: t("deviceDetail.processor"), value: specs.processor },
-    { icon: HardDrive, label: t("deviceDetail.storage"), value: specs.storage },
-    { icon: Monitor, label: t("deviceDetail.display"), value: specs.display },
-    { icon: Battery, label: t("deviceDetail.battery"), value: specs.battery },
-  ].filter((item) => item.value);
 
   const loanDuration =
     dateRange?.from && dateRange?.to
@@ -864,38 +896,29 @@ const DeviceDetail: React.FC = () => {
                   </div>
                 )}
                 <div className="grid sm:grid-cols-2 gap-4">
-                  {specItems.map((item, index) => (
-                    <div
-                      key={index}
-                      className="flex items-center gap-3 p-3 bg-secondary rounded-lg"
-                    >
-                      <item.icon className="h-5 w-5 text-muted-foreground shrink-0" />
-                      <div className="min-w-0">
-                        <p className="text-xs text-muted-foreground">
-                          {item.label}
-                        </p>
-                        <p className="font-medium truncate">{item.value}</p>
+                  {Object.entries(specs).map(([key, value]) => {
+                    if (!value || key.toLowerCase() === "os") return null;
+                    const Icon = key.toLowerCase().includes("cpu") || key.toLowerCase().includes("processor") ? Cpu :
+                                 key.toLowerCase().includes("storage") || key.toLowerCase().includes("ssd") || key.toLowerCase().includes("hdd") ? HardDrive :
+                                 key.toLowerCase().includes("display") || key.toLowerCase().includes("screen") || key.toLowerCase().includes("resolution") ? Monitor :
+                                 key.toLowerCase().includes("battery") ? Battery : Cpu;
+                    
+                    return (
+                      <div
+                        key={key}
+                        className="flex items-center gap-3 p-3 bg-secondary rounded-lg"
+                      >
+                        <Icon className="h-5 w-5 text-muted-foreground shrink-0" />
+                        <div className="min-w-0">
+                          <p className="text-xs text-muted-foreground capitalize">
+                            {key.replace(/_/g, " ")}
+                          </p>
+                          <p className="font-medium truncate" title={value}>{value}</p>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
-
-                {/* RAM if available */}
-                {specs.ram && (
-                  <div className="mt-4 flex items-center gap-3 p-3 bg-secondary rounded-lg">
-                    <div className="h-5 w-5 flex items-center justify-center text-muted-foreground shrink-0">
-                      <span className="text-xs font-bold">
-                        {t("deviceDetail.ram")}
-                      </span>
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-xs text-muted-foreground">
-                        {t("deviceDetail.memory")}
-                      </p>
-                      <p className="font-medium">{specs.ram}</p>
-                    </div>
-                  </div>
-                )}
               </CardContent>
             </Card>
 
@@ -991,7 +1014,78 @@ const DeviceDetail: React.FC = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="p-4">
-                  {device.status === "available" ? (
+                  {activeLoan ? (
+                    <div className="space-y-6 py-2">
+                       {/* Header Status */}
+                       <div className="text-center">
+                        <div className={cn(
+                          "w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3",
+                          activeAction === 'return' ? "bg-blue-100 dark:bg-blue-900/30" :
+                          activeAction === 'renew' ? "bg-purple-100 dark:bg-purple-900/30" :
+                          "bg-emerald-100 dark:bg-emerald-900/30"
+                        )}>
+                          {activeAction === 'return' ? (
+                            <ArrowLeftRight className="h-8 w-8 text-blue-600 dark:text-blue-400" />
+                          ) : activeAction === 'renew' ? (
+                            <CalendarClock className="h-8 w-8 text-purple-600 dark:text-purple-400" />
+                          ) : (
+                            <CheckCircle2 className="h-8 w-8 text-emerald-600 dark:text-emerald-400" />
+                          )}
+                        </div>
+                        <h3 className="font-semibold text-lg mb-1">
+                          {activeAction === 'return' ? t("loans.returnDeviceTitle") :
+                           activeAction === 'renew' ? t("loans.requestRenewalTitle") :
+                           t("loans.currentlyBorrowed")}
+                        </h3>
+                        <p className="text-sm text-muted-foreground mb-4">
+                          {t("loans.due")}: {format(new Date(activeLoan.end_date), "MMM d, yyyy")}
+                        </p>
+                      </div>
+
+                      {/* Content based on action */}
+                      {activeAction === 'return' ? (
+                        <div className="animate-fade-in">
+                          <ReturnDeviceForm 
+                            loan={activeLoan} 
+                            onSuccess={() => {
+                              toast({ description: t("loans.returnRequestSubmitted") });
+                              handleActionChange(null);
+                            }}
+                            onCancel={() => handleActionChange(null)}
+                          />
+                        </div>
+                      ) : activeAction === 'renew' ? (
+                        <div className="animate-fade-in">
+                          <RenewalRequestForm 
+                            loan={activeLoan} 
+                            onSuccess={() => {
+                              toast({ description: t("loans.renewalRequestSubmitted") });
+                              handleActionChange(null);
+                            }}
+                            onCancel={() => handleActionChange(null)}
+                          />
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 gap-3 animate-fade-in">
+                           <Button 
+                            className="w-full" 
+                            onClick={() => handleActionChange('return')}
+                          >
+                            <ArrowLeftRight className="h-4 w-4 mr-2" />
+                            {t("loans.returnDevice")}
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            className="w-full"
+                            onClick={() => handleActionChange('renew')}
+                          >
+                            <CalendarClock className="h-4 w-4 mr-2" />
+                            {t("loans.requestRenewal")}
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  ) : device.status === "available" ? (
                     <div className="space-y-4">
                       {/* Quick Date Presets */}
                       <div>

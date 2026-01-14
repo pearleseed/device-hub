@@ -1,56 +1,74 @@
-import type { JWTPayload, UserRole } from "../types";
+import { SignJWT, jwtVerify } from "jose";
+import { z } from "zod";
+import { db } from "../db/connection";
+import type { JWTPayload, UserRole, User } from "../types";
 
-const JWT_SECRET = process.env.JWT_SECRET || "device-hub-secret-key-change-in-production";
-const JWT_EXPIRY = { default: 24 * 60 * 60, rememberMe: 30 * 24 * 60 * 60 };
-const PBKDF2_ITERATIONS = 100000;
+const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || "device-hub-secret-key-change-in-production");
+const JWT_ALG = "HS256";
+const EXP = { DEFAULT: "24h", REMEMBER: "30d" };
 
-const b64Encode = (s: string) => Buffer.from(s).toString("base64url");
-const b64Decode = (s: string) => Buffer.from(s, "base64url").toString("utf-8");
-
-const createSignature = async (data: string): Promise<string> => {
-  const enc = new TextEncoder();
-  const key = await crypto.subtle.importKey("raw", enc.encode(JWT_SECRET), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
-  return Buffer.from(await crypto.subtle.sign("HMAC", key, enc.encode(data))).toString("base64url");
-};
+const PayloadSchema = z.object({
+  userId: z.number(),
+  email: z.string(),
+  role: z.enum(["superuser", "admin", "user"]),
+});
 
 export async function generateToken(userId: number, email: string, role: UserRole, rememberMe = false): Promise<string> {
-  const header = b64Encode(JSON.stringify({ alg: "HS256", typ: "JWT" }));
-  const payload = b64Encode(JSON.stringify({ userId, email, role, exp: Math.floor(Date.now() / 1000) + (rememberMe ? JWT_EXPIRY.rememberMe : JWT_EXPIRY.default) }));
-  return `${header}.${payload}.${await createSignature(`${header}.${payload}`)}`;
+  return new SignJWT({ userId, email, role })
+    .setProtectedHeader({ alg: JWT_ALG })
+    .setIssuedAt()
+    .setExpirationTime(rememberMe ? EXP.REMEMBER : EXP.DEFAULT)
+    .sign(JWT_SECRET);
 }
 
 export async function verifyToken(token: string): Promise<JWTPayload | null> {
   try {
-    const [h, p, sig] = token.split(".");
-    if (!h || !p || !sig || await createSignature(`${h}.${p}`) !== sig) return null;
-    const payload: JWTPayload = JSON.parse(b64Decode(p));
-    return payload.exp >= Math.floor(Date.now() / 1000) ? payload : null;
-  } catch { return null; }
+    const { payload: jwtPayload } = await jwtVerify(token, JWT_SECRET, { algorithms: [JWT_ALG] });
+    const parsed = PayloadSchema.safeParse(jwtPayload);
+
+    if (!parsed.success) {
+      console.log("[AUTH] Invalid token payload format:", parsed.error);
+      return null;
+    }
+
+    const payload = parsed.data;
+    const [user] = await db<User[]>`SELECT id, email, role, department_id FROM users WHERE id = ${payload.userId} AND is_active = TRUE`;
+    
+    if (!user) {
+      console.log("[AUTH] User not found or inactive:", payload.userId);
+      return null;
+    }
+
+    return { 
+      userId: user.id, 
+      role: user.role, 
+      email: user.email, 
+      departmentId: user.department_id,
+      exp: (jwtPayload.exp as number) || 0
+    };
+  } catch (e) {
+    console.error("[AUTH] Authentication error:", e);
+    return null;
+  }
 }
 
-const derivePBKDF2 = async (password: string, salt: Uint8Array | Buffer): Promise<ArrayBuffer> => {
-  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(password), "PBKDF2", false, ["deriveBits"]);
-  const saltBuffer = salt instanceof Buffer ? new Uint8Array(salt) : salt;
-  return crypto.subtle.deriveBits({ name: "PBKDF2", salt: saltBuffer as BufferSource, iterations: PBKDF2_ITERATIONS, hash: "SHA-256" }, key, 256);
-};
-
 export async function hashPassword(password: string): Promise<string> {
-  const salt = crypto.getRandomValues(new Uint8Array(16));
-  const hash = await derivePBKDF2(password, salt);
-  return `${Buffer.from(salt).toString("hex")}:${Buffer.from(hash).toString("hex")}`;
+  return Bun.password.hash(password, { algorithm: "argon2id", memoryCost: 19456, timeCost: 2 });
 }
 
 export async function verifyPassword(password: string, storedHash: string): Promise<boolean> {
-  try {
-    const [saltHex, hashHex] = storedHash.split(":");
-    const computed = await derivePBKDF2(password, Buffer.from(saltHex, "hex"));
-    return Buffer.from(computed).toString("hex") === hashHex;
-  } catch { return false; }
+  return Bun.password.verify(password, storedHash);
 }
 
 export const extractToken = (req: Request): string | null => {
-  const auth = req.headers.get("Authorization");
-  return auth?.startsWith("Bearer ") ? auth.slice(7) : null;
+  const cookieHeader = req.headers.get("Cookie");
+  if (cookieHeader) {
+    const match = cookieHeader.match(/auth_token=([^;]+)/);
+    return match ? match[1] : null;
+  }
+  const authHeader = req.headers.get("Authorization");
+  if (authHeader?.startsWith("Bearer ")) return authHeader.substring(7);
+  return null;
 };
 
 export const authenticateRequest = async (req: Request): Promise<JWTPayload | null> => {

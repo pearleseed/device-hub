@@ -19,13 +19,8 @@ export type RequestStatus =
 export type DeviceCondition = "excellent" | "good" | "fair" | "damaged";
 export type RenewalStatus = "pending" | "approved" | "rejected";
 
-// Department name ENUM for dropdown selection
-export type DepartmentName =
-  | "QA"
-  | "DEV"
-  | "CG"
-  | "ADMIN"
-  | "STG";
+// Department name is now a string to allow dynamic creation
+export type DepartmentName = string;
 
 export const DEPARTMENT_NAMES: DepartmentName[] = [
   "QA",
@@ -226,6 +221,7 @@ export interface JWTPayload {
   userId: number;
   email: string;
   role: UserRole;
+  departmentId: number;
   exp: number;
 }
 

@@ -22,6 +22,7 @@ export const vi: TranslationData = {
   "common.dateFormatLong": "EEEE, 'ngày' d MMMM, yyyy",
   "common.dateFormatMedium": "d MMM, yyyy",
   "common.dateFormatShort": "d MMM",
+  "common.dateFormatWithWeekday": "EEEE, 'ngày' d MMMM",
   "common.search": "Tìm kiếm",
   "common.add": "Thêm",
   "common.edit": "Sửa",
@@ -40,8 +41,11 @@ export const vi: TranslationData = {
   "common.profile": "Hồ sơ",
   "common.selectAll": "Chọn tất cả",
   "common.deselectAll": "Bỏ chọn tất cả",
+  "common.selected": "đã chọn",
   "common.more": "thêm",
+  "common.due": "Hạn trả",
   "common.clearAll": "Xóa tất cả",
+  "common.apply": "Áp dụng",
   "common.back": "Quay lại",
   "common.next": "Tiếp theo",
   "common.done": "Hoàn tất",
@@ -64,6 +68,7 @@ export const vi: TranslationData = {
   "common.administration": "Hành chính",
   "common.perPage": "Mỗi trang",
   "common.catalog": "Danh mục",
+  "common.pickDate": "Chọn ngày",
 
   // Months
   "months.jan": "Th1",
@@ -170,6 +175,7 @@ export const vi: TranslationData = {
   "inventory.assignedTo": "Giao cho",
   "inventory.searchDevices": "Tìm thiết bị...",
   "inventory.noDevicesFound": "Không tìm thấy thiết bị",
+  "inventory.noMatchingDevices": "Không tìm thấy thiết bị nào khớp với bộ lọc.",
   "inventory.addFirstDevice": "Thêm thiết bị đầu tiên để bắt đầu",
   "inventory.deviceAdded": "Đã thêm thiết bị",
   "inventory.deviceUpdated": "Đã cập nhật thiết bị",
@@ -332,12 +338,7 @@ export const vi: TranslationData = {
   "requests.renewalRequests": "Yêu cầu Gia hạn",
   "requests.export": "Xuất",
   "requests.invalidTransitionTitle": "Chuyển đổi không hợp lệ",
-  "requests.error.invalidStatusChange":
-    "Không thể chuyển từ {{from}} sang {{to}}.",
-  "requests.error.cannotChangeReturned": "Yêu cầu đã trả không thể thay đổi.",
-  "requests.error.cannotChangeRejected":
-    "Yêu cầu đã từ chối không thể thay đổi.",
-  "requests.error.pendingApproval": "Yêu cầu chờ phải được duyệt trước.",
+
   "requests.conditionChangedTo": "Tình trạng thiết bị đã thay đổi thành",
   "requests.conditionUpdatedTitle": "Đã cập nhật tình trạng",
   "requests.statusUpdatedTitle": "Đã cập nhật trạng thái",
@@ -366,6 +367,9 @@ export const vi: TranslationData = {
   "calendar.filters": "Bộ lọc",
   "calendar.categories": "Danh mục",
   "calendar.devices": "Thiết bị",
+  "calendar.searchDevices": "Tìm kiếm thiết bị...",
+  "calendar.noDevicesFound": "Không tìm thấy thiết bị",
+  "calendar.devicesSelected": "thiết bị đã chọn",
   "calendar.device": "Thiết bị",
   "calendar.selectDate": "Chọn ngày",
   "calendar.noBookingsForDate": "Không có đặt chỗ cho ngày này",
@@ -786,6 +790,28 @@ export const vi: TranslationData = {
   "requestStatus.overdue": "Quá hạn",
   "requestStatus.cancelled": "Đã hủy",
 
+  // Requests Actions
+  "requests.approve": "Phê duyệt",
+  "requests.reject": "Từ chối",
+  "requests.approveRequest": "Phê duyệt yêu cầu",
+  "requests.rejectRequest": "Từ chối yêu cầu",
+  "requests.activate": "Kích hoạt",
+  "requests.confirmApprove": "Phê duyệt yêu cầu cho {{device}}?",
+  "requests.confirmReject": "Từ chối yêu cầu cho {{device}}?",
+  "requests.actions": "Hành động",
+  "requests.error.cannotChangeReturned": "Không thể thay đổi trạng thái yêu cầu đã trả",
+  "requests.error.cannotChangeRejected": "Không thể thay đổi trạng thái yêu cầu đã từ chối",
+  "requests.error.pendingApproval": "Yêu cầu phải được phê duyệt trước khi kích hoạt",
+  "requests.error.pendingToReturned": "Yêu cầu đang chờ không thể trả ngay",
+  "requests.error.approvedToPending": "Yêu cầu đã duyệt không thể quay lại chờ",
+  "requests.error.approvedToReturned": "Yêu cầu đã duyệt không thể trả ngay",
+  "requests.error.approvedToRejected": "Yêu cầu đã duyệt không thể từ chối",
+  "requests.error.activeToNonReturned": "Yêu cầu đang hoạt động phải được trả",
+  "requests.error.invalidStatusChange": "Thay đổi trạng thái không hợp lệ từ {{from}} sang {{to}}",
+  "requests.error.renewalApprovedNoChange": "Gia hạn đã được phê duyệt",
+  "requests.error.renewalRejectedNoChange": "Gia hạn đã bị từ chối",
+  "requests.error.renewalToPending": "Không thể hoàn tác gia hạn về trạng thái chờ",
+
   // Language
   "language.select": "Chọn ngôn ngữ",
   "language.current": "Ngôn ngữ hiện tại",
@@ -1168,6 +1194,8 @@ export const vi: TranslationData = {
   "userProfile.completedLoans": "Đã trả",
   "userProfile.approvalRate": "Tỷ lệ duyệt",
   "userProfile.totalRequests": "Tổng yêu cầu",
+  "userProfile.allTimeRequests": "Tổng số yêu cầu",
+  "userProfile.successRate": "Tỷ lệ thành công",
   "userProfile.currentlyBorrowed": "Đang mượn",
   "userProfile.awaitingApproval": "Chờ duyệt",
   "userProfile.successfullyReturned": "Đã trả thành công",
@@ -1336,22 +1364,7 @@ export const vi: TranslationData = {
   "userProfile.requestedStatus": "Đã yêu cầu",
   "userProfile.uploadErrorTitle": "Lỗi",
   "userProfile.fullTime": "Toàn thời gian",
-  "requests.error.pendingToReturned":
-    "Yêu cầu đang chờ xử lý không thể đánh dấu là đã trả trực tiếp.",
-  "requests.error.approvedToPending":
-    "Yêu cầu đã phê duyệt không thể chuyển lại trạng thái chờ xử lý.",
-  "requests.error.approvedToReturned":
-    "Yêu cầu đã phê duyệt phải ở trạng thái đang hoạt động trước khi trả.",
-  "requests.error.approvedToRejected":
-    "Yêu cầu đã phê duyệt không thể bị từ chối.",
-  "requests.error.activeToNonReturned":
-    "Yêu cầu đang hoạt động chỉ có thể chuyển sang trạng thái đã trả.",
-  "requests.error.renewalApprovedNoChange":
-    "Yêu cầu gia hạn đã phê duyệt không thể thay đổi.",
-  "requests.error.renewalRejectedNoChange":
-    "Yêu cầu gia hạn đã bị từ chối không thể thay đổi.",
-  "requests.error.renewalToPending":
-    "Yêu cầu không thể chuyển lại trạng thái chờ xử lý.",
+
 
   // Price Ranges
   "priceRange.all": "Tất cả giá",

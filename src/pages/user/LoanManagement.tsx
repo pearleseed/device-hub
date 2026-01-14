@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { UserNavbar } from "@/components/layout/UserNavbar";
 import { BreadcrumbNav } from "@/components/ui/breadcrumb-nav";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -114,6 +114,7 @@ const LoanManagement: React.FC = () => {
   const { t } = useLanguage();
   const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
 
   // View and filter state
   const [viewMode, setViewMode] = useState<ViewMode>("table");
@@ -399,16 +400,11 @@ const LoanManagement: React.FC = () => {
   };
 
   const handleOpenReturnModal = (loan: BorrowRequestWithDetails) => {
-    const device = getDeviceById(loan.device_id);
-    if (device) {
-      setReturnModalData({ loan, device });
-      setReturnCondition("good");
-      setReturnNotes("");
-      setReturnModalOpen(true);
-    }
+    navigate(`/device/${loan.device_id}?action=return`);
   };
 
   const handleSubmitReturn = async () => {
+    // Legacy modal handler - kept for bulk return reference if needed, but primary flow is now page-based
     if (!returnModalData) return;
     
     setIsSubmittingReturn(true);
@@ -426,7 +422,6 @@ const LoanManagement: React.FC = () => {
       setReturnModalOpen(false);
       setReturnModalData(null);
     } catch (error) {
-      // Error is already handled by the mutation hook's onError
       console.error("Failed to submit return request:", error);
     } finally {
       setIsSubmittingReturn(false);
@@ -434,17 +429,7 @@ const LoanManagement: React.FC = () => {
   };
 
   const handleOpenRenewalModal = (loan: BorrowRequestWithDetails) => {
-    const device = getDeviceById(loan.device_id);
-    if (device) {
-      setRenewalModalData({ loan, device });
-      const defaultDate = format(
-        addDays(new Date(loan.end_date), 14),
-        "yyyy-MM-dd",
-      );
-      setRenewalDate(defaultDate);
-      setRenewalReason("");
-      setRenewalModalOpen(true);
-    }
+    navigate(`/device/${loan.device_id}?action=renew`);
   };
 
   const handleSubmitRenewal = async () => {
@@ -507,9 +492,13 @@ const LoanManagement: React.FC = () => {
       });
       return;
     }
-    setBulkReturnCondition("good");
-    setBulkReturnNotes("");
-    setBulkReturnModalOpen(true);
+    
+    // Navigate to first device's return page with all selected loan IDs
+    const firstLoan = activeLoans.find((loan) => selectedLoans.includes(loan.id));
+    if (firstLoan) {
+      const loanIds = selectedLoans.join(',');
+      navigate(`/device/${firstLoan.device_id}?action=return&bulkIds=${loanIds}`);
+    }
   };
 
   const handleSubmitBulkReturn = async () => {

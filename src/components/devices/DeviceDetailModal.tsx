@@ -30,7 +30,7 @@ import {
   Clock,
   ArrowRight,
 } from "lucide-react";
-import { cn, getDeviceImageUrl, getDeviceThumbnailUrl } from "@/lib/utils";
+import { cn, getDeviceImageUrl, getDeviceThumbnailUrl, parseSpecs } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useCreateBorrowRequest } from "@/hooks/use-api-mutations";
 import type { DateRange } from "react-day-picker";
@@ -42,16 +42,6 @@ interface DeviceDetailModalProps {
 }
 
 type ModalStep = "details" | "confirm" | "success";
-
-// Helper to parse specs from JSON string
-const parseSpecs = (specsJson: string | undefined): Record<string, string> => {
-  if (!specsJson) return {};
-  try {
-    return JSON.parse(specsJson);
-  } catch {
-    return {};
-  }
-};
 
 export const DeviceDetailModal: React.FC<DeviceDetailModalProps> = ({
   device,
@@ -128,13 +118,6 @@ export const DeviceDetailModal: React.FC<DeviceDetailModalProps> = ({
     to.setDate(to.getDate() + days);
     setDateRange({ from, to });
   };
-
-  const specItems = [
-    { icon: Cpu, label: "Processor", value: specs.processor },
-    { icon: HardDrive, label: "Storage", value: specs.storage },
-    { icon: Monitor, label: "Display", value: specs.display },
-    { icon: Battery, label: "Battery", value: specs.battery },
-  ].filter((item) => item.value);
 
   const loanDuration =
     dateRange?.from && dateRange?.to
@@ -302,31 +285,31 @@ export const DeviceDetailModal: React.FC<DeviceDetailModalProps> = ({
               <p className="text-sm font-medium text-muted-foreground">
                 Specifications
               </p>
-              {specs.os && (
-                <div className="flex items-center gap-2 bg-secondary rounded-lg p-3">
-                  <span className="text-sm font-medium">Operating System:</span>
-                  <span className="text-sm text-muted-foreground">
-                    {specs.os}
-                  </span>
-                </div>
-              )}
-              <div className="grid grid-cols-2 gap-3">
-                {specItems.map((item, index) => (
-                  <div
-                    key={index}
-                    className="flex items-center gap-2 bg-secondary rounded-lg p-3"
-                  >
-                    <item.icon className="h-4 w-4 text-muted-foreground" />
-                    <div className="min-w-0">
-                      <p className="text-xs text-muted-foreground">
-                        {item.label}
-                      </p>
-                      <p className="text-sm font-medium truncate">
-                        {item.value}
-                      </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {Object.entries(specs).map(([key, value]) => {
+                  if (!value) return null;
+                  const Icon = key.toLowerCase().includes("cpu") || key.toLowerCase().includes("processor") ? Cpu :
+                               key.toLowerCase().includes("storage") || key.toLowerCase().includes("ssd") || key.toLowerCase().includes("hdd") ? HardDrive :
+                               key.toLowerCase().includes("display") || key.toLowerCase().includes("screen") || key.toLowerCase().includes("resolution") ? Monitor :
+                               key.toLowerCase().includes("battery") ? Battery : Cpu;
+                  
+                  return (
+                    <div
+                      key={key}
+                      className="flex items-center gap-2 bg-secondary rounded-lg p-3"
+                    >
+                      <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs text-muted-foreground capitalize">
+                          {key.replace(/_/g, " ")}
+                        </p>
+                        <p className="text-sm font-medium truncate" title={value}>
+                          {value}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 

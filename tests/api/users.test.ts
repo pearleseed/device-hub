@@ -9,16 +9,16 @@
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import * as fc from "fast-check";
-import { TestApiClient } from "../utils/api-client";
+import { testApiClient as api } from "../utils/api-client";
 import { createUser } from "../utils/factories";
-import { TEST_USERS } from "../setup";
+import { TEST_USERS } from "../test-config";
 import type { UserPublic } from "../../src/types/api";
 
 // ============================================================================
 // Test Setup
 // ============================================================================
 
-const api = new TestApiClient();
+// Use the singleton API client
 
 let adminToken: string;
 let superuserToken: string;

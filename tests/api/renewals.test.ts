@@ -9,7 +9,7 @@
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import * as fc from "fast-check";
-import { TestApiClient } from "../utils/api-client";
+import { testApiClient as api } from "../utils/api-client";
 import {
   createDevice,
   createBorrowRequest,
@@ -26,7 +26,7 @@ import type {
 // Test Setup
 // ============================================================================
 
-const api = new TestApiClient();
+// Use the singleton API client
 
 let adminToken: string;
 let superuserToken: string;

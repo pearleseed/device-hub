@@ -30,6 +30,7 @@ import {
 import { ChangePasswordModal } from "@/components/auth/ChangePasswordModal";
 import { InteractiveBackground } from "@/components/ui/interactive-background";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { LanguageSelector } from "@/components/ui/language-selector";
 
 const Login: React.FC = () => {
   const navigate = useNavigate();
@@ -195,8 +196,9 @@ const Login: React.FC = () => {
 
       {/* Right Panel - Login Form */}
       <div className="w-full lg:w-1/2 flex items-center justify-center p-6 md:p-8 bg-background relative">
-        {/* Theme Toggle - Top Right */}
-        <div className="absolute top-4 right-4">
+        {/* Theme & Language Toggles - Top Right */}
+        <div className="absolute top-4 right-4 flex items-center gap-2">
+          <LanguageSelector variant="compact" />
           <ThemeToggle />
         </div>
 
@@ -230,7 +232,7 @@ const Login: React.FC = () => {
                   <Input
                     id="username"
                     type="text"
-                    placeholder="username"
+                    placeholder="Your Username"
                     value={loginForm.username}
                     onChange={(e) =>
                       setLoginForm({

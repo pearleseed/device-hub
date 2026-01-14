@@ -30,14 +30,14 @@ import {
 import { AvatarUploader } from "@/components/ui/AvatarUploader";
 import { useDevice, useUsers } from "@/hooks/use-api-queries";
 import { useUpdateDevice } from "@/hooks/use-api-mutations";
-import { getDeviceImageUrl } from "@/lib/utils";
-import { getCategoryIcon } from "@/lib/constants";
-import { useLanguage } from "@/contexts/LanguageContext";
-import { useToast } from "@/hooks/use-toast";
 import {
   ArrowLeft, Cpu, HardDrive, Battery, Monitor, Package, Tag, Building,
   User, DollarSign, Pencil, MemoryStick, Laptop, Network, X, Save,
 } from "lucide-react";
+import { getDeviceImageUrl, getDeviceThumbnailUrl, parseSpecs } from "@/lib/utils";
+import { getCategoryIcon } from "@/lib/constants";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { useToast } from "@/hooks/use-toast";
 
 const deviceSchema = z.object({
   name: z.string().min(2, "Device name must be at least 2 characters").max(100),
@@ -70,11 +70,6 @@ type FormStatus = "available" | "borrowed" | "maintenance";
 const categories: FormCategory[] = ["laptop", "mobile", "tablet", "monitor", "accessories"];
 const statuses: FormStatus[] = ["available", "borrowed", "maintenance"];
 
-const parseSpecs = (specsJson: string | undefined): Record<string, string> => {
-  if (!specsJson) return {};
-  try { return JSON.parse(specsJson); } catch { return {}; }
-};
-
 const AdminDeviceDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -105,10 +100,7 @@ const AdminDeviceDetail: React.FC = () => {
   const getUserById = (userId: number) => userMap.get(userId);
   const assignedUser = device?.assigned_to_id ? getUserById(device.assigned_to_id) : null;
 
-  const specs = useMemo(() => {
-    try { return device?.specs_json ? JSON.parse(device.specs_json) : {}; }
-    catch { return {}; }
-  }, [device?.specs_json]);
+  const specs = useMemo(() => parseSpecs(device?.specs_json), [device?.specs_json]);
 
   // Compute form default values from device data
   const formDefaultValues = useMemo((): DeviceFormData => {
@@ -441,8 +433,8 @@ const AdminDeviceDetail: React.FC = () => {
                 </div>
                 <div className="flex flex-wrap gap-4 mt-4 pt-4 border-t">
                   <div><p className="text-xs text-muted-foreground">{t("table.status")}</p><StatusBadge status={device.status} className="mt-1" /></div>
-                  <div><p className="text-xs text-muted-foreground">{t("table.assignedTo")}</p><p className="font-medium text-sm mt-1">{assignedUser?.name || device.assigned_to_name || "—"}</p></div>
-                  <div><p className="text-xs text-muted-foreground">{t("table.department")}</p><p className="font-medium text-sm mt-1">{device.department_name || "—"}</p></div>
+                  {/* <div><p className="text-xs text-muted-foreground">{t("table.assignedTo")}</p><p className="font-medium text-sm mt-1">{assignedUser?.name || device.assigned_to_name || "—"}</p></div>
+                  <div><p className="text-xs text-muted-foreground">{t("table.department")}</p><p className="font-medium text-sm mt-1">{device.department_name || "—"}</p></div> */}
                 </div>
               </div>
             </div>
@@ -451,17 +443,29 @@ const AdminDeviceDetail: React.FC = () => {
 
         {/* Info Grid */}
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {specItems.length > 0 && (
+          {Object.keys(specs).length > 0 && (
             <Card className="lg:col-span-2">
               <CardHeader className="pb-3"><CardTitle className="text-base flex items-center gap-2"><Cpu className="h-4 w-4" />{t("inventory.specifications")}</CardTitle></CardHeader>
               <CardContent>
                 <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {specItems.map((item, index) => (
-                    <div key={index} className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
-                      <div className="p-2 bg-background rounded-md"><item.icon className="h-4 w-4 text-muted-foreground" /></div>
-                      <div className="min-w-0 flex-1"><p className="text-xs text-muted-foreground">{item.label}</p><p className="font-medium text-sm truncate">{item.value}</p></div>
-                    </div>
-                  ))}
+                  {Object.entries(specs).map(([key, value]) => {
+                    if (!value) return null;
+                    const Icon = key.toLowerCase().includes("cpu") || key.toLowerCase().includes("processor") ? Cpu :
+                                 key.toLowerCase().includes("ram") || key.toLowerCase().includes("memory") ? MemoryStick :
+                                 key.toLowerCase().includes("storage") || key.toLowerCase().includes("ssd") || key.toLowerCase().includes("hdd") ? HardDrive :
+                                 key.toLowerCase().includes("display") || key.toLowerCase().includes("screen") || key.toLowerCase().includes("resolution") ? Monitor :
+                                 key.toLowerCase().includes("battery") ? Battery : Cpu;
+                    
+                    return (
+                      <div key={key} className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+                        <div className="p-2 bg-background rounded-md"><Icon className="h-4 w-4 text-muted-foreground" /></div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs text-muted-foreground capitalize">{key.replace(/_/g, " ")}</p>
+                          <p className="font-medium text-sm truncate" title={value}>{value}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </CardContent>
             </Card>
@@ -470,7 +474,19 @@ const AdminDeviceDetail: React.FC = () => {
           <Card>
             <CardHeader className="pb-3"><CardTitle className="text-base flex items-center gap-2"><DollarSign className="h-4 w-4" />{t("table.purchaseInfo")}</CardTitle></CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex items-center justify-between"><span className="text-sm text-muted-foreground">{t("table.purchasePrice")}</span><span className="font-semibold">${device.purchase_price?.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || "—"}</span></div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">{t("table.purchasePrice")}</span>
+                <div className="flex flex-col items-end">
+                  <span className="font-semibold">
+                    ${device.purchase_price?.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || "—"}
+                  </span>
+                  {device.purchase_price && (
+                    <span className="text-xs text-muted-foreground">
+                      ≈ ¥{Math.round(device.purchase_price * 150).toLocaleString()} / ₫{Math.round(device.purchase_price * 24000).toLocaleString()}
+                    </span>
+                  )}
+                </div>
+              </div>
               <Separator />
               <div className="flex items-center justify-between"><span className="text-sm text-muted-foreground">{t("table.purchaseDate")}</span><span className="font-medium">{device.purchase_date ? format(new Date(device.purchase_date), "MMM d, yyyy") : "—"}</span></div>
               <Separator />

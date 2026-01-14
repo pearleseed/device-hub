@@ -19,8 +19,8 @@ async function startServer(): Promise<void> {
 
   serverProcess = spawn({
     cmd: ["bun", "run", "server/index.ts"],
-    stdout: "pipe",
-    stderr: "pipe",
+    stdout: "inherit",
+    stderr: "inherit",
     env: { ...process.env },
   });
 
@@ -29,13 +29,20 @@ async function startServer(): Promise<void> {
 
   while (attempts < maxAttempts) {
     try {
-      const response = await fetch("http://localhost:3001/api/health");
+      const response = await fetch("https://localhost:3011/api/health", {
+        // @ts-ignore - Bun-specific fetch option
+        tls: {
+          rejectUnauthorized: false
+        }
+      });
       if (response.ok) {
         console.log(c("green", "✅ Server is ready"));
         return;
       }
-    } catch {
+      console.log(c("yellow", `⏳ Server returned status ${response.status}, retrying...`));
+    } catch (error) {
       // Server not ready yet
+      console.log(c("dim", `⌛ waiting for server... (${attempts + 1}/${maxAttempts}) - ${error instanceof Error ? error.message : String(error)}`));
     }
     await Bun.sleep(500);
     attempts++;
@@ -55,8 +62,9 @@ async function stopServer(): Promise<void> {
 async function runTests(): Promise<number> {
   console.log(c("cyan", "🧪 Running tests...\n"));
 
+  const args = process.argv.slice(2);
   const testProcess = spawn({
-    cmd: ["npx", "vitest", "--run", "--passWithNoTests"],
+    cmd: ["npx", "vitest", "--run", "--passWithNoTests", ...args],
     stdout: "inherit",
     stderr: "inherit",
     env: { ...process.env },

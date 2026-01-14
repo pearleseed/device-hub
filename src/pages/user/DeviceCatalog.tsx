@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { UserNavbar } from "@/components/layout/UserNavbar";
 import { BreadcrumbNav } from "@/components/ui/breadcrumb-nav";
@@ -186,11 +186,11 @@ const DeviceCatalog: React.FC = () => {
     useFavorites();
 
   // Helper to get effective status (considering pending requests)
-  const getEffectiveStatus = (device: DeviceWithDepartment): DeviceStatus => {
+  const getEffectiveStatus = useCallback((device: DeviceWithDepartment): DeviceStatus => {
     if (device.status !== "available") return device.status;
     if (pendingDeviceIds.includes(device.id)) return "borrowed";
     return "available";
-  };
+  }, [pendingDeviceIds]);
 
   const filteredAndSortedDevices = useMemo(() => {
     const result = devices.filter((device) => {
@@ -282,7 +282,7 @@ const DeviceCatalog: React.FC = () => {
     priceFilter,
     minPrice,
     maxPrice,
-    pendingDeviceIds,
+    getEffectiveStatus,
   ]);
 
   // Pagination

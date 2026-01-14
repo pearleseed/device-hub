@@ -169,6 +169,58 @@ Change the current user's password.
 
 ---
 
+### POST /api/auth/logout
+
+Logout the current user and clear authentication cookie.
+
+**Response (200):**
+```json
+{
+  "success": true
+}
+```
+
+**Side Effects:**
+- Clears the `auth_token` cookie
+
+---
+
+## Health Check Endpoints
+
+### GET /api/health
+
+Get server health status including database pool information.
+
+**Response (200):**
+```json
+{
+  "status": "ok",
+  "timestamp": "2024-01-15T10:00:00.000Z",
+  "database": {
+    "healthy": true,
+    "pool": {
+      "active": 2,
+      "idle": 8,
+      "total": 10
+    }
+  }
+}
+```
+
+**Response (503) - Degraded:**
+```json
+{
+  "status": "degraded",
+  "timestamp": "2024-01-15T10:00:00.000Z",
+  "database": {
+    "healthy": false,
+    "error": "Connection timeout"
+  }
+}
+```
+
+---
+
 ## User Endpoints
 
 ### GET /api/users
@@ -176,6 +228,8 @@ Change the current user's password.
 List all users.
 
 **Headers:** `Authorization: Bearer <token>`
+
+**Access:** Admin only
 
 **Response (200):**
 ```json
@@ -198,6 +252,56 @@ List all users.
   ]
 }
 ```
+
+---
+
+### POST /api/users
+
+Create a new user (admin only).
+
+**Headers:** `Authorization: Bearer <token>`
+
+**Access:** Admin only (Admins can only create 'user' role, Superusers can create any role)
+
+**Request Body:**
+```json
+{
+  "name": "John Doe",
+  "email": "john@example.com",
+  "password": "password123",
+  "department_id": 1,
+  "role": "user"
+}
+```
+
+**Required Fields:** name, email, password, department_id
+
+**Optional Fields:** role (default: "user")
+
+**Response (201):**
+```json
+{
+  "success": true,
+  "data": {
+    "id": 5,
+    "name": "John Doe",
+    "email": "john@example.com",
+    "role": "user",
+    "department_id": 1,
+    "department_name": "Engineering",
+    "is_active": true
+  },
+  "message": "User created successfully"
+}
+```
+
+**Error Responses:**
+- `400` - Name is required / Invalid email / Password must be at least 6 characters / Invalid department
+- `400` - Email already exists
+- `401` - Unauthorized
+- `403` - Forbidden / Admins can only create user accounts
+
+**Note:** Created users will have `must_change_password` set to `true`.
 
 ---
 
@@ -1063,6 +1167,50 @@ Create a return request.
 
 ---
 
+### PATCH /api/returns/:id/condition
+
+Update the device condition of a return request.
+
+**Headers:** `Authorization: Bearer <token>`
+
+**Access:** Admin only
+
+**Request Body:**
+```json
+{
+  "condition": "fair"
+}
+```
+
+**Valid Conditions:** excellent, good, fair, damaged
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "data": {
+    "id": 1,
+    "borrow_request_id": 5,
+    "device_id": 1,
+    "device_name": "MacBook Pro 16",
+    "return_date": "2024-02-14",
+    "device_condition": "fair"
+  },
+  "message": "Return condition updated"
+}
+```
+
+**Side Effects:**
+- Device status changes to "maintenance" if condition is "damaged", otherwise "available"
+
+**Error Responses:**
+- `400` - Invalid return request ID / Valid condition is required
+- `401` - Unauthorized
+- `403` - Forbidden
+- `404` - Return request not found
+
+---
+
 ## Renewal Request Endpoints
 
 ### GET /api/renewals
@@ -1446,6 +1594,45 @@ Delete a department.
 
 **Error Responses:**
 - `400` - Invalid department ID / Cannot delete department with users or devices
+- `401` - Unauthorized
+
+---
+
+### POST /api/departments/bulk
+
+Bulk create multiple departments.
+
+**Headers:** `Authorization: Bearer <token>`
+
+**Access:** Admin only
+
+**Request Body:**
+```json
+[
+  { "name": "Engineering", "code": "ENG" },
+  { "name": "Marketing", "code": "MKT" },
+  { "name": "Sales", "code": "SLS" }
+]
+```
+
+**Response (201):**
+```json
+{
+  "success": true,
+  "data": {
+    "created": [
+      { "id": 1, "name": "Engineering", "code": "ENG" },
+      { "id": 2, "name": "Marketing", "code": "MKT" }
+    ],
+    "errors": ["Department code already exists: SLS"]
+  },
+  "message": "Departments processed"
+}
+```
+
+**Error Responses:**
+- `400` - Invalid payload. Expected array of departments
+- `400` - Failed to create departments (when all fail)
 - `401` - Unauthorized
 
 ---

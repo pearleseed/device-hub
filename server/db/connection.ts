@@ -1,5 +1,22 @@
 import { SQL } from "bun";
 
+// Load environment variables from root .env file
+const rootEnvPath = import.meta.dir + "/../../.env";
+const rootEnvFile = Bun.file(rootEnvPath);
+if (await rootEnvFile.exists()) {
+  const envContent = await rootEnvFile.text();
+  for (const line of envContent.split("\n")) {
+    const trimmed = line.trim();
+    if (trimmed && !trimmed.startsWith("#")) {
+      const [key, ...valueParts] = trimmed.split("=");
+      const value = valueParts.join("=");
+      if (key && value && !process.env[key]) {
+        process.env[key] = value;
+      }
+    }
+  }
+}
+
 // Types
 export interface PoolStatus {
   active: number;

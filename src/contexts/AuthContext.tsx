@@ -15,14 +15,11 @@ import { DEPARTMENT_NAMES } from "@/types/api";
 import {
   setUnauthorizedCallback,
   clearUnauthorizedCallback,
-  setAuthToken,
-  clearAuthToken,
-  hasAuthToken,
 } from "@/lib/api-client";
 
 const AUTH_STORAGE_KEY = "auth-user";
-const AUTH_TOKEN_KEY = "auth-token";
-const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:3001";
+// Use empty string to leverage Vite proxy, or fall back to VITE_API_URL for production
+const API_BASE = import.meta.env.PROD ? (import.meta.env.VITE_API_URL || "") : "";
 
 interface AuthContextType {
   user: UserPublic | null;
@@ -64,18 +61,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   // Validate token on app load
   useEffect(() => {
     const validateToken = async () => {
-      // Check if we have a stored token
-      if (!hasAuthToken()) {
+      // Check if there's cached user data - if not, skip API call to avoid 401 error
+      const cachedUser = localStorage.getItem(AUTH_STORAGE_KEY);
+      if (!cachedUser) {
         setIsLoading(false);
         return;
       }
 
       try {
-        // Validate token by calling /api/auth/me
+        // Validate token by calling /api/auth/me - cookie is sent automatically
         const response = await fetch(`${API_BASE}/api/auth/me`, {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem(AUTH_TOKEN_KEY)}`,
-          },
+          credentials: "include",
         });
 
         const data = await response.json();
@@ -87,13 +83,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
           localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(data.user));
         } else {
           // Token is invalid, clear credentials
-          clearAuthToken();
           localStorage.removeItem(AUTH_STORAGE_KEY);
           setUser(null);
         }
       } catch {
         // Network error or invalid response - clear credentials
-        clearAuthToken();
         localStorage.removeItem(AUTH_STORAGE_KEY);
         setUser(null);
       } finally {
@@ -121,6 +115,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(loginRequest),
+          credentials: "include",
         });
 
         const data = await response.json();
@@ -133,10 +128,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         }
 
         if (data.success && data.user) {
-          // Store token using api-client utility
-          if (data.token) {
-            setAuthToken(data.token);
-          }
+          // Cookie is set by the server response
 
           // Use UserPublic type directly from API response
           const apiUser: UserPublic = data.user;
@@ -177,6 +169,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(data),
+          credentials: "include",
         });
 
         const result = await response.json();
@@ -189,10 +182,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         }
 
         if (result.success && result.user) {
-          // Store token if provided
-          if (result.token) {
-            setAuthToken(result.token);
-          }
+          // Cookie is set by the server response
 
           // Use UserPublic type directly from API response
           const apiUser: UserPublic = result.user;
@@ -218,10 +208,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     [],
   );
 
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
+    try {
+      // Call logout endpoint to clear cookie
+      await fetch(`${API_BASE}/api/auth/logout`, { method: "POST", credentials: "include" });
+    } catch (e) {
+      console.error("Logout failed", e);
+    }
     setUser(null);
     setMustChangePassword(false);
-    clearAuthToken();
     localStorage.removeItem(AUTH_STORAGE_KEY);
   }, []);
 

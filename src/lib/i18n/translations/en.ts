@@ -22,6 +22,7 @@ export const en: TranslationData = {
   "common.dateFormatLong": "EEEE, MMMM do, yyyy",
   "common.dateFormatMedium": "MMM d, yyyy",
   "common.dateFormatShort": "MMM d",
+  "common.dateFormatWithWeekday": "EEEE, MMMM d",
   "common.search": "Search",
   "common.add": "Add",
   "common.edit": "Edit",
@@ -40,8 +41,11 @@ export const en: TranslationData = {
   "common.profile": "Profile",
   "common.selectAll": "Select All",
   "common.deselectAll": "Deselect All",
+  "common.selected": "selected",
   "common.more": "more",
+  "common.due": "Due",
   "common.clearAll": "Clear all",
+  "common.apply": "Apply",
   "common.back": "Back",
   "common.next": "Next",
   "common.done": "Done",
@@ -64,6 +68,7 @@ export const en: TranslationData = {
   "common.administration": "Administration",
   "common.perPage": "Per page",
   "common.catalog": "Catalog",
+  "common.pickDate": "Pick a date",
 
   // Months
   "months.jan": "Jan",
@@ -169,6 +174,7 @@ export const en: TranslationData = {
   "inventory.assignedTo": "Assigned To",
   "inventory.searchDevices": "Search devices...",
   "inventory.noDevicesFound": "No devices found",
+  "inventory.noMatchingDevices": "No devices match your current filters.",
   "inventory.addFirstDevice": "Add your first device to get started",
   "inventory.deviceAdded": "Device added",
   "inventory.deviceUpdated": "Device updated",
@@ -281,7 +287,8 @@ export const en: TranslationData = {
   "deviceCatalog.devicesAvailable": "devices available",
   "deviceCatalog.browseCatalog": "Browse Catalog",
   "deviceCatalog.browseAndRequest":
-    "Browse our catalog of devices and make requests",
+    "Browse the catalog and request devices for your work.",
+  "deviceCatalog.filters": "Filters",
   "deviceCatalog.favoritesOnly": "Favorites Only",
   "deviceCatalog.viewAll": "View All",
   "deviceCatalog.clear": "Clear",
@@ -360,6 +367,8 @@ export const en: TranslationData = {
     "Pending requests must be approved before becoming active.",
   "requests.pendingNoReturn":
     "Pending requests cannot be marked as returned directly.",
+  "requests.approve": "Approve",
+  "requests.reject": "Reject",
 
   // Calendar
   "calendar.title": "Device Availability Calendar",
@@ -369,6 +378,9 @@ export const en: TranslationData = {
   "calendar.filters": "Filters",
   "calendar.categories": "Categories",
   "calendar.devices": "Devices",
+  "calendar.searchDevices": "Search devices...",
+  "calendar.noDevicesFound": "No devices found",
+  "calendar.devicesSelected": "devices selected",
   "calendar.device": "Device",
   "calendar.selectDate": "Select a date",
   "calendar.noBookingsForDate": "No bookings for this date",
@@ -938,8 +950,7 @@ export const en: TranslationData = {
 
   // Analytics Page
   "analytics.title": "Analytics & Reports",
-  "analytics.subtitle":
-    "Comprehensive analytics, statistics and periodic reports",
+  "analytics.subtitle": "Comprehensive analytics, statistics and periodic reports",
   "analytics.dateRange": "Date range",
   "analytics.updated": "Updated",
   "analytics.export": "Export",
@@ -1205,6 +1216,8 @@ export const en: TranslationData = {
   "userProfile.completedLoans": "Completed Loans",
   "userProfile.approvalRate": "Approval Rate",
   "userProfile.totalRequests": "Total Requests",
+  "userProfile.allTimeRequests": "All-time requests",
+  "userProfile.successRate": "Success Rate",
   "userProfile.currentlyBorrowed": "Currently borrowed",
   "userProfile.awaitingApproval": "Awaiting approval",
   "userProfile.successfullyReturned": "Successfully returned",
@@ -1379,6 +1392,12 @@ export const en: TranslationData = {
   "userProfile.requestedStatus": "Requested",
   "userProfile.uploadErrorTitle": "Error",
   "userProfile.fullTime": "Full-time",
+  "requests.error.cannotChangeReturned":
+    "Returned requests cannot be moved to another status.",
+  "requests.error.cannotChangeRejected":
+    "Rejected requests cannot be moved to another status.",
+  "requests.error.pendingApproval":
+    "Pending requests must be approved before becoming active.",
   "requests.error.pendingToReturned":
     "Pending requests cannot be marked as returned directly.",
   "requests.error.approvedToPending":
@@ -1388,6 +1407,8 @@ export const en: TranslationData = {
   "requests.error.approvedToRejected": "Approved requests cannot be rejected.",
   "requests.error.activeToNonReturned":
     "Active requests can only be moved to returned.",
+  "requests.error.invalidStatusChange":
+    "Invalid status change from {{from}} to {{to}}",
   "requests.error.renewalApprovedNoChange":
     "Approved renewals cannot be changed.",
   "requests.error.renewalRejectedNoChange":

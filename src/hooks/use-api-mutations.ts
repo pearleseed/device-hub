@@ -16,6 +16,7 @@ import type {
   BorrowRequestWithDetails,
   ReturnRequestWithDetails,
   RenewalRequestWithDetails,
+  Department,
   CreateDeviceRequest,
   UpdateDeviceRequest,
   CreateBorrowRequest,
@@ -289,6 +290,77 @@ export function useUpdateRenewalStatus(): UseMutationResult<
     },
     onError: (error: Error) => {
       handleMutationError(error, "Update Renewal Status");
+    },
+  });
+}
+
+// ============================================================================
+// Department Mutations
+// ============================================================================
+
+/**
+ * Create a new department
+ */
+export interface CreateDepartmentRequest {
+  name: string;
+  code: string;
+}
+
+export function useCreateDepartment(): UseMutationResult<
+  Department,
+  Error,
+  CreateDepartmentRequest
+> {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: CreateDepartmentRequest) =>
+      apiClient.post<Department>("/api/departments", data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.departments.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.departments.names });
+      handleMutationSuccess("Department created successfully");
+    },
+    onError: (error: Error) => {
+      handleMutationError(error, "Create Department");
+    },
+  });
+}
+
+export function useBulkCreateDepartments(): UseMutationResult<
+  { created: Department[]; errors: string[] },
+  Error,
+  CreateDepartmentRequest[]
+> {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: CreateDepartmentRequest[]) =>
+      apiClient.post<{ created: Department[]; errors: string[] }>(
+        "/api/departments/bulk",
+        data,
+      ),
+    onSuccess: (response) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.departments.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.departments.names });
+      
+      const successCount = response.created.length;
+      const errorCount = response.errors.length;
+
+      if (successCount > 0) {
+        handleMutationSuccess(`${successCount} department(s) created successfully`);
+      }
+      
+      if (errorCount > 0) {
+        toast({
+          title: "Some departments failed",
+          description: `${errorCount} failure(s): ${response.errors.join(", ")}`,
+          variant: "destructive",
+        });
+      }
+    },
+    onError: (error: Error) => {
+      handleMutationError(error, "Bulk Create Departments");
     },
   });
 }

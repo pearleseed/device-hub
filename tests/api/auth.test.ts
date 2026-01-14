@@ -7,19 +7,33 @@
  * Requirements: 1.1-1.10
  */
 
-import { describe, it, expect, beforeAll } from "vitest";
+import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import * as fc from "fast-check";
-import { TestApiClient } from "../utils/api-client";
+import { TestApiClient, testApiClient as api } from "../utils/api-client";
 import { createUser } from "../utils/factories";
 import { validEmailArb, invalidPasswordArb } from "../utils/generators";
-import { TEST_USERS } from "../setup";
+import { TEST_USERS } from "../test-config";
+import {
+  setupTestContext,
+  type TestContext,
+  cleanupResources,
+  createdUserIds,
+} from "../utils/helpers";
 import type { UserPublic } from "../../src/types/api";
 
 // ============================================================================
 // Test Setup
 // ============================================================================
 
-const api = new TestApiClient();
+let ctx: TestContext;
+
+beforeAll(async () => {
+  ctx = await setupTestContext();
+});
+
+afterAll(async () => {
+  await cleanupResources(ctx.adminToken, ctx.superuserToken);
+});
 
 // ============================================================================
 // Login Tests (Requirements 1.1, 1.2, 1.3)
@@ -28,7 +42,7 @@ const api = new TestApiClient();
 describe("Authentication API - Login", () => {
   describe("POST /api/auth/login", () => {
     it("should return token and user data for valid credentials (Req 1.1)", async () => {
-      const response = await api.post<{ token: string; user: UserPublic }>(
+      const response = await api.post<{ user: UserPublic }>(
         "/api/auth/login",
         {
           email: TEST_USERS.user.email,
@@ -38,20 +52,23 @@ describe("Authentication API - Login", () => {
 
       expect(response.status).toBe(200);
       expect(response.data.success).toBe(true);
-      // Auth endpoints return token and user directly, not wrapped in data
+      // Auth endpoints return user directly, token is in cookie
       const authResponse = response.data as unknown as {
         success: boolean;
-        token?: string;
         user?: UserPublic;
       };
-      expect(authResponse.token).toBeDefined();
-      expect(typeof authResponse.token).toBe("string");
+      
       expect(authResponse.user).toBeDefined();
       expect(authResponse.user?.email).toBe(TEST_USERS.user.email);
+
+      // Verify token is in Set-Cookie header
+      const setCookie = response.headers.get("set-cookie");
+      expect(setCookie).toBeDefined();
+      expect(setCookie).toContain("auth_token=");
     });
 
     it("should return 401 for invalid credentials (Req 1.2)", async () => {
-      const response = await api.post<{ token: string; user: UserPublic }>(
+      const response = await api.post<{ user: UserPublic }>(
         "/api/auth/login",
         {
           email: TEST_USERS.user.email,
@@ -65,7 +82,7 @@ describe("Authentication API - Login", () => {
     });
 
     it("should return 401 for non-existent user (Req 1.2)", async () => {
-      const response = await api.post<{ token: string; user: UserPublic }>(
+      const response = await api.post<{ user: UserPublic }>(
         "/api/auth/login",
         {
           email: "nonexistent@example.com",
@@ -79,7 +96,7 @@ describe("Authentication API - Login", () => {
     });
 
     it("should return 400 for missing email", async () => {
-      const response = await api.post<{ token: string; user: UserPublic }>(
+      const response = await api.post<{ user: UserPublic }>(
         "/api/auth/login",
         {
           password: "anypassword",
@@ -91,7 +108,7 @@ describe("Authentication API - Login", () => {
     });
 
     it("should return 400 for missing password", async () => {
-      const response = await api.post<{ token: string; user: UserPublic }>(
+      const response = await api.post<{ user: UserPublic }>(
         "/api/auth/login",
         {
           email: TEST_USERS.user.email,
@@ -113,37 +130,52 @@ describe("Authentication API - Signup", () => {
     it("should create user and return token for valid signup data (Req 1.4)", async () => {
       const userData = createUser();
 
-      const response = await api.post<{ token: string; user: UserPublic }>(
+      const response = await api.post<{ user: UserPublic }>(
         "/api/auth/signup",
         userData,
       );
 
       expect(response.status).toBe(201);
       expect(response.data.success).toBe(true);
-      // Auth endpoints return token and user directly, not wrapped in data
+      // Auth endpoints return user directly
       const authResponse = response.data as unknown as {
         success: boolean;
-        token?: string;
         user?: UserPublic;
       };
-      expect(authResponse.token).toBeDefined();
-      expect(typeof authResponse.token).toBe("string");
+      
       expect(authResponse.user).toBeDefined();
       expect(authResponse.user?.email).toBe(userData.email.toLowerCase());
       expect(authResponse.user?.name).toBe(userData.name);
+      
+      // Verify token is in Set-Cookie header
+      const setCookie = response.headers.get("set-cookie");
+      expect(setCookie).toBeDefined();
+      expect(setCookie).toContain("auth_token=");
+      
+      if (authResponse.user?.id) {
+        createdUserIds.push(authResponse.user.id);
+      }
     });
 
     it("should return 400 for duplicate email (Req 1.5)", async () => {
       // First signup
       const userData = createUser();
-      await api.post<{ token: string; user: UserPublic }>(
+      const firstResponse = await api.post<{ user: UserPublic }>(
         "/api/auth/signup",
         userData,
       );
+      
+      const firstAuthResponse = firstResponse.data as unknown as {
+          success: boolean;
+          user?: UserPublic;
+      };
+      if (firstAuthResponse.user?.id) {
+          createdUserIds.push(firstAuthResponse.user.id);
+      }
 
       // Second signup with same email
       const duplicateUser = createUser({ email: userData.email });
-      const response = await api.post<{ token: string; user: UserPublic }>(
+      const response = await api.post<{ user: UserPublic }>(
         "/api/auth/signup",
         duplicateUser,
       );
@@ -156,7 +188,7 @@ describe("Authentication API - Signup", () => {
     it("should return 400 for password less than 6 characters (Req 1.6)", async () => {
       const userData = createUser({ password: "12345" });
 
-      const response = await api.post<{ token: string; user: UserPublic }>(
+      const response = await api.post<{ user: UserPublic }>(
         "/api/auth/signup",
         userData,
       );
@@ -167,7 +199,7 @@ describe("Authentication API - Signup", () => {
     });
 
     it("should return 400 for missing name", async () => {
-      const response = await api.post<{ token: string; user: UserPublic }>(
+      const response = await api.post<{ user: UserPublic }>(
         "/api/auth/signup",
         {
           email: "test@example.com",
@@ -181,7 +213,7 @@ describe("Authentication API - Signup", () => {
     });
 
     it("should return 400 for missing email", async () => {
-      const response = await api.post<{ token: string; user: UserPublic }>(
+      const response = await api.post<{ user: UserPublic }>(
         "/api/auth/signup",
         {
           name: "Test User",
@@ -197,7 +229,7 @@ describe("Authentication API - Signup", () => {
     it("should return 400 for invalid department", async () => {
       const userData = createUser({ department_id: 99999 });
 
-      const response = await api.post<{ token: string; user: UserPublic }>(
+      const response = await api.post<{ user: UserPublic }>(
         "/api/auth/signup",
         userData,
       );
@@ -225,7 +257,7 @@ describe("Authentication API - Token Validation", () => {
 
       expect(response.status).toBe(200);
       expect(response.data.success).toBe(true);
-      // Auth /me endpoint returns user directly, not wrapped in data
+      // Auth /me endpoint returns user directly
       const authResponse = response.data as unknown as {
         success: boolean;
         user?: UserPublic;
@@ -235,7 +267,9 @@ describe("Authentication API - Token Validation", () => {
     });
 
     it("should return 401 for invalid token (Req 1.8)", async () => {
-      const response = await api.get<{ user: UserPublic }>(
+      // Use fresh client to avoid singleton state
+      const freshApi = new TestApiClient();
+      const response = await freshApi.get<{ user: UserPublic }>(
         "/api/auth/me",
         "invalid-token-string",
       );
@@ -245,14 +279,17 @@ describe("Authentication API - Token Validation", () => {
     });
 
     it("should return 401 for missing token (Req 1.8)", async () => {
-      const response = await api.get<{ user: UserPublic }>("/api/auth/me");
+      // Use fresh client to ensure no auth token is attached
+      const freshApi = new TestApiClient();
+      const response = await freshApi.get<{ user: UserPublic }>("/api/auth/me");
 
       expect(response.status).toBe(401);
       expect(response.data.success).toBe(false);
     });
 
     it("should return 401 for malformed JWT token (Req 1.8)", async () => {
-      const response = await api.get<{ user: UserPublic }>(
+      const freshApi = new TestApiClient();
+      const response = await freshApi.get<{ user: UserPublic }>(
         "/api/auth/me",
         "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.invalid.signature",
       );
@@ -272,25 +309,28 @@ describe("Authentication API - Password Change", () => {
     it("should allow password change with correct current password (Req 1.9)", async () => {
       // Create a new user for this test to avoid affecting other tests
       const userData = createUser();
-      const signupResponse = await api.post<{
-        token: string;
-        user: UserPublic;
-      }>("/api/auth/signup", userData);
+      const signupResponse = await api.post<{ user: UserPublic }>(
+        "/api/auth/signup", 
+        userData
+      );
 
-      // Check if signup succeeded
-      if (signupResponse.status !== 201) {
-        console.log("Signup failed:", signupResponse.data);
-      }
       expect(signupResponse.status).toBe(201);
 
-      // Auth endpoints return token directly, not wrapped in data
       const authResponse = signupResponse.data as unknown as {
         success: boolean;
-        token?: string;
         user?: UserPublic;
       };
-      const token = authResponse.token;
-      expect(token).toBeDefined();
+      
+      if (authResponse.user?.id) {
+          createdUserIds.push(authResponse.user.id);
+      }
+      
+      // Extract token from cookie
+      const setCookie = signupResponse.headers.get("set-cookie");
+      expect(setCookie).toBeDefined();
+      const match = setCookie!.match(/auth_token=([^;]+)/);
+      expect(match).toBeDefined();
+      const token = match![1];
 
       const response = await api.post<{ message: string }>(
         "/api/auth/change-password",
@@ -305,7 +345,7 @@ describe("Authentication API - Password Change", () => {
       expect(response.data.success).toBe(true);
 
       // Verify new password works
-      const loginResponse = await api.post<{ token: string; user: UserPublic }>(
+      const loginResponse = await api.post<{ user: UserPublic }>(
         "/api/auth/login",
         {
           email: userData.email,
@@ -334,7 +374,8 @@ describe("Authentication API - Password Change", () => {
     });
 
     it("should return 401 for missing token", async () => {
-      const response = await api.post<{ message: string }>(
+      const freshApi = new TestApiClient();
+      const response = await freshApi.post<{ message: string }>(
         "/api/auth/change-password",
         {
           currentPassword: "anypassword",
@@ -386,12 +427,6 @@ describe("Authentication API - Password Change", () => {
 describe("Authentication API - Property Tests", () => {
   /**
    * Property 1: Authentication Token Validity
-   *
-   * For any valid user credentials, logging in should return a JWT token
-   * that can be used to access protected endpoints, and using that token
-   * with GET /api/auth/me should return the same user's data.
-   *
-   * **Validates: Requirements 1.1, 1.7**
    */
   describe("Property 1: Authentication Token Validity", () => {
     it("for any valid user, login token should work with /api/auth/me", async () => {
@@ -413,24 +448,26 @@ describe("Authentication API - Property Tests", () => {
           ),
           async (credentials) => {
             // Login to get token
-            const loginResponse = await api.post<{
-              token: string;
-              user: UserPublic;
-            }>("/api/auth/login", credentials);
+            const loginResponse = await api.post<{ user: UserPublic }>(
+              "/api/auth/login", 
+              credentials
+            );
 
             // Verify login succeeded
             expect(loginResponse.status).toBe(200);
             expect(loginResponse.data.success).toBe(true);
-
-            // Auth endpoints return token and user directly, not wrapped in data
+            
+            // Extract token from cookie
+            const setCookie = loginResponse.headers.get("set-cookie");
+            expect(setCookie).toBeDefined();
+            const match = setCookie!.match(/auth_token=([^;]+)/);
+            expect(match).toBeDefined();
+            const token = match![1];
+            
             const authResponse = loginResponse.data as unknown as {
               success: boolean;
-              token?: string;
               user?: UserPublic;
             };
-            expect(authResponse.token).toBeDefined();
-
-            const token = authResponse.token!;
             const loginUser = authResponse.user!;
 
             // Use token to access /api/auth/me
@@ -443,7 +480,7 @@ describe("Authentication API - Property Tests", () => {
             expect(meResponse.status).toBe(200);
             expect(meResponse.data.success).toBe(true);
 
-            // Auth /me endpoint returns user directly, not wrapped in data
+            // Auth /me endpoint returns user directly
             const meAuthResponse = meResponse.data as unknown as {
               success: boolean;
               user?: UserPublic;

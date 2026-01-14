@@ -9,8 +9,8 @@
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import * as fc from "fast-check";
-import { TestApiClient } from "../utils/api-client";
-import { TEST_USERS, DEPARTMENT_NAMES } from "../setup";
+import { testApiClient as api } from "../utils/api-client";
+import { TEST_USERS } from "../test-config";
 import {
   validDepartmentNameArb,
   invalidDepartmentNameArb,
@@ -30,7 +30,7 @@ interface DepartmentWithCounts extends Department {
 // Test Setup
 // ============================================================================
 
-const api = new TestApiClient();
+// Use the singleton API client
 
 let adminToken: string;
 let superuserToken: string;
@@ -116,7 +116,7 @@ describe("Department API - Listing", () => {
   describe("GET /api/departments", () => {
     it("should return all departments with user and device counts (Req 7.2)", async () => {
       const response =
-        await api.get<DepartmentWithCounts[]>("/api/departments");
+        await api.get<DepartmentWithCounts[]>("/api/departments", adminToken);
 
       expect(response.status).toBe(200);
       expect(response.data.success).toBe(true);
@@ -136,12 +136,12 @@ describe("Department API - Listing", () => {
       }
     });
 
-    it("should return departments without authentication", async () => {
+    it("should return 401 for departments without authentication", async () => {
       const response =
         await api.get<DepartmentWithCounts[]>("/api/departments");
 
-      expect(response.status).toBe(200);
-      expect(response.data.success).toBe(true);
+      expect(response.status).toBe(401);
+      expect(response.data.success).toBe(false);
     });
   });
 });
@@ -155,13 +155,14 @@ describe("Department API - Retrieval", () => {
     it("should return department with counts for valid ID (Req 7.3)", async () => {
       // First get all departments to find a valid ID
       const listResponse =
-        await api.get<DepartmentWithCounts[]>("/api/departments");
+        await api.get<DepartmentWithCounts[]>("/api/departments", adminToken);
 
       if (listResponse.data.data && listResponse.data.data.length > 0) {
         const deptId = listResponse.data.data[0].id;
 
         const response = await api.get<DepartmentWithCounts>(
           `/api/departments/${deptId}`,
+          adminToken,
         );
 
         expect(response.status).toBe(200);
@@ -178,6 +179,7 @@ describe("Department API - Retrieval", () => {
 
       const response = await api.get<DepartmentWithCounts>(
         `/api/departments/${nonExistentId}`,
+        adminToken,
       );
 
       expect(response.status).toBe(404);
@@ -188,6 +190,7 @@ describe("Department API - Retrieval", () => {
     it("should return 400 for invalid department ID format", async () => {
       const response = await api.get<DepartmentWithCounts>(
         "/api/departments/invalid",
+        adminToken,
       );
 
       expect(response.status).toBe(400);
@@ -368,6 +371,7 @@ describe("Department API - CRUD Operations", () => {
         // Verify department is deleted
         const getResponse = await api.get<DepartmentWithCounts>(
           `/api/departments/${deptId}`,
+          adminToken,
         );
         expect(getResponse.status).toBe(404);
       }
@@ -376,7 +380,7 @@ describe("Department API - CRUD Operations", () => {
     it("should return 400 for deleting department with users or devices (Req 7.8)", async () => {
       // Get all departments and find one with users or devices
       const listResponse =
-        await api.get<DepartmentWithCounts[]>("/api/departments");
+        await api.get<DepartmentWithCounts[]>("/api/departments", adminToken);
 
       if (listResponse.data.data && listResponse.data.data.length > 0) {
         // Find a department that has users or devices
@@ -469,7 +473,7 @@ describe("Department API - Property Tests", () => {
           fc.constant(null), // No input variation needed - testing the same endpoint
           async () => {
             const response =
-              await api.get<DepartmentWithCounts[]>("/api/departments");
+              await api.get<DepartmentWithCounts[]>("/api/departments", adminToken);
 
             // Should always succeed
             expect(response.status).toBe(200);

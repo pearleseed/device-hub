@@ -38,7 +38,7 @@ CORS_ORIGIN=http://localhost:5173
 JWT_SECRET=your-super-secret-jwt-key-change-in-production
 
 # Frontend Configuration (for Vite)
-VITE_API_URL=http://localhost:3001/api
+VITE_API_URL=https://localhost:3001/api
 ```
 
 ### Production Configuration
@@ -108,8 +108,6 @@ bun run dev:all
 | Endpoint          | Description                                     |
 | ----------------- | ----------------------------------------------- |
 | `GET /api/health` | Detailed health check with database pool status |
-| `GET /api/ready`  | Readiness probe for container orchestration     |
-| `GET /api/live`   | Liveness probe for container orchestration      |
 
 **Health Check Response Example:**
 
@@ -234,24 +232,3 @@ Note: The seed data uses placeholder password hashes. For the demo to work prope
 
 1. Update the seed.sql with properly hashed passwords
 2. Register new users through the signup flow
-
-## Container Deployment
-
-For Kubernetes or Docker deployments, use the following probes:
-
-```yaml
-# Kubernetes example
-livenessProbe:
-  httpGet:
-    path: /api/live
-    port: 3001
-  initialDelaySeconds: 5
-  periodSeconds: 10
-
-readinessProbe:
-  httpGet:
-    path: /api/ready
-    port: 3001
-  initialDelaySeconds: 10
-  periodSeconds: 5
-```

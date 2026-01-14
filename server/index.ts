@@ -1,3 +1,20 @@
+// Load environment variables from server/.env first (before any other imports)
+const serverEnvPath = import.meta.dir + "/.env";
+const serverEnvFile = Bun.file(serverEnvPath);
+if (await serverEnvFile.exists()) {
+  const content = await serverEnvFile.text();
+  for (const line of content.split("\n")) {
+    const trimmed = line.trim();
+    if (trimmed && !trimmed.startsWith("#")) {
+      const [key, ...valueParts] = trimmed.split("=");
+      const value = valueParts.join("=");
+      if (key && value && !process.env[key]) {
+        process.env[key] = value;
+      }
+    }
+  }
+}
+
 import { authRoutes } from "./routes/auth";
 import { usersRoutes } from "./routes/users";
 import { userImportExportRoutes } from "./routes/user-import-export";
@@ -12,6 +29,8 @@ import { avatarsRoutes } from "./routes/avatars";
 import { auditRoutes } from "./routes/audit";
 import { inAppNotificationsRoutes } from "./routes/in-app-notifications";
 import { closeConnection, getPoolStatus, logDbConfig } from "./db/connection";
+import { securityMiddleware, addSecurityHeaders } from "./middleware/security";
+import { compressResponse } from "./middleware/compression";
 // Mattermost disabled for testing
 // import {
 //   initializeNotificationService,
@@ -21,13 +40,13 @@ import { closeConnection, getPoolStatus, logDbConfig } from "./db/connection";
 //   stopSessionCleanup,
 // } from "./mattermost";
 
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 3011;
 
-// Allow all local/private network origins (HTTPS only)
+// Allow all local/private network origins (HTTP and HTTPS)
 function isAllowedOrigin(origin?: string): boolean {
   if (!origin) return false;
-  // Match: https://localhost, https://127.x.x.x, https://10.x.x.x, https://192.168.x.x, https://172.16-31.x.x
-  return /^https:\/\/(localhost|127\.\d+\.\d+\.\d+|10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+)(:\d+)?$/.test(
+  // Match: http(s)://localhost, http(s)://127.x.x.x, http(s)://10.x.x.x, http(s)://192.168.x.x, http(s)://172.16-31.x.x
+  return /^https?:\/\/(localhost|127\.\d+\.\d+\.\d+|10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+)(:\d+)?$/.test(
     origin,
   );
 }
@@ -66,7 +85,8 @@ async function killPortProcess(port: number | string): Promise<void> {
 }
 
 // Kill any existing process on the port before starting
-await killPortProcess(PORT);
+// Temporarily disabled to prevent test runner self-termination
+// await killPortProcess(PORT);
 
 // ============================================================================
 // Graceful Shutdown
@@ -125,7 +145,7 @@ function corsHeaders(origin?: string): HeadersInit {
   return {
     "Access-Control-Allow-Origin": isAllowedOrigin(origin)
       ? origin!
-      : "https://localhost:8080",
+      : "http://localhost:8080",
     "Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type, Authorization",
     "Access-Control-Allow-Credentials": "true",
@@ -225,32 +245,13 @@ function registerRoutes(): void {
     }
   });
 
-  // Readiness check (for container orchestration)
-  addRoute("GET", "/api/ready", async () => {
-    try {
-      const dbHealth = await getPoolStatus();
-      if (dbHealth.healthy) {
-        return jsonResponse({ ready: true });
-      }
-      return jsonResponse(
-        { ready: false, reason: "Database unavailable" },
-        503,
-      );
-    } catch {
-      return jsonResponse({ ready: false, reason: "Health check failed" }, 503);
-    }
-  });
-
-  // Liveness check (for container orchestration)
-  addRoute("GET", "/api/live", async () => {
-    return jsonResponse({ live: true });
-  });
-
   // Auth routes
   addRoute("POST", "/api/auth/login", authRoutes.login);
   addRoute("POST", "/api/auth/signup", authRoutes.signup);
   addRoute("GET", "/api/auth/me", authRoutes.me);
+  addRoute("GET", "/api/auth/me", authRoutes.me);
   addRoute("POST", "/api/auth/change-password", authRoutes.changePassword);
+  addRoute("POST", "/api/auth/logout", authRoutes.logout);
 
   // Users routes
   addRoute("GET", "/api/users", usersRoutes.getAll);
@@ -285,6 +286,7 @@ function registerRoutes(): void {
   addRoute("GET", "/api/departments", departmentsRoutes.getAll);
   addRoute("GET", "/api/departments/:id", departmentsRoutes.getById);
   addRoute("POST", "/api/departments", departmentsRoutes.create);
+  addRoute("POST", "/api/departments/bulk", departmentsRoutes.bulkCreate);
   addRoute("PUT", "/api/departments/:id", departmentsRoutes.update);
   addRoute("DELETE", "/api/departments/:id", departmentsRoutes.delete);
 
@@ -380,10 +382,21 @@ registerRoutes();
 // Server
 // ============================================================================
 
-// Main server
+// SSL/TLS Configuration (optional - set USE_HTTPS=false to disable)
+const useHttps = process.env.USE_HTTPS !== "false";
+const certsDir = import.meta.dir + "/certs";
+const tlsConfig = useHttps
+  ? {
+      key: Bun.file(`${certsDir}/key.pem`),
+      cert: Bun.file(`${certsDir}/cert.pem`),
+    }
+  : undefined;
+
+// Main server (HTTPS by default, HTTP if USE_HTTPS=false)
 const server = Bun.serve({
   hostname: "0.0.0.0",
   port: PORT,
+  tls: tlsConfig,
   async fetch(request: Request): Promise<Response> {
     // Reject new requests if shutting down
     if (isShuttingDown) {
@@ -415,19 +428,31 @@ const server = Bun.serve({
         });
 
         try {
+          // Security Middleware (Rate Limit)
+          const blocked = securityMiddleware(request);
+          if (blocked) return blocked;
+
           const response = await route.handler(request, params);
-          // Add CORS headers to response
-          const newHeaders = new Headers(response.headers);
-          Object.entries(corsHeaders(origin)).forEach(([key, value]) => {
-            newHeaders.set(key, value);
-          });
-          return new Response(response.body, {
-            status: response.status,
-            headers: newHeaders,
-          });
+          console.log(`[SERVER] ${method} ${pathname} -> ${response.status}`);
+          
+          try {
+            // Add CORS headers
+            Object.entries(corsHeaders(origin)).forEach(([key, value]) => {
+              response.headers.set(key, value);
+            });
+            
+            // Add Security Headers
+            addSecurityHeaders(response);
+          } catch (hErr) {
+            console.error("[SERVER] Header error:", hErr);
+          }
+
+          return response;
         } catch (error) {
           console.error("Route handler error:", error);
-          return errorResponse("Internal server error", 500, origin);
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          const stack = error instanceof Error ? error.stack : undefined;
+          return errorResponse(`Internal server error: ${errorMessage}${stack ? "\n" + stack : ""}`, 500, origin);
         }
       }
     }
@@ -460,9 +485,10 @@ function getLocalIP(): string {
 
 // Log startup info
 const localIP = getLocalIP();
+const protocol = useHttps ? "https" : "http";
 console.log(`🚀 Server running at:`);
-console.log(`   Local:   http://localhost:${server.port}`);
-console.log(`   Network: http://${localIP}:${server.port}`);
+console.log(`   Local:   ${protocol}://localhost:${server.port}`);
+console.log(`   Network: ${protocol}://${localIP}:${server.port}`);
 console.log(`   CORS:    All private networks (HTTPS only)`);
 logDbConfig();
 

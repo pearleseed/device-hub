@@ -5,8 +5,14 @@ import { authenticateRequest, requireAdmin } from "../middleware/auth";
 import type { JWTPayload } from "../types";
 
 // JSON response helper
-export const json = (data: unknown, status = 200): Response =>
-  new Response(JSON.stringify(data), { status, headers: { "Content-Type": "application/json" } });
+export const json = (data: unknown, status = 200, headers: HeadersInit = {}): Response =>
+  new Response(JSON.stringify(data), { 
+    status, 
+    headers: { 
+      "Content-Type": "application/json",
+      ...headers
+    } 
+  });
 
 export const ok = <T>(data: T, message?: string) => json({ success: true, data, message });
 export const created = <T>(data: T, message?: string) => json({ success: true, data, message }, 201);
@@ -31,29 +37,32 @@ export async function withAuth(
   request: Request,
   handler: (payload: JWTPayload) => Promise<Response>
 ): Promise<Response> {
-  const payload = await authenticateRequest(request);
-  if (!payload) return unauthorized();
-  return handler(payload);
+  const result = await authenticateRequest(request);
+  if (result instanceof Response) return result;
+  if (!result) return unauthorized();
+  return handler(result);
 }
 
 export async function withAdmin(
   request: Request,
   handler: (payload: JWTPayload) => Promise<Response>
 ): Promise<Response> {
-  const payload = await authenticateRequest(request);
-  if (!payload) return unauthorized();
-  if (!requireAdmin(payload)) return forbidden("Admin access required");
-  return handler(payload);
+  const result = await authenticateRequest(request);
+  if (result instanceof Response) return result;
+  if (!result) return unauthorized();
+  if (!requireAdmin(result)) return forbidden("Admin access required");
+  return handler(result);
 }
 
 export async function withSuperuser(
   request: Request,
   handler: (payload: JWTPayload) => Promise<Response>
 ): Promise<Response> {
-  const payload = await authenticateRequest(request);
-  if (!payload) return unauthorized();
-  if (payload.role !== "superuser") return forbidden("Superuser access required");
-  return handler(payload);
+  const result = await authenticateRequest(request);
+  if (result instanceof Response) return result;
+  if (!result) return unauthorized();
+  if (result.role !== "superuser") return forbidden("Superuser access required");
+  return handler(result);
 }
 
 // CSV response helper

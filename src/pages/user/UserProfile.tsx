@@ -395,20 +395,11 @@ const UserProfile: React.FC = () => {
               accentColor="primary"
             />
             <StatsCard
-              title={t("userProfile.approvalRate")}
-              value={`${approvalRate}%`}
-              subtitle={t("userProfile.approvedRejectedDesc", {
-                approved: stats.approvedRequests.toString(),
-                rejected: stats.rejectedRequests.toString(),
-              })}
+              title={t("userProfile.totalRequests")}
+              value={stats.totalRequests}
+              subtitle={t("userProfile.allTimeRequests")}
               icon={TrendingUp}
-              accentColor={
-                approvalRate >= 80
-                  ? "success"
-                  : approvalRate >= 50
-                    ? "warning"
-                    : "destructive"
-              }
+              accentColor="primary"
             />
           </div>
         )}
@@ -475,6 +466,21 @@ const UserProfile: React.FC = () => {
                       </p>
                       <p className="text-2xl font-bold">
                         {categoriesBorrowed.length}
+                      </p>
+                    </div>
+                    <div className="p-4 rounded-lg bg-muted/50">
+                      <p className="text-sm text-muted-foreground mb-1">
+                        {t("userProfile.successRate")}
+                      </p>
+                      <p className="text-2xl font-bold">
+                        {stats.completedLoans + stats.activeLoans > 0
+                          ? Math.round(
+                              ((stats.completedLoans + stats.activeLoans) /
+                                (stats.completedLoans + stats.activeLoans + stats.rejectedRequests)) *
+                                100
+                            )
+                          : 0}
+                        %
                       </p>
                     </div>
                   </div>

@@ -48,3 +48,6 @@ coverage
 # Cache
 .cache
 *.tsbuildinfo
+
+# SSL Certificates (development)
+server/certs/

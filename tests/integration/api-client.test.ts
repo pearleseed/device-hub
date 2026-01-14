@@ -51,7 +51,7 @@ describe("API Client Integration Tests", () => {
     mockOnUnauthorized = vi.fn();
 
     apiClient = new ApiClient({
-      baseUrl: "http://localhost:3001",
+      baseUrl: "https://localhost:3001",
       getToken: mockGetToken,
       onUnauthorized: mockOnUnauthorized,
     });

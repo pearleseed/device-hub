@@ -38,7 +38,7 @@ import {
   User,
 } from "lucide-react";
 
-const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:3001";
+const API_BASE = import.meta.env.VITE_API_URL || "";
 const ALLOWED_MIME_TYPES = ["image/jpeg", "image/png", "image/webp"];
 const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
 
@@ -237,7 +237,7 @@ const AdminProfile: React.FC = () => {
         <BreadcrumbNav />
 
         <div className="mb-8">
-          <h1 className="text-2xl font-bold mb-2">{t("adminProfile.title")}</h1>
+          <h1 className="text-2xl font-bold mb-2 py-2">{t("adminProfile.title")}</h1>
           <p className="text-muted-foreground">{t("adminProfile.subtitle")}</p>
         </div>
 

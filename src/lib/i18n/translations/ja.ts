@@ -21,6 +21,7 @@ export const ja: TranslationData = {
   "common.dateFormatLong": "yyyy'年'M'月'd'日' EEEE",
   "common.dateFormatMedium": "yyyy'年'M'月'd'日'",
   "common.dateFormatShort": "M'月'd'日'",
+  "common.dateFormatWithWeekday": "M'月'd'日' EEEE",
   "common.search": "検索",
   "common.add": "追加",
   "common.edit": "編集",
@@ -39,8 +40,11 @@ export const ja: TranslationData = {
   "common.profile": "プロフィール",
   "common.selectAll": "すべて選択",
   "common.deselectAll": "すべて解除",
+  "common.selected": "選択済み",
   "common.more": "件",
+  "common.due": "期限",
   "common.clearAll": "すべてクリア",
+  "common.apply": "適用",
   "common.back": "戻る",
   "common.next": "次へ",
   "common.done": "完了",
@@ -63,6 +67,7 @@ export const ja: TranslationData = {
   "common.administration": "管理",
   "common.perPage": "ページあたり",
   "common.catalog": "カタログ",
+  "common.pickDate": "日付を選択",
 
   // Months
   "months.jan": "1月",
@@ -169,6 +174,7 @@ export const ja: TranslationData = {
   "inventory.assignedTo": "割り当て先",
   "inventory.searchDevices": "デバイスを検索...",
   "inventory.noDevicesFound": "デバイスが見つかりません",
+  "inventory.noMatchingDevices": "現在のフィルターに一致するデバイスは見つかりませんでした。",
   "inventory.addFirstDevice": "最初のデバイスを追加して始めましょう",
   "inventory.deviceAdded": "デバイスを追加しました",
   "inventory.deviceUpdated": "デバイスを更新しました",
@@ -283,6 +289,7 @@ export const ja: TranslationData = {
   "deviceCatalog.devicesAvailable": "台が利用可能",
   "deviceCatalog.browseCatalog": "デバイスカタログ",
   "deviceCatalog.browseAndRequest": "デバイス一覧からリクエストを作成",
+  "deviceCatalog.filters": "フィルター:",
   "deviceCatalog.favoritesOnly": "お気に入りのみ",
   "deviceCatalog.viewAll": "すべて表示",
   "deviceCatalog.clear": "クリア",
@@ -341,13 +348,7 @@ export const ja: TranslationData = {
   "requests.renewalRequests": "更新リクエスト",
   "requests.export": "エクスポート",
   "requests.invalidTransitionTitle": "無効な移行",
-  "requests.error.invalidStatusChange":
-    "{{from}} から {{to}} へ変更できません。",
-  "requests.error.cannotChangeReturned":
-    "返却済みのリクエストは変更できません。",
-  "requests.error.cannotChangeRejected":
-    "却下されたリクエストは変更できません。",
-  "requests.error.pendingApproval": "保留中のリクエストは承認が必要です。",
+
   "requests.conditionChangedTo": "デバイスの状態が変更されました",
   "requests.conditionUpdatedTitle": "状態を更新しました",
   "requests.statusUpdatedTitle": "ステータスを更新しました",
@@ -382,6 +383,9 @@ export const ja: TranslationData = {
   "calendar.filters": "フィルター",
   "calendar.categories": "カテゴリー",
   "calendar.devices": "デバイス一覧",
+  "calendar.searchDevices": "デバイスを検索...",
+  "calendar.noDevicesFound": "デバイスが見つかりません",
+  "calendar.devicesSelected": "台選択中",
   "calendar.device": "デバイス",
   "calendar.selectDate": "日付を選択",
   "calendar.noBookingsForDate": "この日の予約はありません",
@@ -810,6 +814,28 @@ export const ja: TranslationData = {
   "requestStatus.overdue": "期限超過",
   "requestStatus.cancelled": "キャンセル済み",
 
+  // Requests Actions
+  "requests.approve": "承認",
+  "requests.reject": "拒否",
+  "requests.approveRequest": "リクエストを承認",
+  "requests.rejectRequest": "リクエストを拒否",
+  "requests.activate": "有効化",
+  "requests.confirmApprove": "{{device}} のリクエストを承認しますか？",
+  "requests.confirmReject": "{{device}} のリクエストを拒否しますか？",
+  "requests.actions": "アクション",
+  "requests.error.cannotChangeReturned": "返却済みのリクエストのステータスは変更できません",
+  "requests.error.cannotChangeRejected": "拒否されたリクエストのステータスは変更できません",
+  "requests.error.pendingApproval": "有効化する前に承認が必要です",
+  "requests.error.pendingToReturned": "保留中のリクエストは直接返却できません",
+  "requests.error.approvedToPending": "承認されたリクエストを保留に戻すことはできません",
+  "requests.error.approvedToReturned": "承認されたリクエストを直接返却することはできません",
+  "requests.error.approvedToRejected": "承認されたリクエストを拒否することはできません",
+  "requests.error.activeToNonReturned": "アクティブなリクエストは返却する必要があります",
+  "requests.error.invalidStatusChange": "{{from}} から {{to}} へのステータス変更は無効です",
+  "requests.error.renewalApprovedNoChange": "延長リクエストは既に承認されています",
+  "requests.error.renewalRejectedNoChange": "延長リクエストは既に拒否されています",
+  "requests.error.renewalToPending": "延長リクエストを保留に戻すことはできません",
+
   // Language
   "language.select": "言語を選択",
   "language.current": "現在の言語",
@@ -1193,6 +1219,8 @@ export const ja: TranslationData = {
   "userProfile.completedLoans": "返却完了",
   "userProfile.approvalRate": "承認率",
   "userProfile.totalRequests": "リクエスト総数",
+  "userProfile.allTimeRequests": "全リクエスト数",
+  "userProfile.successRate": "成功率",
   "userProfile.currentlyBorrowed": "現在借用中",
   "userProfile.awaitingApproval": "承認待ち",
   "userProfile.successfullyReturned": "正常に返却されました",
@@ -1383,22 +1411,7 @@ export const ja: TranslationData = {
   "userProfile.requestedStatus": "リクエスト済み",
   "userProfile.uploadErrorTitle": "エラー",
   "userProfile.fullTime": "正社員",
-  "requests.error.pendingToReturned":
-    "保留中のリクエストを trực tiếp 返却済みにすることはできません。",
-  "requests.error.approvedToPending":
-    "承認済みのリクエストを保留中に戻すことはできません。",
-  "requests.error.approvedToReturned":
-    "承認済みのリクエストは返却前に有効である必要があります。",
-  "requests.error.approvedToRejected":
-    "承認済みのリクエストを拒否することはできません。",
-  "requests.error.activeToNonReturned":
-    "有効なリクエストは返却済みにのみ変更できます。",
-  "requests.error.renewalApprovedNoChange":
-    "承認済みの更新リクエストは変更できません。",
-  "requests.error.renewalRejectedNoChange":
-    "拒否された更新リクエストは変更できません。",
-  "requests.error.renewalToPending":
-    "リクエストを保留中に戻すことはできません。",
+
 
   // Price Ranges
   "priceRange.all": "すべての価格",

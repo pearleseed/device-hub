@@ -9,7 +9,7 @@
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import * as fc from "fast-check";
-import { TestApiClient } from "../utils/api-client";
+import { testApiClient as api } from "../utils/api-client";
 import {
   createDevice,
   createBorrowRequest,
@@ -27,7 +27,7 @@ import type {
 // Test Setup
 // ============================================================================
 
-const api = new TestApiClient();
+// Use the singleton API client
 
 let adminToken: string;
 let superuserToken: string;
@@ -326,6 +326,7 @@ describe("Return Request API - Creation", () => {
       // Verify device status changed to maintenance
       const deviceResponse = await api.get<DeviceWithDepartment>(
         `/api/devices/${deviceId}`,
+        adminToken,
       );
       expect(deviceResponse.data.data?.status).toBe("maintenance");
     });
@@ -354,6 +355,7 @@ describe("Return Request API - Creation", () => {
       // Verify device status changed to available
       const deviceResponse = await api.get<DeviceWithDepartment>(
         `/api/devices/${deviceId}`,
+        adminToken,
       );
       expect(deviceResponse.data.data?.status).toBe("available");
     });
@@ -564,6 +566,7 @@ describe("Return Request API - Condition Update", () => {
       // Verify device status is still available
       const deviceResponse = await api.get<DeviceWithDepartment>(
         `/api/devices/${deviceId}`,
+        adminToken,
       );
       expect(deviceResponse.data.data?.status).toBe("available");
     });
@@ -602,6 +605,7 @@ describe("Return Request API - Condition Update", () => {
       // Verify device status changed to maintenance
       const deviceResponse = await api.get<DeviceWithDepartment>(
         `/api/devices/${deviceId}`,
+        adminToken,
       );
       expect(deviceResponse.data.data?.status).toBe("maintenance");
     });
@@ -629,6 +633,7 @@ describe("Return Request API - Condition Update", () => {
       // Verify device is in maintenance
       let deviceResponse = await api.get<DeviceWithDepartment>(
         `/api/devices/${deviceId}`,
+        adminToken,
       );
       expect(deviceResponse.data.data?.status).toBe("maintenance");
 
@@ -646,6 +651,7 @@ describe("Return Request API - Condition Update", () => {
       // Verify device status changed to available
       deviceResponse = await api.get<DeviceWithDepartment>(
         `/api/devices/${deviceId}`,
+        adminToken,
       );
       expect(deviceResponse.data.data?.status).toBe("available");
     });
@@ -821,7 +827,8 @@ describe("Real-World Return Scenarios", () => {
 
     // Verify device status is available
     const deviceResponse = await api.get<DeviceWithDepartment>(
-      `/api/devices/${deviceId}`
+      `/api/devices/${deviceId}`,
+      adminToken
     );
     expect(deviceResponse.data.data?.status).toBe("available");
   });
