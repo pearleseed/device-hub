@@ -579,7 +579,7 @@ export const DeviceCalendarView: React.FC<DeviceCalendarViewProps> = ({
                             {t("calendar.needsAttention")} ({pendingBookings.length})
                           </span>
                         </div>
-                        <div className="grid gap-2 sm:grid-cols-1 xl:grid-cols-2 2xl:grid-cols-3">
+                        <div className="grid gap-2 sm:grid-cols-1 xl:grid-cols-2 2xl:grid-cols-2">
                           {pendingBookings.map((booking) =>
                             renderBookingCard(booking),
                           )}
@@ -598,7 +598,7 @@ export const DeviceCalendarView: React.FC<DeviceCalendarViewProps> = ({
                             </span>
                           </div>
                         )}
-                        <div className="grid gap-2 sm:grid-cols-1 xl:grid-cols-2 2xl:grid-cols-3">
+                        <div className="grid gap-2 sm:grid-cols-1 xl:grid-cols-2 2xl:grid-cols-2">
                           {otherBookings.map((booking) =>
                             renderBookingCard(booking),
                           )}

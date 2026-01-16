@@ -50,9 +50,11 @@ import {
   CalendarClock,
   Clock,
   RotateCcw,
+  Plus,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { KanbanColumn } from "@/components/admin/KanbanColumn";
+import { CreateRequestModal } from "@/components/admin/CreateRequestModal";
 import {
   DraggableRequestCard,
   RequestCardContent,
@@ -274,6 +276,7 @@ const AdminRequests: React.FC = () => {
     useState<RenewalRequestWithDetails | null>(null);
   const [activeReturn, setActiveReturn] =
     useState<ReturnRequestWithDetails | null>(null);
+  const [isCreateRequestModalOpen, setIsCreateRequestModalOpen] = useState(false);
 
   // Track original status before drag started
   const [originalBorrowStatus, setOriginalBorrowStatus] =
@@ -704,6 +707,9 @@ const AdminRequests: React.FC = () => {
               {/* <p className="text-muted-foreground">{t("requests.subtitle")}</p> */}
             </div>
             <div className="flex gap-2 py-2">
+              <Button size="sm" onClick={() => setIsCreateRequestModalOpen(true)}>
+                <Plus className="h-4 w-4 mr-1" /> {t("requests.createRequest") || "Create Request"}
+              </Button>
               <Button variant="outline" size="sm" onClick={handleExportCSV}>
                 <Download className="h-4 w-4 mr-1" /> {t("requests.export")}
               </Button>
@@ -723,6 +729,11 @@ const AdminRequests: React.FC = () => {
               </Button>
             </div>
           </div>
+
+          <CreateRequestModal
+            open={isCreateRequestModalOpen}
+            onOpenChange={setIsCreateRequestModalOpen}
+          />
 
           <Tabs
             value={activeTab}

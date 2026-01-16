@@ -16,9 +16,12 @@ export interface StorageResult {
   error?: string;
 }
 
+// Mappings and config helpers
 const MIME_EXT: Record<string, string> = { "image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp" };
 const getPath = (t: AvatarEntityType) => t === "user" ? USER_AVATAR_PATH : DEVICE_AVATAR_PATH;
 const getUrl = (t: AvatarEntityType) => t === "user" ? USER_AVATAR_URL : DEVICE_AVATAR_URL;
+
+// Usage of randomUUID ensures unique filenames even if IDs match (e.g. after database restore)
 const genFilename = (id: number, mime: string, suffix?: string) => 
   `${id}_${randomUUID().slice(0, 8)}${suffix ? `_${suffix}` : ""}${MIME_EXT[mime] || ".jpg"}`;
 
@@ -32,18 +35,33 @@ const deleteExisting = async (entityType: AvatarEntityType, entityId: number) =>
   } catch { /* dir may not exist */ }
 };
 
+/**
+ * Stores processed avatar images (original and thumbnail) to the filesystem.
+ * Handles directory creation and cleanup of old avatars for the same entity.
+ */
 export async function storeAvatar(img: ProcessedImage, entityType: AvatarEntityType, entityId: number): Promise<StorageResult> {
   const dir = getPath(entityType), urlBase = getUrl(entityType);
   try {
     await ensureDir(dir);
+    
+    // Clean up previous avatars to prevent storage bloat
     await deleteExisting(entityType, entityId);
+    
     const origName = genFilename(entityId, img.mimeType);
     const thumbName = genFilename(entityId, img.mimeType, "thumb");
+    
     await Promise.all([
       fs.writeFile(path.join(dir, origName), img.original),
       fs.writeFile(path.join(dir, thumbName), img.thumbnail),
     ]);
-    return { success: true, originalPath: path.join(dir, origName), thumbnailPath: path.join(dir, thumbName), originalUrl: `${urlBase}/${origName}`, thumbnailUrl: `${urlBase}/${thumbName}` };
+    
+    return { 
+      success: true, 
+      originalPath: path.join(dir, origName), 
+      thumbnailPath: path.join(dir, thumbName), 
+      originalUrl: `${urlBase}/${origName}`, 
+      thumbnailUrl: `${urlBase}/${thumbName}` 
+    };
   } catch (e) {
     return { success: false, error: `Failed to store avatar: ${e instanceof Error ? e.message : "Unknown"}` };
   }

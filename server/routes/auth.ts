@@ -6,21 +6,32 @@ import type { User, UserPublic, LoginRequest, SignupRequest, AuthResponse } from
 interface UserWithPwdFlag extends User { must_change_password: boolean; }
 interface UserPublicWithPwdFlag extends UserPublic { must_change_password: boolean; }
 
+// Regex for basic validation
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const USERNAME_REGEX = /^[a-zA-Z0-9._-]+$/;
 const isValidEmailOrUsername = (s: string) => EMAIL_REGEX.test(s) || USERNAME_REGEX.test(s);
 
-// Helper to build cookie header - works for localhost and private IPs (10.x, 192.168.x, 172.16-31.x)
+/**
+ * Helper to build values for the Set-Cookie header.
+ * Configures cookie attributes based on the environment (Dev vs Prod).
+ * @param name Cookie name
+ * @param value Cookie value
+ * @param maxAge Max age in seconds
+ */
 function buildCookieHeader(name: string, value: string, maxAge: number): string {
   const isProd = process.env.NODE_ENV === "production";
-  // Use SameSite=None with Secure for cross-origin in dev (IP access), Strict for production
-  // SameSite=None requires Secure flag, which works with HTTPS
-  const sameSite = isProd ? "Strict" : "None";
-  const secure = isProd || sameSite === "None" ? "; Secure" : "";
+  // For development (HTTP), use Lax and no Secure flag to allow localhost/IP access
+  // For production (HTTPS), use Strict and Secure flag
+  const sameSite = isProd ? "Strict" : "Lax";
+  const secure = isProd ? "; Secure" : "";
   return `${name}=${value}; Max-Age=${maxAge}; Path=/; HttpOnly; SameSite=${sameSite}${secure}`;
 }
 
 export const authRoutes = {
+  /**
+   * POST /api/auth/login
+   * Authenticates a user and sets a session cookie.
+   */
   async login(request: Request): Promise<Response> {
     try {
       const { email, password, rememberMe }: LoginRequest = await request.json();
@@ -38,12 +49,14 @@ export const authRoutes = {
       }
 
       await db`UPDATE users SET last_login_at = NOW() WHERE id = ${user.id}`;
+      // Generate JWT
       const token = await generateToken(user.id, user.email, user.role, rememberMe || false);
       const [userPublic] = await db<UserPublicWithPwdFlag[]>`SELECT * FROM v_users_public WHERE id = ${user.id}`;
       
       const maxAge = rememberMe ? 30 * 24 * 60 * 60 : 24 * 60 * 60;
       const cookieHeader = buildCookieHeader("auth_token", token, maxAge);
 
+      // Return user info and set http-only cookie
       return json(
         { success: true, user: userPublic, mustChangePassword: user.must_change_password || false },
         200,
@@ -55,6 +68,10 @@ export const authRoutes = {
     }
   },
 
+  /**
+   * POST /api/auth/signup
+   * Register a new user account.
+   */
   async signup(request: Request): Promise<Response> {
     try {
       const { name, email, password, department_id }: SignupRequest = await request.json();
@@ -93,6 +110,10 @@ export const authRoutes = {
     }
   },
 
+  /**
+   * GET /api/auth/me
+   * Get current authenticated user's session info.
+   */
   async me(request: Request): Promise<Response> {
     return withAuth(request, async (payload) => {
       try {
@@ -106,6 +127,10 @@ export const authRoutes = {
     });
   },
 
+  /**
+   * POST /api/auth/change-password
+   * Change current user's password.
+   */
   async changePassword(request: Request): Promise<Response> {
     return withAuth(request, async (payload) => {
       try {
@@ -118,7 +143,8 @@ export const authRoutes = {
         if (!(await verifyPassword(currentPassword, user.password_hash))) return err("Current password is incorrect", 401);
 
         const newHash = await hashPassword(newPassword);
-        await db`UPDATE users SET password_hash = ${newHash}, must_change_password = FALSE WHERE id = ${payload.userId}`;
+        // Clear temp_password when user changes password
+        await db`UPDATE users SET password_hash = ${newHash}, must_change_password = FALSE, temp_password = NULL WHERE id = ${payload.userId}`;
 
         return ok(null, "Password changed successfully");
       } catch (e) {
@@ -129,6 +155,10 @@ export const authRoutes = {
   },
 
 
+  /**
+   * POST /api/auth/logout
+   * Clear the session cookie.
+   */
   async logout(request: Request): Promise<Response> {
     const cookieHeader = buildCookieHeader("auth_token", "", 0);
     return json({ success: true }, 200, { "Set-Cookie": cookieHeader });

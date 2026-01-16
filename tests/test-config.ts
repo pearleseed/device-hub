@@ -18,7 +18,7 @@ if (typeof (globalThis as any).Bun === "undefined") {
 }
 
 export const TEST_CONFIG = {
-  API_BASE_URL: process.env.TEST_API_URL || "https://localhost:3011",
+  API_BASE_URL: process.env.TEST_API_URL || "http://localhost:3001",
   TEST_TIMEOUT: 30000,
 };
 

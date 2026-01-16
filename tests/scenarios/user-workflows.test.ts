@@ -204,11 +204,12 @@ describe("Scenario: New Employee Onboarding", () => {
     expect(activateResponse.status).toBe(200);
     expect(activateResponse.data.data?.status).toBe("active");
 
-    // Step 8: Verify device status changed to borrowed
+    // Step 8: Verify device status changed to inuse
     const updatedDeviceResponse = await api.get<DeviceWithDepartment>(
       `/api/devices/${targetDevice.id}`,
+      adminToken,
     );
-    expect(updatedDeviceResponse.data.data?.status).toBe("borrowed");
+    expect(updatedDeviceResponse.data.data?.status).toBe("inuse");
   });
 });
 
@@ -329,9 +330,9 @@ describe("Scenario: Device Return with Damage Report", () => {
     expect(returnResponse.status).toBe(201);
     expect(returnResponse.data.data?.device_condition).toBe("damaged");
 
-    // Step 3: Verify device is now in maintenance
     const deviceResponse = await api.get<DeviceWithDepartment>(
       `/api/devices/${device.id}`,
+      adminToken,
     );
     expect(deviceResponse.data.data?.status).toBe("maintenance");
 
@@ -439,6 +440,7 @@ describe("Scenario: Request Rejection and Re-submission", () => {
     // Step 3: Verify device is still available
     const deviceResponse = await api.get<DeviceWithDepartment>(
       `/api/devices/${device.id}`,
+      adminToken,
     );
     expect(deviceResponse.data.data?.status).toBe("available");
 
@@ -687,7 +689,10 @@ describe("Scenario: Complete Device Lifecycle", () => {
     );
 
     // Verify device is available again
-    let deviceStatus = await api.get<DeviceWithDepartment>(`/api/devices/${device.id}`);
+    let deviceStatus = await api.get<DeviceWithDepartment>(
+      `/api/devices/${device.id}`,
+      adminToken,
+    );
     expect(deviceStatus.data.data?.status).toBe("available");
 
     // Step 4: Second user borrows the same device
@@ -730,7 +735,10 @@ describe("Scenario: Complete Device Lifecycle", () => {
     );
 
     // Verify device is still available (fair condition doesn't trigger maintenance)
-    deviceStatus = await api.get<DeviceWithDepartment>(`/api/devices/${device.id}`);
+    deviceStatus = await api.get<DeviceWithDepartment>(
+      `/api/devices/${device.id}`,
+      adminToken,
+    );
     expect(deviceStatus.data.data?.status).toBe("available");
   });
 });

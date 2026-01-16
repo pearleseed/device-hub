@@ -78,6 +78,7 @@ describe("In-App Notifications API - Get All", () => {
     });
 
     it("should return 401 for unauthenticated request", async () => {
+      api.clearAuth();
       const response = await api.get<Notification[]>(
         "/api/in-app-notifications"
       );
@@ -137,6 +138,7 @@ describe("In-App Notifications API - Unread Count", () => {
     });
 
     it("should return 401 for unauthenticated request", async () => {
+      api.clearAuth();
       const response = await api.get<{ unreadCount: number }>(
         "/api/in-app-notifications/unread-count"
       );
@@ -213,6 +215,7 @@ describe("In-App Notifications API - Create", () => {
     });
 
     it("should return 401 for unauthenticated request", async () => {
+      api.clearAuth();
       const response = await api.post<Notification>(
         "/api/in-app-notifications",
         {
@@ -385,6 +388,7 @@ describe("In-App Notifications API - Mark All as Read", () => {
     });
 
     it("should return 401 for unauthenticated request", async () => {
+      api.clearAuth();
       const response = await api.patch<{ message: string }>(
         "/api/in-app-notifications/read-all",
         {}
@@ -528,6 +532,7 @@ describe("In-App Notifications API - Clear All", () => {
     });
 
     it("should return 401 for unauthenticated request", async () => {
+      api.clearAuth();
       const response = await api.delete<{ message: string }>(
         "/api/in-app-notifications/clear"
       );

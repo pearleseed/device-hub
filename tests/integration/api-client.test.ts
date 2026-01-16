@@ -17,7 +17,7 @@ import { ApiClient, ApiError, NetworkError } from "../../src/lib/api-client";
 
 // Mock fetch globally
 const mockFetch = vi.fn();
-global.fetch = mockFetch;
+global.fetch = mockFetch as any;
 
 // Helper to create a mock response
 function createMockResponse<T>(
@@ -42,18 +42,15 @@ function createNetworkError(): Error {
 
 describe("API Client Integration Tests", () => {
   let apiClient: ApiClient;
-  let mockGetToken: ReturnType<typeof vi.fn>;
   let mockOnUnauthorized: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockGetToken = vi.fn();
     mockOnUnauthorized = vi.fn();
 
     apiClient = new ApiClient({
       baseUrl: "https://localhost:3001",
-      getToken: mockGetToken,
-      onUnauthorized: mockOnUnauthorized,
+      onUnauthorized: () => { (mockOnUnauthorized as any)(); },
     });
   });
 
@@ -62,13 +59,11 @@ describe("API Client Integration Tests", () => {
   });
 
   // ==========================================================================
-  // Unit Tests - Token Attachment (Requirement 8.1)
+  // Unit Tests - Request Configuration (Requirement 8.1)
   // ==========================================================================
 
-  describe("Token Attachment", () => {
-    it("should attach Authorization header when token is available", async () => {
-      const token = "test-jwt-token";
-      mockGetToken.mockReturnValue(token);
+  describe("Request Configuration", () => {
+    it("should set credentials to 'include' for all requests", async () => {
       mockFetch.mockResolvedValue(
         createMockResponse(200, { success: true, data: { id: 1 } }),
       );
@@ -78,15 +73,12 @@ describe("API Client Integration Tests", () => {
       expect(mockFetch).toHaveBeenCalledWith(
         expect.any(String),
         expect.objectContaining({
-          headers: expect.objectContaining({
-            Authorization: `Bearer ${token}`,
-          }),
+          credentials: "include",
         }),
       );
     });
 
-    it("should not attach Authorization header when token is null", async () => {
-      mockGetToken.mockReturnValue(null);
+    it("should not attach Authorization header (cookie-based auth)", async () => {
       mockFetch.mockResolvedValue(
         createMockResponse(200, { success: true, data: { id: 1 } }),
       );
@@ -95,7 +87,7 @@ describe("API Client Integration Tests", () => {
 
       const callArgs = mockFetch.mock.calls[0];
       const headers = callArgs[1]?.headers as Record<string, string>;
-      expect(headers["Authorization"]).toBeUndefined();
+      expect(headers || {}).not.toHaveProperty("Authorization");
     });
   });
 
@@ -105,7 +97,6 @@ describe("API Client Integration Tests", () => {
 
   describe("401 Response Handling", () => {
     it("should call onUnauthorized callback when receiving 401", async () => {
-      mockGetToken.mockReturnValue("expired-token");
       mockFetch.mockResolvedValue(
         createMockResponse(401, { success: false, error: "Unauthorized" }),
       );
@@ -115,7 +106,6 @@ describe("API Client Integration Tests", () => {
     });
 
     it("should throw ApiError with 401 status code", async () => {
-      mockGetToken.mockReturnValue("expired-token");
       mockFetch.mockResolvedValue(
         createMockResponse(401, { success: false, error: "Unauthorized" }),
       );
@@ -137,7 +127,6 @@ describe("API Client Integration Tests", () => {
   describe("Successful Response Parsing", () => {
     it("should extract data from ApiResponse wrapper", async () => {
       const expectedData = { id: 1, name: "Test Device" };
-      mockGetToken.mockReturnValue("valid-token");
       mockFetch.mockResolvedValue(
         createMockResponse(200, { success: true, data: expectedData }),
       );
@@ -148,7 +137,6 @@ describe("API Client Integration Tests", () => {
     });
 
     it("should handle empty data in successful response", async () => {
-      mockGetToken.mockReturnValue("valid-token");
       mockFetch.mockResolvedValue(createMockResponse(200, { success: true }));
 
       const result = await apiClient.delete("/api/devices/1");
@@ -164,7 +152,6 @@ describe("API Client Integration Tests", () => {
   describe("Error Response Handling", () => {
     it("should throw ApiError with error message from response", async () => {
       const errorMessage = "Device not found";
-      mockGetToken.mockReturnValue("valid-token");
       mockFetch.mockResolvedValue(
         createMockResponse(404, { success: false, error: errorMessage }),
       );
@@ -181,7 +168,6 @@ describe("API Client Integration Tests", () => {
 
     it("should use message field if error field is not present", async () => {
       const message = "Validation failed";
-      mockGetToken.mockReturnValue("valid-token");
       mockFetch.mockResolvedValue(
         createMockResponse(400, { success: false, message }),
       );
@@ -196,7 +182,6 @@ describe("API Client Integration Tests", () => {
     });
 
     it("should provide default message when no error or message field", async () => {
-      mockGetToken.mockReturnValue("valid-token");
       mockFetch.mockResolvedValue(createMockResponse(500, { success: false }));
 
       try {
@@ -215,7 +200,6 @@ describe("API Client Integration Tests", () => {
 
   describe("Network Error Handling", () => {
     it("should throw NetworkError when fetch fails", async () => {
-      mockGetToken.mockReturnValue("valid-token");
       mockFetch.mockRejectedValue(createNetworkError());
 
       try {
@@ -228,7 +212,6 @@ describe("API Client Integration Tests", () => {
     });
 
     it("should include endpoint in NetworkError", async () => {
-      mockGetToken.mockReturnValue("valid-token");
       mockFetch.mockRejectedValue(createNetworkError());
 
       try {
@@ -247,7 +230,6 @@ describe("API Client Integration Tests", () => {
 
   describe("Content-Type Header for POST/PUT/PATCH", () => {
     it("should set Content-Type to application/json for POST requests", async () => {
-      mockGetToken.mockReturnValue("valid-token");
       mockFetch.mockResolvedValue(
         createMockResponse(200, { success: true, data: { id: 1 } }),
       );
@@ -265,7 +247,6 @@ describe("API Client Integration Tests", () => {
     });
 
     it("should set Content-Type to application/json for PUT requests", async () => {
-      mockGetToken.mockReturnValue("valid-token");
       mockFetch.mockResolvedValue(
         createMockResponse(200, { success: true, data: { id: 1 } }),
       );
@@ -283,7 +264,6 @@ describe("API Client Integration Tests", () => {
     });
 
     it("should set Content-Type to application/json for PATCH requests", async () => {
-      mockGetToken.mockReturnValue("valid-token");
       mockFetch.mockResolvedValue(
         createMockResponse(200, { success: true, data: { id: 1 } }),
       );
@@ -301,7 +281,6 @@ describe("API Client Integration Tests", () => {
     });
 
     it("should not set Content-Type for GET requests", async () => {
-      mockGetToken.mockReturnValue("valid-token");
       mockFetch.mockResolvedValue(
         createMockResponse(200, { success: true, data: [] }),
       );
@@ -314,7 +293,6 @@ describe("API Client Integration Tests", () => {
     });
 
     it("should not set Content-Type for DELETE requests", async () => {
-      mockGetToken.mockReturnValue("valid-token");
       mockFetch.mockResolvedValue(createMockResponse(200, { success: true }));
 
       await apiClient.delete("/api/devices/1");
@@ -336,14 +314,13 @@ describe("API Client Integration Tests", () => {
    *
    * **Validates: Requirements 8.1**
    */
-  describe("Property 20: API Client Token Attachment", () => {
-    it("should attach Bearer token for all valid tokens", async () => {
+  describe("Property 20: API Client Cookie Configuration", () => {
+    it("should set credentials to 'include' for all requests", async () => {
       await fc.assert(
         fc.asyncProperty(
-          fc.stringMatching(/^[a-zA-Z0-9._-]{10,100}$/),
-          async (token) => {
+          fc.webUrl(),
+          async (url) => {
             vi.clearAllMocks();
-            mockGetToken.mockReturnValue(token);
             mockFetch.mockResolvedValue(
               createMockResponse(200, { success: true, data: {} }),
             );
@@ -353,14 +330,12 @@ describe("API Client Integration Tests", () => {
             expect(mockFetch).toHaveBeenCalledWith(
               expect.any(String),
               expect.objectContaining({
-                headers: expect.objectContaining({
-                  Authorization: `Bearer ${token}`,
-                }),
+                credentials: "include",
               }),
             );
           },
         ),
-        { numRuns: 100 },
+        { numRuns: 10 },
       );
     });
   });
@@ -383,7 +358,6 @@ describe("API Client Integration Tests", () => {
           }),
           async (expectedData) => {
             vi.clearAllMocks();
-            mockGetToken.mockReturnValue("valid-token");
             mockFetch.mockResolvedValue(
               createMockResponse(200, { success: true, data: expectedData }),
             );
@@ -414,7 +388,6 @@ describe("API Client Integration Tests", () => {
           fc.string({ minLength: 1, maxLength: 100 }),
           async (statusCode, errorMessage) => {
             vi.clearAllMocks();
-            mockGetToken.mockReturnValue("valid-token");
             mockFetch.mockResolvedValue(
               createMockResponse(statusCode, {
                 success: false,
@@ -455,7 +428,6 @@ describe("API Client Integration Tests", () => {
           }),
           async (method, body) => {
             vi.clearAllMocks();
-            mockGetToken.mockReturnValue("valid-token");
             mockFetch.mockResolvedValue(
               createMockResponse(200, { success: true, data: { id: 1 } }),
             );

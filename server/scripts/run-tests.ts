@@ -14,6 +14,10 @@ const c = (color: keyof typeof colors, text: string) =>
 
 let serverProcess: Subprocess | null = null;
 
+/**
+ * Starts the application server in a child process
+ * Waits for the health check endpoint to respond before proceeding
+ */
 async function startServer(): Promise<void> {
   console.log(c("cyan", "🚀 Starting server..."));
 
@@ -29,12 +33,7 @@ async function startServer(): Promise<void> {
 
   while (attempts < maxAttempts) {
     try {
-      const response = await fetch("https://localhost:3011/api/health", {
-        // @ts-ignore - Bun-specific fetch option
-        tls: {
-          rejectUnauthorized: false
-        }
-      });
+      const response = await fetch("http://localhost:3001/api/health");
       if (response.ok) {
         console.log(c("green", "✅ Server is ready"));
         return;
@@ -51,6 +50,9 @@ async function startServer(): Promise<void> {
   throw new Error("Server failed to start within 15 seconds");
 }
 
+/**
+ * Stops the running server process if it exists
+ */
 async function stopServer(): Promise<void> {
   if (serverProcess) {
     console.log(c("yellow", "🛑 Stopping server..."));
@@ -59,6 +61,11 @@ async function stopServer(): Promise<void> {
   }
 }
 
+/**
+ * Runs the test suite using Vitest
+ * Passes any command line arguments to Vitest
+ * @returns Exit code from the test runner
+ */
 async function runTests(): Promise<number> {
   console.log(c("cyan", "🧪 Running tests...\n"));
 
@@ -73,6 +80,10 @@ async function runTests(): Promise<number> {
   return await testProcess.exited;
 }
 
+/**
+ * Resets the database to a clean state
+ * Runs the silent reset script to avoid log noise
+ */
 async function resetDatabase(): Promise<void> {
   console.log(c("cyan", "\n🔄 Resetting database..."));
 
@@ -86,6 +97,10 @@ async function resetDatabase(): Promise<void> {
   await resetProcess.exited;
 }
 
+/**
+ * Main entry point
+ * Orchestrates the full test run lifecycle.
+ */
 async function main(): Promise<void> {
   let testExitCode = 1;
 

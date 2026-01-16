@@ -37,8 +37,9 @@ const specRows: SpecRow[] = [
 ];
 
 // Helper to parse specs from JSON string
-const parseSpecs = (specsJson: string | undefined): Record<string, string> => {
+const parseSpecs = (specsJson: any): Record<string, string> => {
   if (!specsJson) return {};
+  if (typeof specsJson === 'object') return specsJson as Record<string, string>;
   try {
     return JSON.parse(specsJson);
   } catch {
@@ -201,7 +202,7 @@ export const DeviceComparisonModal: React.FC<DeviceComparisonModalProps> = ({
                     <p className="text-xs text-muted-foreground mt-2">
                       {device.status === "available"
                         ? "Ready to borrow"
-                        : device.status === "borrowed"
+                        : device.status === "inuse"
                           ? "Currently in use"
                           : "Under maintenance"}
                     </p>

@@ -124,7 +124,7 @@ export function buildStatusMessage(
 ): SlashCommandResponse {
   if (borrowedDevices.length === 0) {
     return ephemeralResponse(
-      ":information_source: You don't have any active device borrowings.",
+      ":information_source: You don't have any active device loans.",
     );
   }
 
@@ -136,9 +136,9 @@ export function buildStatusMessage(
 
   const attachment: MessageAttachment = {
     color: COLORS.info,
-    title: ":clipboard: Your Active Borrowings",
+    title: ":clipboard: Your Active Loans",
     fields,
-    footer: `${borrowedDevices.length} device(s) currently borrowed`,
+    footer: `${borrowedDevices.length} device(s) currently in use`,
   };
 
   return ephemeralResponse("", [attachment]);

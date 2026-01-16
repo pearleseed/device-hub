@@ -137,9 +137,9 @@ const UserDashboard: React.FC = () => {
             <StatsCard
               title={t("userDashboard.activeLoans")}
               value={activeLoans.length}
-              subtitle={t("userDashboard.devicesCurrentlyBorrowed")}
+              subtitle={t("userDashboard.devicesCurrentlyInUse")}
               icon={Package}
-              href="/loans"
+              href="/loans?status=active"
               accentColor="success"
             />
 
@@ -148,7 +148,7 @@ const UserDashboard: React.FC = () => {
               value={pendingRequests.length}
               subtitle={t("userDashboard.awaitingApproval")}
               icon={Clock}
-              href="/loans?tab=pending"
+              href="/loans?status=pending"
               accentColor="warning"
             />
 
@@ -157,7 +157,7 @@ const UserDashboard: React.FC = () => {
               value={loansDueSoon.length + overdueLoans.length}
               subtitle={t("userDashboard.loansEligibleForRenewal")}
               icon={RefreshCw}
-              href="/loans?tab=renewals"
+              href="/loans?status=renewals"
               accentColor={
                 overdueLoans.length > 0
                   ? "destructive"
@@ -215,7 +215,7 @@ const UserDashboard: React.FC = () => {
                       <div>
                         <p className="font-medium text-sm">{device.name}</p>
                         <p className="text-xs text-destructive">
-                          {daysOverdue} {t("ui.days")} {t("ui.overdue")}
+                          {t("loans.daysOverdue", { count: daysOverdue })}
                         </p>
                       </div>
                     </div>
@@ -251,10 +251,10 @@ const UserDashboard: React.FC = () => {
                       </div>
                       <div>
                         <p className="font-medium text-sm">{device.name}</p>
-                        <p className="text-xs text-orange-600">
+                        <p className="text-xs text-amber-600 dark:text-amber-400">
                           {daysRemaining === 0
-                            ? t("userDashboard.dueToday")
-                            : `${daysRemaining}${t("ui.day")} ${t("ui.left")}`}
+                            ? t("loans.dueToday")
+                            : t("loans.daysLeft", { count: daysRemaining })}
                         </p>
                       </div>
                     </div>
@@ -433,9 +433,13 @@ const UserDashboard: React.FC = () => {
                                 : "bg-green-500",
                           )}
                         >
-                          {daysRemaining < 0
-                            ? `${Math.abs(daysRemaining)}${t("ui.day")} ${t("ui.overdue")}`
-                            : `${daysRemaining}${t("ui.day")} ${t("ui.left")}`}
+                           {daysRemaining < 0
+                            ? t("loans.daysOverdue", {
+                                count: Math.abs(daysRemaining),
+                              })
+                            : daysRemaining === 0
+                              ? t("loans.dueToday")
+                              : t("loans.daysLeft", { count: daysRemaining })}
                         </Badge>
                       </div>
                     );

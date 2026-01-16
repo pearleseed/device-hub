@@ -65,8 +65,16 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({
 
       // Simple parameter interpolation: {{param}}
       if (params) {
-        Object.entries(params).forEach(([k, v]) => {
-          text = text.replace(new RegExp(`{{${k}}}`, "g"), String(v));
+        // Handle common pluralization suffix {{s}} if count is provided
+        const finalParams = { ...params };
+
+        // Handle common pluralization suffix {{s}} if count is provided
+        if (typeof finalParams.count === "number" && !("s" in finalParams)) {
+          finalParams.s = finalParams.count === 1 ? "" : "s";
+        }
+
+        return text.replace(/{{(\w+)}}/g, (match, key) => {
+          return finalParams[key] !== undefined ? String(finalParams[key]) : match;
         });
       }
 

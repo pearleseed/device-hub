@@ -15,6 +15,10 @@ const extractFile = async (req: Request): Promise<{ file: File | null; error?: s
   } catch { return { file: null, error: "Failed to parse form data" }; }
 };
 
+/**
+ * Generic handler to upload and process an avatar image for a user or device.
+ * Validates file type/size, processes image (crop/resize), and uploads to storage.
+ */
 const uploadAvatar = async (
   request: Request, entityType: AvatarEntityType, entityId: number, checkOwnership: (payload: { userId: number }) => boolean
 ): Promise<Response> => {
@@ -22,6 +26,7 @@ const uploadAvatar = async (
     try {
       if (!checkOwnership(payload)) return forbidden();
 
+      // Verify entity exists
       const table = entityType === "user" ? "users" : "devices";
       const [entity] = await db.unsafe<{ id: number }[]>(`SELECT id FROM ${table} WHERE id = ?`, [entityId]);
       if (!entity) return notFound(entityType === "user" ? "User" : "Device");
@@ -29,13 +34,16 @@ const uploadAvatar = async (
       const { file, error: extractErr } = await extractFile(request);
       if (!file) return err(extractErr || "No file provided");
 
+      // Validate file constraints (size, mime type)
       const validation = validateAvatarFile({ size: file.size, mimeType: file.type }, entityType);
       if (!validation.valid) return err(validation.error!);
 
+      // Process image: resize, generate thumbnail
       const processed = await processAvatar(Buffer.from(await file.arrayBuffer()), file.type);
       const storage = await storeAvatar(processed, entityType, entityId);
       if (!storage.success) return err(storage.error || "Failed to store avatar", 500);
 
+      // Update database with new URLs
       if (entityType === "user") {
         await db`UPDATE users SET avatar_url = ${storage.originalUrl}, avatar_thumbnail_url = ${storage.thumbnailUrl} WHERE id = ${entityId}`;
       } else {
@@ -74,24 +82,44 @@ const deleteAvatarHandler = async (
 };
 
 export const avatarsRoutes = {
+  /**
+   * POST /api/avatars/user/:userId
+   * Upload and set a new avatar for a user.
+   * Access: User (self) or Admin.
+   */
   async uploadUserAvatar(request: Request, params: Record<string, string>): Promise<Response> {
     const userId = parseId(params.userId);
     if (!userId) return err("Invalid user ID");
-    return uploadAvatar(request, "user", userId, (p) => p.userId === userId || requireAdmin({ userId: p.userId, email: "", role: "admin", exp: 0 }));
+    return uploadAvatar(request, "user", userId, (p) => p.userId === userId || requireAdmin({ userId: p.userId, email: "", role: "admin", exp: 0, departmentId: 0 }));
   },
 
+  /**
+   * POST /api/avatars/device/:deviceId
+   * Upload and set a new image for a device.
+   * Access: Admin only.
+   */
   async uploadDeviceAvatar(request: Request, params: Record<string, string>): Promise<Response> {
     const deviceId = parseId(params.deviceId);
     if (!deviceId) return err("Invalid device ID");
     return withAdmin(request, async (payload) => uploadAvatar(request, "device", deviceId, () => true));
   },
 
+  /**
+   * DELETE /api/avatars/user/:userId
+   * Remove the current avatar of a user.
+   * Access: User (self) or Admin.
+   */
   async deleteUserAvatar(request: Request, params: Record<string, string>): Promise<Response> {
     const userId = parseId(params.userId);
     if (!userId) return err("Invalid user ID");
-    return deleteAvatarHandler(request, "user", userId, (p) => p.userId === userId || requireAdmin({ userId: p.userId, email: "", role: "admin", exp: 0 }));
+    return deleteAvatarHandler(request, "user", userId, (p) => p.userId === userId || requireAdmin({ userId: p.userId, email: "", role: "admin", exp: 0, departmentId: 0 }));
   },
 
+  /**
+   * DELETE /api/avatars/device/:deviceId
+   * Remove the current image of a device.
+   * Access: Admin only.
+   */
   async deleteDeviceAvatar(request: Request, params: Record<string, string>): Promise<Response> {
     const deviceId = parseId(params.deviceId);
     if (!deviceId) return err("Invalid device ID");

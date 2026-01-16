@@ -69,6 +69,9 @@ export const vi: TranslationData = {
   "common.perPage": "Mỗi trang",
   "common.catalog": "Danh mục",
   "common.pickDate": "Chọn ngày",
+  "common.creating": "Đang tạo...",
+  "common.noResults": "Không tìm thấy kết quả",
+  "common.error": "Lỗi",
 
   // Months
   "months.jan": "Th1",
@@ -194,20 +197,23 @@ export const vi: TranslationData = {
     "Xem và quản lý các khoản vay thiết bị, trả lại và yêu cầu gia hạn của bạn",
   "loans.activeLoansCount": "{{count}} khoản vay đang hoạt động",
   "loans.statsActive": "Đang mượn",
-  "loans.currentlyBorrowed": "Hiện đang mượn",
+  "loans.statusInUse": "Đang sử dụng",
+  "loans.currentlyInUse": "Hiện đang sử dụng",
   "loans.statsPending": "Chờ duyệt",
   "loans.awaitingApproval": "Đang chờ phê duyệt",
   "loans.statsReturned": "Đã trả",
   "loans.successfullyReturned": "Đã trả thành công",
   "loans.statsRejected": "Bị từ chối",
   "loans.notApproved": "Không được duyệt",
+  "loans.statsRenewals": "Gia hạn",
+  "loans.loansDueOrOverdue": "Sắp hết hạn hoặc quá hạn",
   "loans.attentionRequired": "Cần chú ý",
-  "loans.overdue": "quá hạn",
-  "loans.daysLeft": "ngày còn lại",
-  "loans.requestRenewal": "Yêu cầu gia hạn",
+  "loans.attentionRequiredDesc": "Bạn có {{count}} mục cần chú ý. Vui lòng xem lại bên dưới.",
+  "loans.requestRenewal": "Gia hạn mượn",
   "loans.returnDevice": "Trả thiết bị",
   "loans.allActivity": "Tất cả hoạt động",
   "loans.filtered": "Đã lọc",
+  "common.filtered": "Đã lọc",
   "loans.returnSelected": "Trả các mục đã chọn",
   "loans.clear": "Xóa",
   "loans.searchPlaceholder": "Tìm kiếm thiết bị...",
@@ -229,7 +235,7 @@ export const vi: TranslationData = {
   "loans.current": "Hiện tại",
   "loans.requested": "Yêu cầu",
   "loans.renew": "Gia hạn",
-  "loans.return": "Trả",
+  "loans.return": "Trả máy",
   "loans.returnRequestSubmitted": "Đã gửi yêu cầu trả thiết bị",
   "loans.adminProcessReturn": "Quản trị viên sẽ xử lý yêu cầu của bạn sớm.",
   "loans.renewalRequestSubmitted": "Đã gửi yêu cầu gia hạn",
@@ -240,6 +246,7 @@ export const vi: TranslationData = {
   "loans.unknownDevice": "Thiết bị không xác định",
   "loans.returnDeviceTitle": "Trả thiết bị",
   "loans.returnDeviceDesc": "Gửi yêu cầu trả thiết bị bên dưới",
+  "loans.inuse": "Đang sử dụng",
   "loans.borrowed": "Ngày mượn",
   "loans.due": "Hạn trả",
   "loans.deviceCondition": "Tình trạng thiết bị",
@@ -263,6 +270,7 @@ export const vi: TranslationData = {
   "loans.timeLeft": "còn lại",
 
   "loans.submitRequest": "Gửi yêu cầu",
+  "loans.submitting": "Đang gửi...",
   "loans.returnMultipleTitle": "Trả nhiều thiết bị",
   "loans.returnMultipleDesc": "Gửi yêu cầu trả cho {{count}} thiết bị",
   "loans.devicesToReturn": "Thiết bị cần trả",
@@ -270,7 +278,6 @@ export const vi: TranslationData = {
   "loans.bulkNotesPlaceholder": "Ghi chú bổ sung về việc trả thiết bị...",
   "loans.submitReturns": "Gửi {{count}} yêu cầu trả",
   "loans.renewalPending": "Yêu cầu gia hạn đang chờ xử lý",
-
   // Conditions
   "condition.excellent": "Xuất sắc",
   "condition.excellentDesc": "Như mới",
@@ -303,6 +310,16 @@ export const vi: TranslationData = {
 
   // Status Filters
   "status.all": "Tất cả trạng thái",
+  "status.available": "Có sẵn",
+  "status.pending": "Đang chờ duyệt",
+  "status.inuse": "Đang sử dụng",
+  "status.maintenance": "Bảo trì",
+  "status.updating": "Đang cập nhật",
+  "status.storage": "Lưu kho",
+  "status.discard": "Hủy bỏ",
+  "status.transferred": "Đã chuyển nhượng",
+
+
 
   // Sort Options
   "sort.nameAsc": "Tên (A-Z)",
@@ -446,17 +463,14 @@ export const vi: TranslationData = {
 
   // Catalog
   "catalog.title": "Danh mục thiết bị",
-  "catalog.subtitle": "Duyệt và yêu cầu thiết bị cho dự án.",
+  "catalog.subtitle": "Xem và yêu cầu thiết bị cho dự án của bạn.",
   "catalog.devicesAvailable": "thiết bị có sẵn",
   "catalog.searchDevices": "Tìm thiết bị...",
   "catalog.allCategories": "Tất cả danh mục",
   "catalog.allStatus": "Tất cả trạng thái",
   "catalog.available": "Có sẵn",
-  "catalog.borrowed": "Đang mượn",
+  "catalog.inuse": "Đang sử dụng",
   "catalog.maintenance": "Bảo trì",
-  "status.maintenance": "Bảo trì",
-  "status.active": "Hoạt động",
-  "status.inactive": "Không hoạt động",
   "catalog.sortNameAsc": "Tên (A-Z)",
   "catalog.sortNameDesc": "Tên (Z-A)",
   "catalog.sortNewest": "Mới nhất",
@@ -468,8 +482,23 @@ export const vi: TranslationData = {
   "catalog.showingDevices": "Đang hiển thị",
   "catalog.quickRequest": "Yêu cầu nhanh",
   "catalog.addedToFavorites": "Đã thêm vào yêu thích",
+  "catalog.removedFromFavorites": "Đã xóa khỏi yêu thích",
+  "catalog.openingRequestForm": "Đang mở biểu mẫu yêu cầu cho",
 
   // Device Detail
+  "deviceDetail.submitting": "Đang gửi...",
+  "deviceDetail.submittingFallback": "Đang gửi...",
+  "deviceDetail.loading": "Đang tải chi tiết thiết bị...",
+  "deviceDetail.deviceNotFound": "Không tìm thấy thiết bị",
+  "deviceDetail.deviceNotFoundDesc":
+    "Thiết bị bạn đang tìm không tồn tại hoặc đã bị xóa.",
+  "deviceDetail.backToCatalog": "Quay lại danh mục",
+  "deviceDetail.memory": "Bộ nhớ",
+  "deviceDetail.removedFromFavorites": "Đã xóa khỏi yêu thích",
+  "deviceDetail.addedToFavorites": "Đã thêm vào yêu thích",
+  "deviceDetail.linkCopied": "Đã sao chép liên kết!",
+  "deviceDetail.linkCopiedDesc": "Liên kết thiết bị đã được sao chép vào bộ nhớ tạm.",
+  "deviceDetail.failedToCopyLink": "Không thể sao chép liên kết",
 
   // Confirm Request
   "confirmRequest.title": "Xác nhận yêu cầu",
@@ -494,6 +523,8 @@ export const vi: TranslationData = {
   "success.deleted": "Đã xóa thành công",
   "success.created": "Đã tạo thành công",
   "success.sent": "Đã gửi thành công",
+  "success.avatarUpdated": "Đã cập nhật ảnh đại diện!",
+  "success.passwordChanged": "Đã thay đổi mật khẩu thành công!",
   "success.copied": "Đã sao chép vào clipboard",
 
   // User Dashboard
@@ -502,7 +533,7 @@ export const vi: TranslationData = {
   "userDashboard.goodEvening": "Chào buổi tối",
   "userDashboard.overview": "Tổng quan về thiết bị mượn và yêu cầu của bạn.",
   "userDashboard.activeLoans": "Đang mượn",
-  "userDashboard.devicesCurrentlyBorrowed": "Thiết bị đang mượn",
+  "userDashboard.devicesCurrentlyInUse": "Thiết bị hiện đang sử dụng",
   "userDashboard.pendingRequests": "Yêu cầu chờ xử lý",
   "userDashboard.awaitingApproval": "Chờ phê duyệt",
   "userDashboard.quickActions": "Thao tác nhanh",
@@ -546,6 +577,10 @@ export const vi: TranslationData = {
   "loan.returnBy": "Trả trước:",
   "loan.returnDevice": "Trả thiết bị",
 
+  "loans.daysOverdue": "{{count}} ngày quá hạn",
+  "loans.daysLeft": "{{count}} ngày còn lại",
+  "loans.dueToday": "Hạn hôm nay",
+
   // Recently Viewed
   "recentlyViewed.title": "Xem gần đây",
   "recentlyViewed.clear": "Xóa",
@@ -561,12 +596,25 @@ export const vi: TranslationData = {
   "notifications.showing": "Đang hiển thị",
   "notifications.notification": "thông báo",
   "notifications.notifications": "thông báo",
-  "notifications.requestApproved": "Đã duyệt",
-  "notifications.requestRejected": "Từ chối",
+  "notifications.requestApproved": "Yêu cầu đã duyệt",
+  "notifications.requestRejected": "Yêu cầu bị từ chối",
   "notifications.newRequest": "Yêu cầu mới",
   "notifications.overdue": "Quá hạn",
+  "notifications.overdueTitle": "Cảnh báo trả máy quá hạn",
+  "notifications.overdueMessage": "{{deviceName}} đã quá hạn {{count}} ngày (người mượn: {{userName}})",
   "notifications.deviceReturned": "Đã trả",
   "notifications.info": "Thông tin",
+  "notifications.approved": "Đã duyệt",
+  "notifications.rejected": "Đã từ chối",
+  "notifications.returned": "Đã trả",
+  "notifications.renewalApproved": "Gia hạn đã duyệt",
+  "notifications.renewalRejected": "Gia hạn bị từ chối",
+  "notifications.viewDetailsArrow": "Xem chi tiết →",
+  "notifications.markAsRead": "Đánh dấu đã đọc",
+  "notifications.delete": "Xóa thông báo",
+  "notifications.requestCreated": "Yêu cầu đã tạo",
+  "notifications.requestSubmitted": "Yêu cầu đã gửi",
+  "notifications.newRenewalRequest": "Yêu cầu gia hạn mới",
 
   // Empty States
   "empty.noDevices": "Không có thiết bị",
@@ -601,6 +649,7 @@ export const vi: TranslationData = {
   "deviceModal.processor": "Bộ xử lý",
   "deviceModal.ram": "RAM",
   "deviceModal.storage": "Bộ nhớ",
+  "deviceModal.notes": "Ghi chú",
   "deviceModal.addDevice": "Thêm thiết bị",
   "deviceModal.saveChanges": "Lưu thay đổi",
   "deviceModal.selectCategory": "Chọn danh mục",
@@ -793,24 +842,24 @@ export const vi: TranslationData = {
   // Requests Actions
   "requests.approve": "Phê duyệt",
   "requests.reject": "Từ chối",
+  "requests.createRequest": "Tạo yêu cầu",
+  "requests.selectUser": "Chọn người dùng",
+  "requests.selectUserPlaceholder": "Chọn người dùng...",
+  "requests.selectDevice": "Chọn thiết bị",
+  "requests.selectDevicePlaceholder": "Chọn thiết bị...",
+  "requests.startDate": "Ngày bắt đầu",
+  "requests.endDate": "Ngày kết thúc",
+  "requests.reason": "Lý do",
+  "requests.reasonPlaceholder": "Nhập lý do cho yêu cầu này...",
+  "requests.requestCreated": "Đã tạo yêu cầu",
+  "requests.requestCreatedDesc": "Yêu cầu mượn thiết bị đã được tạo thành công.",
+  "requests.noAvailableDevices": "Không có thiết bị khả dụng",
   "requests.approveRequest": "Phê duyệt yêu cầu",
   "requests.rejectRequest": "Từ chối yêu cầu",
   "requests.activate": "Kích hoạt",
   "requests.confirmApprove": "Phê duyệt yêu cầu cho {{device}}?",
   "requests.confirmReject": "Từ chối yêu cầu cho {{device}}?",
   "requests.actions": "Hành động",
-  "requests.error.cannotChangeReturned": "Không thể thay đổi trạng thái yêu cầu đã trả",
-  "requests.error.cannotChangeRejected": "Không thể thay đổi trạng thái yêu cầu đã từ chối",
-  "requests.error.pendingApproval": "Yêu cầu phải được phê duyệt trước khi kích hoạt",
-  "requests.error.pendingToReturned": "Yêu cầu đang chờ không thể trả ngay",
-  "requests.error.approvedToPending": "Yêu cầu đã duyệt không thể quay lại chờ",
-  "requests.error.approvedToReturned": "Yêu cầu đã duyệt không thể trả ngay",
-  "requests.error.approvedToRejected": "Yêu cầu đã duyệt không thể từ chối",
-  "requests.error.activeToNonReturned": "Yêu cầu đang hoạt động phải được trả",
-  "requests.error.invalidStatusChange": "Thay đổi trạng thái không hợp lệ từ {{from}} sang {{to}}",
-  "requests.error.renewalApprovedNoChange": "Gia hạn đã được phê duyệt",
-  "requests.error.renewalRejectedNoChange": "Gia hạn đã bị từ chối",
-  "requests.error.renewalToPending": "Không thể hoàn tác gia hạn về trạng thái chờ",
 
   // Language
   "language.select": "Chọn ngôn ngữ",
@@ -1091,6 +1140,11 @@ export const vi: TranslationData = {
   "deviceDetail.bothDatesRequired": "Cần chọn cả ngày bắt đầu và kết thúc.",
   "deviceDetail.pleaseProvideReason": "Vui lòng cung cấp lý do",
   "deviceDetail.reasonRequired": "Cần có lý do cho yêu cầu.",
+  "deviceDetail.requestThisDevice": "Yêu cầu thiết thiết bị này",
+  "deviceDetail.deviceUnavailableTitle": "Thiết bị không khả dụng",
+  "deviceDetail.quickSelectLabel": "Chọn nhanh",
+  "deviceDetail.selectDateRangeLabel": "Chọn khoảng thời gian",
+  "deviceDetail.selectStartEndDates": "Chọn ngày bắt đầu và kết thúc",
   "deviceDetail.requestSubmittedTitle": "Yêu cầu đã được gửi!",
   "deviceDetail.requestSubmittedDesc":
     "Yêu cầu mượn {{device}} của bạn đã được gửi để phê duyệt.",
@@ -1195,7 +1249,7 @@ export const vi: TranslationData = {
   "userProfile.approvalRate": "Tỷ lệ duyệt",
   "userProfile.totalRequests": "Tổng yêu cầu",
   "userProfile.allTimeRequests": "Tổng số yêu cầu",
-  "userProfile.successRate": "Tỷ lệ thành công",
+  "userProfile.approvalRate": "Tỷ lệ được duyệt",
   "userProfile.currentlyBorrowed": "Đang mượn",
   "userProfile.awaitingApproval": "Chờ duyệt",
   "userProfile.successfullyReturned": "Đã trả thành công",
@@ -1347,56 +1401,72 @@ export const vi: TranslationData = {
   "calendar.requestRejectedToast": "Yêu cầu {{id}} đã bị từ chối.",
   "dashboard.deviceWithId": "Thiết bị #{{id}}",
   "dashboard.userWithId": "Người dùng #{{id}}",
-  "requests.invalidTransitionPending":
-    "Không thể đánh dấu yêu cầu đang chờ xử lý là đã trả trực tiếp.",
   "requests.invalidTransitionApprovedRenewal":
     "Gia hạn đã phê duyệt không thể thay đổi.",
   "userProfile.invalidFormatTitle": "Định dạng không hợp lệ",
   "userProfile.invalidFormatDesc": "Sử dụng JPEG, PNG hoặc WebP",
   "userProfile.fileTooLargeTitle": "Tệp quá lớn",
-  "userProfile.fileTooLargeDesc": "Dung lượng tối đa là 2MB",
+  "userProfile.fileTooLargeDesc": "Kích thước tối đa là 2MB",
   "userProfile.avatarUpdatedTitle": "Thành công",
   "userProfile.avatarUpdatedDesc": "Đã cập nhật ảnh đại diện!",
   "userProfile.passwordMinLengthError": "Mật khẩu mới phải có ít nhất 6 ký tự",
   "userProfile.passwordMismatchError": "Mật khẩu mới không khớp",
-  "userProfile.passwordSameAsCurrentError":
-    "Mật khẩu mới phải khác mật khẩu hiện tại",
+  "userProfile.passwordSameAsCurrentError": "Mật khẩu mới phải khác mật khẩu hiện tại",
   "userProfile.requestedStatus": "Đã yêu cầu",
   "userProfile.uploadErrorTitle": "Lỗi",
-  "userProfile.fullTime": "Toàn thời gian",
-
+  "userProfile.fullTime": "Full-time",
+  "requests.error.cannotChangeReturned":
+    "Yêu cầu đã trả không thể chuyển sang trạng thái khác.",
+  "requests.error.cannotChangeRejected":
+    "Yêu cầu đã từ chối không thể chuyển sang trạng thái khác.",
+  "requests.error.pendingApproval":
+    "Yêu cầu đang chờ xử lý phải được phê duyệt trước khi hoạt động.",
+  "requests.error.pendingToReturned":
+    "Không thể chuyển trực tiếp yêu cầu đang chờ xử lý sang trạng thái đã trả.",
+  "requests.error.approvedToPending":
+    "Yêu cầu đã phê duyệt không thể chuyển lại trạng thái chờ xử lý.",
+  "requests.error.approvedToReturned":
+    "Yêu cầu đã phê duyệt phải hoạt động trước khi được trả.",
+  "requests.error.approvedToRejected": "Yêu cầu đã phê duyệt không thể bị từ chối.",
+  "requests.error.activeToNonReturned":
+    "Yêu cầu đang hoạt động chỉ có thể chuyển sang trạng thái đã trả.",
+  "requests.error.invalidStatusChange":
+    "Thay đổi trạng thái không hợp lệ từ {{from}} sang {{to}}",
+  "requests.error.renewalApprovedNoChange":
+    "Gia hạn đã phê duyệt không thể thay đổi.",
+  "requests.error.renewalRejectedNoChange":
+    "Gia hạn đã từ chối không thể thay đổi.",
+  "requests.error.renewalToPending":
+    "Không thể chuyển yêu cầu trở lại trạng thái chờ xử lý.",
 
   // Price Ranges
   "priceRange.all": "Tất cả giá",
-  "priceRange.under5": "Dưới 5 triệu",
-  "priceRange.5to10": "5 - 10 triệu",
-  "priceRange.10to20": "10 - 20 triệu",
-  "priceRange.20to50": "20 - 50 triệu",
-  "priceRange.over50": "Trên 50 triệu",
+  "priceRange.under5": "Dưới 5tr",
+  "priceRange.5to10": "5tr - 10tr",
+  "priceRange.10to20": "10tr - 20tr",
+  "priceRange.20to50": "20tr - 50tr",
+  "priceRange.over50": "Trên 50tr",
 
   "deviceCatalog.priceRange": "Khoảng giá",
   "deviceCatalog.sortBy": "Sắp xếp theo",
 
   // Loan Management
-  "loans.statusActive": "Đang mượn",
+  "loans.statusActive": "Hoạt động",
   "loans.statusPending": "Chờ xử lý",
   "loans.statusApproved": "Đã phê duyệt",
   "loans.statusReturned": "Đã trả",
-  "loans.statusRejected": "Đã từ chối",
-  "loans.statusRenewalPending": "Gia hạn chờ xử lý",
-  "loans.statusRenewalApproved": "Gia hạn đã phê duyệt",
+  "loans.statusRejected": "Bị từ chối",
+  "loans.statusRenewalPending": "Chờ gia hạn",
+  "loans.statusRenewalApproved": "Gia hạn đã duyệt",
   "loans.statusRenewalRejected": "Gia hạn bị từ chối",
   "loans.noMatchingItems": "Không có mục {{status}} nào",
-  "loans.noActivity": "Không có hoạt động mượn thiết bị nào",
-  "loans.adjustFilterOrSearch":
-    "Hãy thử điều chỉnh bộ lọc hoặc từ khóa tìm kiếm.",
+  "loans.noActivity": "Không có hoạt động mượn",
+  "loans.adjustFilterOrSearch": "Hãy thử điều chỉnh bộ lọc hoặc tìm kiếm.",
   "loans.historyWillAppear":
-    "Lịch sử mượn sẽ xuất hiện tại đây sau khi bạn mượn thiết bị.",
+    "Lịch sử mượn thiết bị của bạn sẽ hiển thị ở đây.",
   "loans.reasonRequired": "Vui lòng cung cấp lý do (ít nhất 10 ký tự)",
-  "loans.returnSubmittedDesc":
-    "Quản trị viên sẽ sớm xử lý yêu cầu trả thiết bị của bạn.",
-  "loans.renewalSubmittedDesc":
-    "Quản trị viên sẽ sớm xem xét yêu cầu gia hạn của bạn.",
+  "loans.returnSubmittedDesc": "Quản trị viên sẽ xử lý việc trả sớm.",
+  "loans.renewalSubmittedDesc": "Quản trị viên sẽ xem xét yêu cầu sớm.",
 
   // Accessibility
   "accessibility.skipToContent": "Chuyển đến nội dung chính",
@@ -1411,11 +1481,11 @@ export const vi: TranslationData = {
   "nav.collapseSidebar": "Thu gọn thanh bên",
   "login.showPassword": "Hiện mật khẩu",
   "login.hidePassword": "Ẩn mật khẩu",
-  "deviceCatalog.gridView": "Xem dạng lưới",
-  "deviceCatalog.listView": "Xem dạng danh sách",
-  "deviceCatalog.showFavoritesOnly": "Chỉ hiện yêu thích",
-  "deviceCatalog.showAll": "Hiện tất cả thiết bị",
-  "deviceCatalog.viewMode": "Chế độ xem",
+  "deviceCatalog.gridView": "Chế độ lưới",
+  "deviceCatalog.listView": "Chế độ danh sách",
+  "deviceCatalog.showFavoritesOnly": "Chỉ hiển thị yêu thích",
+  "deviceCatalog.showAll": "Hiển thị tất cả thiết bị",
+  "deviceCatalog.viewMode": "Chế độ hiển thị",
   "deviceCatalog.addToFavorites": "Thêm vào yêu thích",
   "deviceCatalog.removeFromFavorites": "Xóa khỏi yêu thích",
 };

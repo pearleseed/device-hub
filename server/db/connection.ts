@@ -1,10 +1,11 @@
+
 import { SQL } from "bun";
 
-// Load environment variables from root .env file
-const rootEnvPath = import.meta.dir + "/../../.env";
-const rootEnvFile = Bun.file(rootEnvPath);
-if (await rootEnvFile.exists()) {
-  const envContent = await rootEnvFile.text();
+// Load environment variables from server/.env
+const serverEnvPath = import.meta.dir + "/../.env";
+const serverEnvFile = Bun.file(serverEnvPath);
+if (await serverEnvFile.exists()) {
+  const envContent = await serverEnvFile.text();
   for (const line of envContent.split("\n")) {
     const trimmed = line.trim();
     if (trimmed && !trimmed.startsWith("#")) {
@@ -44,6 +45,8 @@ const RETRYABLE_ERRORS = new Set([
 ]);
 
 // Configuration
+// Configuration object for Bun SQL
+// Note: Adapters other than 'mysql' might need different drivers
 const DB_CONFIG = {
   adapter: "mysql" as const,
   hostname: process.env.DB_HOST || "localhost",
@@ -51,10 +54,11 @@ const DB_CONFIG = {
   username: process.env.DB_USER || "root",
   password: process.env.DB_PASSWORD || "",
   database: process.env.DB_NAME || "device_hub",
-  max: +(process.env.DB_POOL_MAX || 20),
+  max: +(process.env.DB_POOL_MAX || 20), // Connection pool size
   idleTimeout: +(process.env.DB_IDLE_TIMEOUT || 30),
   maxLifetime: +(process.env.DB_MAX_LIFETIME || 3600),
   connectionTimeout: +(process.env.DB_CONNECTION_TIMEOUT || 10),
+  // SSL Configuration for production/cloud databases
   ...(process.env.DB_SSL === "true" && {
     ssl: {
       rejectUnauthorized: process.env.DB_SSL_REJECT_UNAUTHORIZED !== "false",
@@ -63,6 +67,10 @@ const DB_CONFIG = {
   }),
 };
 
+/**
+ * Main database connection instance.
+ * Bun.sql automatically manages the connection pool.
+ */
 export const db = new SQL(DB_CONFIG);
 export type { SQL };
 
@@ -94,6 +102,10 @@ const isRetryable = (e: unknown): boolean => {
 
 const sleep = (ms: number) => new Promise<void>(r => setTimeout(r, ms));
 
+/**
+ * Execute a database operation with exponential backoff retry.
+ * Handles transient errors like deadlocks or connection timeouts.
+ */
 export async function withRetry<T>(op: () => Promise<T>, maxRetries = 3, baseDelay = 1000): Promise<T> {
   let lastErr: Error | undefined;
   for (let i = 0; i <= maxRetries; i++) {
@@ -121,11 +133,19 @@ export const queryOne = async <T>(s: TemplateStringsArray, ...v: unknown[]): Pro
 export const queryMany = async <T>(s: TemplateStringsArray, ...v: unknown[]): Promise<T[]> =>
   db<T[]>(s, ...v);
 
+/**
+ * Execute a callback with a dedicated reserved connection.
+ * Necessary for operations that require session state or multiple statements in a row.
+ */
 export async function withReservedConnection<T>(op: (conn: SQL) => Promise<T>): Promise<T> {
   const r = await db.reserve();
   try { return await op(r); } finally { r.release(); }
 }
 
+/**
+ * Execute a callback within an authenticated transaction with retry support.
+ * Automatically rolls back if the callback throws an error.
+ */
 export const withTransaction = <T>(op: (tx: SQL) => Promise<T>, maxRetries = 3): Promise<T> =>
   withRetry(() => db.begin(op), maxRetries, 500);
 

@@ -6,7 +6,7 @@
 // ============================================================================
 
 export type UserRole = "superuser" | "admin" | "user";
-export type DeviceStatus = "available" | "borrowed" | "maintenance";
+export type DeviceStatus = "available" | "inuse" | "maintenance" | "updating" | "storage" | "discard" | "transferred";
 export type DeviceCategory =
   | "laptop"
   | "mobile"
@@ -83,6 +83,7 @@ export interface Device {
   ip_address: string | null;
   hostname: string | null;
   specs_json: string | Record<string, string>;
+  notes: string | null;
   image_url: string;
   image_thumbnail_url: string | null;
   created_at: Date;
@@ -182,6 +183,7 @@ export interface CreateBorrowRequest {
   start_date: string;
   end_date: string;
   reason: string;
+  user_id?: number; // Optional: Admin can create request on behalf of another user
 }
 
 export interface CreateReturnRequest {
@@ -206,6 +208,7 @@ export interface CreateDeviceRequest {
   purchase_price: number;
   purchase_date: string;
   specs_json: string | Record<string, string>;
+  notes?: string;
   image_url: string;
 }
 

@@ -11,6 +11,7 @@ export interface AuditLogEntry {
   objectType: AuditObjectType;
   objectId: number;
   actor: { userId: number; email: string; role: string };
+  // Changes are stored as "before" and "after" snapshots
   changes?: { before?: Record<string, unknown>; after?: Record<string, unknown> };
   metadata?: Record<string, unknown>;
 }
@@ -26,8 +27,13 @@ class AuditLogger {
     this.currentFile = this.getFileName();
   }
 
+  // Determine the file name based on current date (daily rotation)
   private getFileName = () => path.join(this.logDir, `audit-${new Date().toISOString().split("T")[0]}.json`);
 
+  /**
+   * Redact sensitive information from the log logs.
+   * Recursively checks keys against the SENSITIVE list.
+   */
   private mask = (data?: Record<string, unknown>) => {
     if (!data) return undefined;
     const m = { ...data };
@@ -35,6 +41,11 @@ class AuditLogger {
     return m;
   };
 
+  /**
+   * Record a new audit log entry.
+   * Handles file creation, reading existing logs, appending, and writing back.
+   * Performing sync IO for reliability (though async would be better for high throughput).
+   */
   async log(entry: Omit<AuditLogEntry, "timestamp">): Promise<void> {
     const file = this.getFileName();
     if (this.currentFile !== file) this.currentFile = file;
@@ -58,6 +69,11 @@ class AuditLogger {
 
   createActorFromPayload = (p: JWTPayload): AuditLogEntry["actor"] => ({ userId: p.userId, email: p.email, role: p.role });
 
+  /**
+   * Retrieve audit logs with filtering options.
+   * Reads all log files in the directory and applies filters.
+   * Note: This can be slow if there are many log files.
+   */
   async getLogs(opts?: { startDate?: string; endDate?: string; objectType?: AuditObjectType; objectId?: number; actorId?: number; action?: AuditAction; limit?: number }): Promise<AuditLogEntry[]> {
     const all: AuditLogEntry[] = [];
     try {
@@ -73,6 +89,8 @@ class AuditLogger {
     if (opts?.objectId) filtered = filtered.filter(l => l.objectId === opts.objectId);
     if (opts?.actorId) filtered = filtered.filter(l => l.actor.userId === opts.actorId);
     if (opts?.action) filtered = filtered.filter(l => l.action === opts.action);
+    
+    // Sort by timestamp descending
     filtered.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
     return opts?.limit ? filtered.slice(0, opts.limit) : filtered;
   }

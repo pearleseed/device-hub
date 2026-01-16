@@ -154,7 +154,7 @@ export const AvailabilitySummary: React.FC = () => {
 
   return (
     <TooltipProvider>
-      <Card className="border-0 shadow-md shadow-black/5 bg-gradient-to-br from-card via-card to-muted/20 overflow-hidden">
+      <Card className="border-0 shadow-md shadow-black/5 bg-linear-to-br from-card via-card to-muted/20 overflow-hidden">
         <CardContent className="py-3 px-4">
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             {stats.map((stat, index) => (
@@ -164,7 +164,7 @@ export const AvailabilitySummary: React.FC = () => {
                     className={cn(
                       "group relative p-2.5 rounded-xl transition-all duration-300",
                       "hover:shadow-md hover:-translate-y-0.5 cursor-default",
-                      "bg-gradient-to-br from-background to-muted/30",
+                      "bg-linear-to-br from-background to-muted/30",
                       "border border-border/50 hover:border-border",
                     )}
                   >
@@ -211,7 +211,7 @@ export const AvailabilitySummary: React.FC = () => {
             ))}
           </div>
 
-          {devicesBecomingAvailable.length > 0 && (
+          {/* {devicesBecomingAvailable.length > 0 && (
             <div className="flex items-center gap-3 mt-3 pt-3 border-t border-border/30">
               <div className="flex items-center gap-1.5 shrink-0">
                 <div className="p-1 rounded-md bg-blue-500/10">
@@ -246,7 +246,7 @@ export const AvailabilitySummary: React.FC = () => {
                 )}
               </div>
             </div>
-          )}
+          )} */}
         </CardContent>
       </Card>
     </TooltipProvider>

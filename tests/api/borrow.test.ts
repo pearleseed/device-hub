@@ -266,7 +266,7 @@ describe("Borrow Request API - Creation", () => {
     });
 
     it("should return 400 for unavailable device (Req 4.4)", async () => {
-      // Create a device and make it borrowed
+      // Create a device and make it inuse
       const deviceId = await createTestDevice();
 
       // Create a borrow request and activate it
@@ -443,12 +443,12 @@ describe("Borrow Request API - Status Transitions", () => {
       expect(response.data.success).toBe(true);
       expect(response.data.data?.status).toBe("active");
 
-      // Verify device status changed to borrowed
+      // Verify device status changed to inuse
       const deviceResponse = await api.get<DeviceWithDepartment>(
         `/api/devices/${deviceId}`,
         ctx.adminToken,
       );
-      expect(deviceResponse.data.data?.status).toBe("borrowed");
+      expect(deviceResponse.data.data?.status).toBe("inuse");
     });
 
     it("should allow returning active request (Req 4.9)", async () => {

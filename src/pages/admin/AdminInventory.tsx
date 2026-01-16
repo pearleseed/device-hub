@@ -25,11 +25,12 @@ import type {
   DeviceCategory,
   DeviceStatus,
 } from "@/types/api";
+import { PRICE_RANGES, type PriceRange } from "@/lib/constants";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useDevices, useUsers } from "@/hooks/use-api-queries";
 import { useDeleteDevice } from "@/hooks/use-api-mutations";
 import { exportToCSV, deviceExportColumns } from "@/lib/exportUtils";
-import { cn, getDeviceImageUrl } from "@/lib/utils";
+import { cn, getDeviceImageUrl, parseSpecs } from "@/lib/utils";
 import {
   Plus,
   MoreHorizontal,
@@ -68,18 +69,6 @@ const getCategoryIcon = (category: DeviceCategory): string => {
     ram: "🧠",
   };
   return icons[category];
-};
-
-// Helper function to parse specs_json safely
-const parseSpecs = (
-  specsJson: string | undefined | null,
-): Record<string, string> => {
-  if (!specsJson) return {};
-  try {
-    return JSON.parse(specsJson);
-  } catch {
-    return {};
-  }
 };
 
 const AdminInventory: React.FC = () => {
@@ -207,8 +196,12 @@ const AdminInventory: React.FC = () => {
     () => [
       { value: "all", label: t("status.all") },
       { value: "available", label: t("status.available") },
-      { value: "borrowed", label: t("status.borrowed") },
+      { value: "inuse", label: t("status.inuse") },
       { value: "maintenance", label: t("status.maintenance") },
+      { value: "updating", label: t("status.updating") },
+      { value: "storage", label: t("status.storage") },
+      { value: "discard", label: t("status.discard") },
+      { value: "transferred", label: t("status.transferred") },
     ],
     [t],
   );
@@ -228,6 +221,7 @@ const AdminInventory: React.FC = () => {
   );
   const [statusFilter, setStatusFilter] = useState<DeviceStatus | "all">("all");
   const [departmentFilter, setDepartmentFilter] = useState<string>("all");
+  const [priceFilter, setPriceFilter] = useState<PriceRange>("all");
 
   // Get unique departments from devices
   const departments = useMemo(() => {
@@ -268,12 +262,28 @@ const AdminInventory: React.FC = () => {
         return false;
       }
 
+
       // Department filter
       if (departmentFilter !== "all") {
         // Filter by device's assigned department (if any) or check if assigned user is in that department
         // device.department_name usually comes from the joined query
         if (device.department_name !== departmentFilter) {
           return false;
+        }
+      }
+
+      // Price filtering
+      if (priceFilter !== "all") {
+        const devicePrice = device.selling_price ?? device.purchase_price;
+        const priceRange = PRICE_RANGES.find((r) => r.value === priceFilter);
+        
+        if (priceRange) {
+          if (priceRange.min !== undefined && devicePrice < priceRange.min) {
+            return false;
+          }
+          if (priceRange.max !== undefined && devicePrice >= priceRange.max) {
+            return false;
+          }
         }
       }
 
@@ -287,13 +297,15 @@ const AdminInventory: React.FC = () => {
     categoryFilter,
     statusFilter,
     departmentFilter,
+    priceFilter,
   ]);
 
   const hasActiveFilters = !!(
     searchQuery ||
     categoryFilter !== "all" ||
     statusFilter !== "all" ||
-    departmentFilter !== "all"
+    departmentFilter !== "all" ||
+    priceFilter !== "all"
   );
 
   const clearFilters = () => {
@@ -301,6 +313,7 @@ const AdminInventory: React.FC = () => {
     setCategoryFilter("all");
     setStatusFilter("all");
     setDepartmentFilter("all");
+    setPriceFilter("all");
   };
 
   // handleAddDevice is handled by AddDeviceModal which uses useCreateDevice mutation
@@ -465,6 +478,23 @@ const AdminInventory: React.FC = () => {
                   ))}
                 </SelectContent>
               </Select>
+
+              {/* Price Filter */}
+              <Select
+                value={priceFilter}
+                onValueChange={(v) => setPriceFilter(v as PriceRange)}
+              >
+                <SelectTrigger className="flex-1 min-w-[130px] max-w-[160px] h-9 text-sm">
+                  <SelectValue placeholder={t("deviceCatalog.priceRange")} />
+                </SelectTrigger>
+                <SelectContent>
+                  {PRICE_RANGES.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {t(`priceRange.${option.value}` as any) || option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             {/* Active Filters - Only show when filters are applied */}
@@ -521,6 +551,18 @@ const AdminInventory: React.FC = () => {
                     <X
                       className="h-3 w-3 cursor-pointer hover:text-destructive"
                       onClick={() => setStatusFilter("all")}
+                    />
+                  </Badge>
+                )}
+                {priceFilter !== "all" && (
+                  <Badge
+                    variant="secondary"
+                    className="h-6 text-xs gap-1 pl-2 pr-1 shrink-0"
+                  >
+                    {t(`priceRange.${priceFilter}` as any) || PRICE_RANGES.find(r => r.value === priceFilter)?.label}
+                    <X
+                      className="h-3 w-3 cursor-pointer hover:text-destructive"
+                      onClick={() => setPriceFilter("all")}
                     />
                   </Badge>
                 )}

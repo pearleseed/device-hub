@@ -20,7 +20,9 @@
 /* Custom theme values for Tailwind v4 */
 @theme {
   /* Font family - Optimized for Vietnamese and Japanese */
-  --font-sans: "Inter", "Noto Sans JP Adjusted", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-sans: "Inter", "Noto Sans JP Adjusted", ui-sans-serif, system-ui,
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
+    Arial, sans-serif;
 
   /* Border radius */
   --radius-lg: 0.75rem;
@@ -73,8 +75,8 @@
   /* Status colors */
   --color-status-available: hsl(var(--status-available));
   --color-status-available-foreground: hsl(var(--status-available-foreground));
-  --color-status-borrowed: hsl(var(--status-borrowed));
-  --color-status-borrowed-foreground: hsl(var(--status-borrowed-foreground));
+  --color-status-inuse: hsl(var(--status-inuse));
+  --color-status-inuse-foreground: hsl(var(--status-inuse-foreground));
   --color-status-maintenance: hsl(var(--status-maintenance));
   --color-status-maintenance-foreground: hsl(
     var(--status-maintenance-foreground)
@@ -88,12 +90,12 @@
   --color-chart-5: hsl(var(--chart-5));
 
   /* Custom shadows - Optimized for modern displays */
-  --shadow-soft:
-    0 2px 8px -2px rgba(0, 0, 0, 0.05), 0 4px 16px -4px rgba(0, 0, 0, 0.1);
-  --shadow-medium:
-    0 4px 12px -2px rgba(0, 0, 0, 0.08), 0 8px 24px -4px rgba(0, 0, 0, 0.12);
-  --shadow-elevated:
-    0 8px 24px -4px rgba(0, 0, 0, 0.1), 0 16px 48px -8px rgba(0, 0, 0, 0.15);
+  --shadow-soft: 0 2px 8px -2px rgba(0, 0, 0, 0.05),
+    0 4px 16px -4px rgba(0, 0, 0, 0.1);
+  --shadow-medium: 0 4px 12px -2px rgba(0, 0, 0, 0.08),
+    0 8px 24px -4px rgba(0, 0, 0, 0.12);
+  --shadow-elevated: 0 8px 24px -4px rgba(0, 0, 0, 0.1),
+    0 16px 48px -8px rgba(0, 0, 0, 0.15);
   --shadow-glow: 0 0 20px -5px rgba(0, 0, 0, 0.1);
 
   /* Modern easing functions */
@@ -219,19 +221,19 @@
   /* Status Colors */
   --status-available: 142 71% 45%;
   --status-available-foreground: 0 0% 100%;
-  --status-borrowed: 25 95% 53%;
-  --status-borrowed-foreground: 0 0% 100%;
+  --status-inuse: 25 95% 53%;
+  --status-inuse-foreground: 0 0% 100%;
   --status-maintenance: 215 16% 47%;
   --status-maintenance-foreground: 0 0% 100%;
 
   /* Sidebar - Dark Theme */
-  --sidebar-background: 222 47% 11%;
+  --sidebar-background: 222 47% 13%;
   --sidebar-foreground: 210 40% 96%;
   --sidebar-primary: 210 40% 98%;
   --sidebar-primary-foreground: 222 47% 11%;
-  --sidebar-accent: 222 47% 18%;
+  --sidebar-accent: 222 47% 20%;
   --sidebar-accent-foreground: 210 40% 96%;
-  --sidebar-border: 222 47% 18%;
+  --sidebar-border: 222 47% 20%;
   --sidebar-ring: 210 40% 98%;
 
   /* Chart Colors */
@@ -294,19 +296,19 @@
   /* Status Colors - Dark Mode - Slightly brighter */
   --status-available: 142 71% 50%;
   --status-available-foreground: 0 0% 100%;
-  --status-borrowed: 25 95% 58%;
-  --status-borrowed-foreground: 0 0% 100%;
+  --status-inuse: 25 95% 58%;
+  --status-inuse-foreground: 0 0% 100%;
   --status-maintenance: 215 20% 55%;
   --status-maintenance-foreground: 0 0% 100%;
 
   /* Sidebar with better contrast */
-  --sidebar-background: 222 47% 7%;
+  --sidebar-background: 222 47% 9%;
   --sidebar-foreground: 210 40% 96%;
   --sidebar-primary: 210 40% 98%;
   --sidebar-primary-foreground: 222 47% 11%;
-  --sidebar-accent: 222 47% 15%;
+  --sidebar-accent: 222 47% 17%;
   --sidebar-accent-foreground: 210 40% 96%;
-  --sidebar-border: 222 47% 16%;
+  --sidebar-border: 222 47% 18%;
   --sidebar-ring: 210 40% 98%;
 
   /* Login Hero Panel - Dark Mode */
@@ -331,20 +333,6 @@
 
   *::-webkit-scrollbar {
     display: none; /* Chrome, Safari, Opera */
-  }
-
-  /* Theme transition styles - applied during theme changes */
-  html.theme-transitioning,
-  html.theme-transitioning *,
-  html.theme-transitioning *::before,
-  html.theme-transitioning *::after {
-    transition:
-      background-color 300ms ease-out,
-      border-color 300ms ease-out,
-      color 200ms ease-out,
-      fill 200ms ease-out,
-      stroke 200ms ease-out,
-      box-shadow 300ms ease-out !important;
   }
 
   body {

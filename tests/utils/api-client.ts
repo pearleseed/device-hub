@@ -89,7 +89,7 @@ export class TestApiClient {
       method,
       headers: this.buildHeaders(options.token, hasBody),
       body: hasBody ? JSON.stringify(options.body) : undefined,
-      // @ts-ignore - Bun-specific fetch option
+
       tls: {
         rejectUnauthorized: false,
       },

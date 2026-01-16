@@ -1,13 +1,19 @@
-// Load environment variables from server/.env first (before any other imports)
+// ============================================================================
+// Environment Configuration
+// ============================================================================
+// Load environment variables from the server directory's .env file.
+// This is critical to load before any other imports that might rely on process.env.
 const serverEnvPath = import.meta.dir + "/.env";
 const serverEnvFile = Bun.file(serverEnvPath);
 if (await serverEnvFile.exists()) {
   const content = await serverEnvFile.text();
   for (const line of content.split("\n")) {
     const trimmed = line.trim();
+    // Skip empty lines and comments
     if (trimmed && !trimmed.startsWith("#")) {
       const [key, ...valueParts] = trimmed.split("=");
       const value = valueParts.join("=");
+      // Only set if not already present in the environment
       if (key && value && !process.env[key]) {
         process.env[key] = value;
       }
@@ -29,6 +35,7 @@ import { avatarsRoutes } from "./routes/avatars";
 import { auditRoutes } from "./routes/audit";
 import { inAppNotificationsRoutes } from "./routes/in-app-notifications";
 import { closeConnection, getPoolStatus, logDbConfig } from "./db/connection";
+import { networkInterfaces } from "os";
 import { securityMiddleware, addSecurityHeaders } from "./middleware/security";
 import { compressResponse } from "./middleware/compression";
 // Mattermost disabled for testing
@@ -40,9 +47,14 @@ import { compressResponse } from "./middleware/compression";
 //   stopSessionCleanup,
 // } from "./mattermost";
 
-const PORT = process.env.PORT || 3011;
+const PORT = process.env.PORT || 3001;
 
-// Allow all local/private network origins (HTTP and HTTPS)
+/**
+ * Validates if an origin is allowed to access the API.
+ * Currently allows localhost and private network IP ranges (10.x, 192.168.x, 172.16-31.x).
+ * @param origin The origin header from the request
+ * @returns boolean True if the origin is allowed
+ */
 function isAllowedOrigin(origin?: string): boolean {
   if (!origin) return false;
   // Match: http(s)://localhost, http(s)://127.x.x.x, http(s)://10.x.x.x, http(s)://192.168.x.x, http(s)://172.16-31.x.x
@@ -121,19 +133,19 @@ async function gracefulShutdown(signal: string): Promise<void> {
   }
 }
 
-// Register shutdown handlers
+// Register process signal handlers for graceful shutdown
 process.on("SIGINT", () => gracefulShutdown("SIGINT"));
 process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
 
-// Handle uncaught exceptions
+// Handle unexpected errors to prevent zombie processes or undefined states
 process.on("uncaughtException", (error) => {
   console.error("Uncaught exception:", error);
   gracefulShutdown("uncaughtException");
 });
 
-// Handle unhandled promise rejections
 process.on("unhandledRejection", (reason, promise) => {
   console.error("Unhandled rejection at:", promise, "reason:", reason);
+  // Optional: decide if unhandled rejections should trigger shutdown
 });
 
 // ============================================================================
@@ -152,7 +164,13 @@ function corsHeaders(origin?: string): HeadersInit {
   };
 }
 
-// JSON response helper
+/**
+ * Creates a JSON response with appropriate headers (including CORS).
+ * @param data The payload to jsonify
+ * @param status HTTP Status code (default 200)
+ * @param origin The request origin (for CORS)
+ * @returns Response object
+ */
 function jsonResponse(data: unknown, status = 200, origin?: string): Response {
   return new Response(JSON.stringify(data), {
     status,
@@ -212,8 +230,13 @@ function addRoute(method: string, path: string, handler: RouteHandler): void {
 // ============================================================================
 
 // Register all routes
+/**
+ * Registers all API routes to the router.
+ * Routes are grouped by domain (Auth, Users, Departments, etc.).
+ */
 function registerRoutes(): void {
-  // Health check with database pool status
+  // Health check - critical for monitoring and load balancers
+  // Checks database connection status
   addRoute("GET", "/api/health", async () => {
     try {
       const dbHealth = await getPoolStatus();
@@ -254,32 +277,24 @@ function registerRoutes(): void {
   addRoute("POST", "/api/auth/logout", authRoutes.logout);
 
   // Users routes
+  // IMPORTANT: Static routes must be registered BEFORE dynamic :id routes
   addRoute("GET", "/api/users", usersRoutes.getAll);
   addRoute("POST", "/api/users", usersRoutes.create);
+  
+  // User Import/Export routes (must be before /api/users/:id)
+  addRoute("POST", "/api/users/import/preview", userImportExportRoutes.previewImport);
+  addRoute("POST", "/api/users/import", userImportExportRoutes.importUsers);
+  addRoute("GET", "/api/users/export", userImportExportRoutes.exportUsers);
+  addRoute("GET", "/api/users/import/template", userImportExportRoutes.getTemplate);
+  addRoute("GET", "/api/users/import/departments", userImportExportRoutes.getDepartments);
+  addRoute("POST", "/api/users/export/clear-passwords", userImportExportRoutes.clearPasswords);
+
+  // Dynamic :id routes (must be after static routes)
   addRoute("GET", "/api/users/:id", usersRoutes.getById);
   addRoute("PUT", "/api/users/:id", usersRoutes.update);
   addRoute("PATCH", "/api/users/:id/password", usersRoutes.resetPassword);
   addRoute("PATCH", "/api/users/:id/status", usersRoutes.toggleStatus);
   addRoute("DELETE", "/api/users/:id", usersRoutes.delete);
-
-  // User Import/Export routes
-  addRoute("POST", "/api/users/import", userImportExportRoutes.importUsers);
-  addRoute("GET", "/api/users/export", userImportExportRoutes.exportUsers);
-  addRoute(
-    "GET",
-    "/api/users/export/admin",
-    userImportExportRoutes.exportUsersAdmin,
-  );
-  addRoute(
-    "GET",
-    "/api/users/import/template",
-    userImportExportRoutes.getTemplate,
-  );
-  addRoute(
-    "POST",
-    "/api/users/export/clear-passwords",
-    userImportExportRoutes.clearPasswords,
-  );
 
   // Departments routes
   addRoute("GET", "/api/departments/names", departmentsRoutes.getNames);
@@ -382,23 +397,18 @@ registerRoutes();
 // Server
 // ============================================================================
 
-// SSL/TLS Configuration (optional - set USE_HTTPS=false to disable)
-const useHttps = process.env.USE_HTTPS !== "false";
-const certsDir = import.meta.dir + "/certs";
-const tlsConfig = useHttps
-  ? {
-      key: Bun.file(`${certsDir}/key.pem`),
-      cert: Bun.file(`${certsDir}/cert.pem`),
-    }
-  : undefined;
+// SSL/TLS Configuration - Disabled for internal network
+const useHttps = false; 
+const tlsConfig = undefined;
 
-// Main server (HTTPS by default, HTTP if USE_HTTPS=false)
+// Main server (HTTP only)
 const server = Bun.serve({
   hostname: "0.0.0.0",
   port: PORT,
-  tls: tlsConfig,
+  // No TLS config - handled by reverse proxy or internal network trust
   async fetch(request: Request): Promise<Response> {
-    // Reject new requests if shutting down
+    // 1. Graceful Shutdown Check
+    // Reject new requests if the server is in the process of shutting down
     if (isShuttingDown) {
       return errorResponse("Server is shutting down", 503);
     }
@@ -428,12 +438,14 @@ const server = Bun.serve({
         });
 
         try {
-          // Security Middleware (Rate Limit)
+          // 3. Rate Limiting / Security Middleware
+          // Checks if the IP is blocked or rate limited
           const blocked = securityMiddleware(request);
           if (blocked) return blocked;
 
+          // 4. Executing Route Handler
           const response = await route.handler(request, params);
-          console.log(`[SERVER] ${method} ${pathname} -> ${response.status}`);
+          // console.log(`[SERVER] ${method} ${pathname} -> ${response.status}`);
           
           try {
             // Add CORS headers
@@ -464,20 +476,13 @@ const server = Bun.serve({
 
 // Get local IP address for network access
 function getLocalIP(): string {
-  try {
-    const result = Bun.spawnSync(["hostname", "-I"]);
-    const ips = new TextDecoder().decode(result.stdout).trim();
-    if (ips) {
-      return ips.split(" ")[0];
-    }
-  } catch {
-    // Fallback for macOS
-    try {
-      const result = Bun.spawnSync(["ipconfig", "getifaddr", "en0"]);
-      const ip = new TextDecoder().decode(result.stdout).trim();
-      if (ip) return ip;
-    } catch {
-      // Ignore
+  const interfaces = networkInterfaces();
+  for (const name of Object.keys(interfaces)) {
+    for (const iface of interfaces[name] || []) {
+      // Look for non-internal IPv4 addresses
+      if (iface.family === "IPv4" && !iface.internal) {
+        return iface.address;
+      }
     }
   }
   return "localhost";

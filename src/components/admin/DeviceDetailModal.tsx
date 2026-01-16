@@ -158,6 +158,21 @@ export const DeviceDetailModal: React.FC<DeviceDetailModalProps> = ({
             </div>
           </div>
 
+          {/* Notes */}
+          {device.notes && (
+            <>
+              <Separator />
+              <div className="space-y-2">
+                <p className="text-sm text-muted-foreground flex items-center gap-2">
+                  {t("deviceModal.notes") || "Notes"}
+                </p>
+                <p className="text-sm bg-muted/50 p-3 rounded-md italic">
+                  {device.notes}
+                </p>
+              </div>
+            </>
+          )}
+
           {/* Specifications */}
           {Object.keys(specs).length > 0 && (
             <>

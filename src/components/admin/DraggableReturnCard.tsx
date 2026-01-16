@@ -94,13 +94,13 @@ export const ReturnCardContent: React.FC<ReturnCardContentProps> = ({
         </div>
 
         <div className="mt-3 space-y-2">
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <User className="h-3 w-3" />
-            <span className="truncate">{userName}</span>
+          <div className="flex items-center gap-2 text-sm">
+            <User className="h-3.5 w-3.5 text-muted-foreground" />
+            <span className="truncate font-medium">{userName}</span>
           </div>
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <Calendar className="h-3 w-3" />
-            <span>
+          <div className="flex items-center gap-2 text-sm">
+            <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+            <span className="font-medium">
               {format(new Date(returnRequest.return_date), "MMM d, yyyy")}
             </span>
           </div>

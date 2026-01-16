@@ -82,7 +82,7 @@ import { cn } from "@/lib/utils";
 
 type ReturnCondition = "excellent" | "good" | "fair" | "damaged";
 type ViewMode = "table" | "timeline";
-type StatusFilter = "all" | "active" | "pending" | "returned" | "rejected";
+type StatusFilter = "all" | "active" | "pending" | "returned" | "rejected" | "renewals";
 
 interface ReturnModalData {
   loan: BorrowRequestWithDetails;
@@ -118,8 +118,41 @@ const LoanManagement: React.FC = () => {
 
   // View and filter state
   const [viewMode, setViewMode] = useState<ViewMode>("table");
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>(() => {
+    const status = searchParams.get("status") as StatusFilter;
+    if (["active", "pending", "returned", "rejected", "renewals"].includes(status)) {
+      return status;
+    }
+    return "all";
+  });
   const [searchQuery, setSearchQuery] = useState("");
+
+  // Sync state with URL when searchParams change (e.g., back navigation)
+  React.useEffect(() => {
+    const status = searchParams.get("status") as StatusFilter;
+    if (status && status !== statusFilter) {
+      if (["active", "pending", "returned", "rejected", "renewals"].includes(status)) {
+        setStatusFilter(status);
+      } else if (status === "all") {
+        setStatusFilter("all");
+      }
+    }
+  }, [searchParams, statusFilter]);
+
+  // Sync URL with state when filter changes
+  React.useEffect(() => {
+    if (statusFilter !== "all") {
+      setSearchParams(prev => {
+        prev.set("status", statusFilter);
+        return prev;
+      }, { replace: true });
+    } else if (searchParams.has("status")) {
+      setSearchParams(prev => {
+        prev.delete("status");
+        return prev;
+      }, { replace: true });
+    }
+  }, [statusFilter, setSearchParams, searchParams]);
 
   // Return modal state
   const [returnModalOpen, setReturnModalOpen] = useState(false);
@@ -138,13 +171,7 @@ const LoanManagement: React.FC = () => {
   const [renewalReason, setRenewalReason] = useState("");
   const [isSubmittingRenewal, setIsSubmittingRenewal] = useState(false);
 
-  // Bulk return state
-  const [selectedLoans, setSelectedLoans] = useState<number[]>([]);
-  const [bulkReturnModalOpen, setBulkReturnModalOpen] = useState(false);
-  const [bulkReturnCondition, setBulkReturnCondition] =
-    useState<ReturnCondition>("good");
-  const [bulkReturnNotes, setBulkReturnNotes] = useState("");
-  const [isSubmittingBulkReturn, setIsSubmittingBulkReturn] = useState(false);
+
 
   // Data fetching
   const { data: userRequests = [], isLoading: requestsLoading } =
@@ -261,6 +288,16 @@ const LoanManagement: React.FC = () => {
           return false;
         if (statusFilter === "rejected" && !item.status.includes("rejected"))
           return false;
+        if (statusFilter === "renewals") {
+          // Show actual renewal requests OR active loans due soon/overdue
+          const isRenewalRequest = item.type === "renewal";
+          const isActiveLoanDueSoonOrOverdue =
+            item.type === "loan" &&
+            item.status === "active" &&
+            differenceInDays(new Date(item.endDate), new Date()) <= 3;
+
+          if (!isRenewalRequest && !isActiveLoanDueSoonOrOverdue) return false;
+        }
       }
 
       // Search filter
@@ -468,78 +505,7 @@ const LoanManagement: React.FC = () => {
     );
   };
 
-  // Bulk return handlers
-  const handleToggleLoanSelection = (loanId: number) => {
-    setSelectedLoans((prev) =>
-      prev.includes(loanId)
-        ? prev.filter((id) => id !== loanId)
-        : [...prev, loanId],
-    );
-  };
 
-  const handleSelectAllActiveLoans = () => {
-    if (selectedLoans.length === activeLoans.length) {
-      setSelectedLoans([]);
-    } else {
-      setSelectedLoans(activeLoans.map((loan) => loan.id));
-    }
-  };
-
-  const handleOpenBulkReturnModal = () => {
-    if (selectedLoans.length === 0) {
-      toast.error(t("loans.noLoansSelected"), {
-        description: t("loans.selectAtLeastOne"),
-      });
-      return;
-    }
-    
-    // Navigate to first device's return page with all selected loan IDs
-    const firstLoan = activeLoans.find((loan) => selectedLoans.includes(loan.id));
-    if (firstLoan) {
-      const loanIds = selectedLoans.join(',');
-      navigate(`/device/${firstLoan.device_id}?action=return&bulkIds=${loanIds}`);
-    }
-  };
-
-  const handleSubmitBulkReturn = async () => {
-    if (selectedLoans.length === 0) return;
-    
-    setIsSubmittingBulkReturn(true);
-    
-    try {
-      // Submit return requests for all selected loans
-      const promises = selectedLoans.map((loanId) =>
-        createReturnRequest.mutateAsync({
-          borrow_request_id: loanId,
-          condition: bulkReturnCondition,
-          notes: bulkReturnNotes.trim() || undefined,
-        })
-      );
-      
-      await Promise.all(promises);
-      
-      const count = selectedLoans.length;
-      toast.success(t("loans.bulkReturnSubmitted", { count }), {
-        description: t("loans.adminProcessReturn"),
-      });
-      setBulkReturnModalOpen(false);
-      setSelectedLoans([]);
-    } catch (error) {
-      // Error is already handled by the mutation hook's onError
-      console.error("Failed to submit bulk return requests:", error);
-    } finally {
-      setIsSubmittingBulkReturn(false);
-    }
-  };
-
-  const selectedLoansData = useMemo(() => {
-    return activeLoans
-      .filter((loan) => selectedLoans.includes(loan.id))
-      .map((loan) => ({
-        ...loan,
-        device: getDeviceById(loan.device_id),
-      }));
-  }, [activeLoans, selectedLoans, getDeviceById]);
 
   // Timeline grouping by date
   const timelineGroups = useMemo(() => {
@@ -591,18 +557,18 @@ const LoanManagement: React.FC = () => {
 
         {/* Stats Overview - Clickable for quick filtering */}
         {isLoading ? (
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-            {[...Array(4)].map((_, i) => (
+          <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+            {[...Array(5)].map((_, i) => (
               <SkeletonKPICard key={i} />
             ))}
           </div>
         ) : (
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
             <StatsCard
               title={t("loans.statsActive")}
               value={activeLoans.length}
               icon={Package}
-              subtitle={t("loans.currentlyBorrowed")}
+              subtitle={t("loans.statusInUse")}
               accentColor="primary"
               onClick={() =>
                 setStatusFilter(statusFilter === "active" ? "all" : "active")
@@ -659,64 +625,135 @@ const LoanManagement: React.FC = () => {
                 statusFilter === "rejected" && "ring-2 ring-destructive",
               )}
             />
+            <StatsCard
+              title={t("loans.statsRenewals")}
+              value={attentionItems.length}
+              icon={RefreshCw}
+              subtitle={t("loans.loansDueOrOverdue")}
+              accentColor="warning"
+              onClick={() =>
+                setStatusFilter(
+                  statusFilter === "renewals" ? "all" : "renewals",
+                )
+              }
+              className={cn(
+                statusFilter === "renewals" && "ring-2 ring-orange-500",
+              )}
+            />
           </div>
         )}
 
         {/* Attention Required Section */}
         {attentionItems.length > 0 && (
-          <Card className="mb-6 border-orange-200 bg-orange-50 dark:bg-orange-950/20 dark:border-orange-900">
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-orange-700 dark:text-orange-400">
+          <div className="mb-8 space-y-4">
+            <div className="flex items-center gap-2 px-1">
+              <div className="p-2 bg-orange-100 dark:bg-orange-900/30 rounded-lg text-orange-600 dark:text-orange-400">
                 <AlertCircle className="h-5 w-5" />
-                {t("loans.attentionRequired")} ({attentionItems.length})
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {attentionItems.map((item) => (
-                  <div
-                    key={item.id}
-                    className="flex items-center gap-3 p-3 bg-white dark:bg-background rounded-lg border"
-                  >
-                    {item.device?.image_url && (
-                      <img
-                        src={item.device.image_url}
-                        alt={item.device.name}
-                        className="h-12 w-12 rounded-md object-cover"
-                      />
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium truncate">
-                        {item.device?.name}
-                      </p>
-                      <div className="flex items-center gap-2 mt-1">
-                        {getUrgencyBadge(new Date(item.end_date))}
-                      </div>
-                    </div>
-                    <div className="flex gap-1">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleOpenRenewalModal(item)}
-                        disabled={hasPendingRenewal(item.id)}
-                        title={t("loans.requestRenewal")}
-                      >
-                        <CalendarClock className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="default"
-                        size="sm"
-                        onClick={() => handleOpenReturnModal(item)}
-                        title={t("loans.returnDevice")}
-                      >
-                        <ArrowLeftRight className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
               </div>
-            </CardContent>
-          </Card>
+              <div>
+                <h2 className="text-lg font-semibold tracking-tight">
+                  {t("loans.attentionRequired")}
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  {t("loans.attentionRequiredDesc", { count: attentionItems.length }) || 
+                   `${attentionItems.length} items need your attention`}
+                </p>
+              </div>
+            </div>
+
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {attentionItems.map((item) => {
+                const isOverdue = differenceInDays(new Date(item.end_date), new Date()) < 0;
+                
+                return (
+                  <Card
+                    key={item.id}
+                    className={cn(
+                      "group relative overflow-hidden transition-all duration-300 hover:shadow-lg border-l-4",
+                      isOverdue 
+                        ? "border-l-red-500 hover:border-red-600" 
+                        : "border-l-orange-500 hover:border-orange-600"
+                    )}
+                  >
+                    <CardContent className="p-5">
+                      <div className="flex gap-4 mb-4">
+                        {/* Device Image */}
+                        <div className="relative h-16 w-16 shrink-0 bg-muted rounded-lg overflow-hidden border">
+                          {item.device?.image_url ? (
+                            <img
+                              src={item.device.image_url}
+                              alt={item.device.name}
+                              className="h-full w-full object-cover transition-transform group-hover:scale-105"
+                            />
+                          ) : (
+                            <Package className="h-8 w-8 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-muted-foreground/50" />
+                          )}
+                        </div>
+                        
+                        {/* Title & Badge */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-start justify-between gap-2 mb-1">
+                            <h3 className="font-semibold text-base truncate" title={item.device?.name}>
+                              {item.device?.name}
+                            </h3>
+                            <div className="shrink-0">
+                              {getUrgencyBadge(new Date(item.end_date))}
+                            </div>
+                          </div>
+                          <p className="text-sm text-muted-foreground truncate">
+                            {item.device?.asset_tag}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Info Grid */}
+                      <div className="grid grid-cols-2 gap-2 mb-5 text-sm">
+                        <div className="bg-muted/30 p-2 rounded-md">
+                          <p className="text-xs text-muted-foreground mb-0.5">{t("loans.borrowed")}</p>
+                          <p className="font-medium">
+                            {format(new Date(item.start_date), "MMM d")}
+                          </p>
+                        </div>
+                        <div className="bg-muted/30 p-2 rounded-md">
+                          <p className="text-xs text-muted-foreground mb-0.5">{t("loans.due")}</p>
+                          <p className={cn("font-medium", isOverdue ? "text-red-600 dark:text-red-400" : "")}>
+                            {format(new Date(item.end_date), "MMM d")}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Actions */}
+                      <div className="flex flex-col gap-2">
+                         <div className="flex gap-2 w-full">
+                           <Button
+                            variant="outline"
+                            size="sm"
+                            className="flex-1 gap-2 bg-background hover:bg-accent group/btn"
+                            onClick={() => handleOpenRenewalModal(item)}
+                            disabled={hasPendingRenewal(item.id)}
+                          >
+                            <CalendarClock className="h-4 w-4 text-muted-foreground group-hover/btn:text-primary transition-colors" />
+                            {hasPendingRenewal(item.id) 
+                              ? t("loans.renewalPending") 
+                              : t("loans.requestRenewal")}
+                          </Button>
+                          <Button
+                            variant="default" // Using default solid variant for primary action
+                            size="sm"
+                            className="flex-1 gap-2 shadow-sm"
+                            onClick={() => handleOpenReturnModal(item)}
+                          >
+                            <ArrowLeftRight className="h-4 w-4" />
+                            {t("loans.returnDevice")}
+                          </Button>
+                         </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          </div>
         )}
 
         {/* Main Content Card */}
@@ -734,30 +771,7 @@ const LoanManagement: React.FC = () => {
                   )}
                 </CardTitle>
 
-                {/* Bulk Actions */}
-                {selectedLoans.length > 0 && (
-                  <div className="flex items-center gap-2 pl-3 border-l">
-                    <Badge variant="secondary">
-                      {selectedLoans.length}{" "}
-                      {t("common.selected", { defaultValue: "selected" })}
-                    </Badge>
-                    <Button
-                      size="sm"
-                      onClick={handleOpenBulkReturnModal}
-                      className="gap-1"
-                    >
-                      <ArrowLeftRight className="h-4 w-4" />
-                      {t("loans.returnSelected")}
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setSelectedLoans([])}
-                    >
-                      {t("loans.clear")}
-                    </Button>
-                  </div>
-                )}
+
               </div>
 
               {/* Controls */}
@@ -832,16 +846,7 @@ const LoanManagement: React.FC = () => {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-[40px]">
-                        <Checkbox
-                          checked={
-                            activeLoans.length > 0 &&
-                            selectedLoans.length === activeLoans.length
-                          }
-                          onCheckedChange={handleSelectAllActiveLoans}
-                          aria-label="Select all active loans"
-                        />
-                      </TableHead>
+
                       <TableHead>{t("loans.device")}</TableHead>
                       <TableHead>{t("loans.type")}</TableHead>
                       <TableHead>{t("loans.period")}</TableHead>
@@ -855,19 +860,7 @@ const LoanManagement: React.FC = () => {
                   <TableBody>
                     {filteredItems.map((item) => (
                       <TableRow key={`${item.type}-${item.id}`}>
-                        <TableCell>
-                          {item.type === "loan" && item.status === "active" ? (
-                            <Checkbox
-                              checked={selectedLoans.includes(item.id)}
-                              onCheckedChange={() =>
-                                handleToggleLoanSelection(item.id)
-                              }
-                              aria-label={`Select ${item.device?.name}`}
-                            />
-                          ) : (
-                            <span className="w-4" />
-                          )}
-                        </TableCell>
+
                         <TableCell>
                           <div className="flex items-center gap-3">
                             {item.device?.image_url && (
@@ -1316,121 +1309,6 @@ const LoanManagement: React.FC = () => {
                   </>
                 ) : (
                   t("loans.submitRequest")
-                )}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        {/* Bulk Return Modal */}
-        <Dialog
-          open={bulkReturnModalOpen}
-          onOpenChange={setBulkReturnModalOpen}
-        >
-          <DialogContent className="sm:max-w-lg">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                <ArrowLeftRight className="h-5 w-5" />
-                {t("loans.returnMultipleTitle")}
-              </DialogTitle>
-              <DialogDescription>
-                {t("loans.returnMultipleDesc", { count: selectedLoans.length })}
-              </DialogDescription>
-            </DialogHeader>
-
-            <div className="space-y-4 py-2">
-              {/* Selected Devices List */}
-              <div className="space-y-2">
-                <Label>{t("loans.devicesToReturn")}</Label>
-                <div className="max-h-[200px] overflow-y-auto space-y-2 rounded-lg border p-2">
-                  {selectedLoansData.map((item) => (
-                    <div
-                      key={item.id}
-                      className="flex items-center gap-3 p-2 bg-muted/50 rounded-md"
-                    >
-                      {item.device?.image_url && (
-                        <img
-                          src={item.device.image_url}
-                          alt={item.device?.name}
-                          className="h-10 w-10 rounded-md object-cover"
-                        />
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-sm truncate">
-                          {item.device?.name}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {item.device?.asset_tag}
-                        </p>
-                      </div>
-                      {getUrgencyBadge(new Date(item.end_date))}
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Condition Selection */}
-              <div className="space-y-2">
-                <Label>{t("loans.overallCondition")}</Label>
-                <Select
-                  value={bulkReturnCondition}
-                  onValueChange={(v) =>
-                    setBulkReturnCondition(v as ReturnCondition)
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="excellent">
-                      {t("condition.excellent")} -{" "}
-                      {t("condition.excellentDesc")}
-                    </SelectItem>
-                    <SelectItem value="good">
-                      {t("condition.good")} - {t("condition.goodDesc")}
-                    </SelectItem>
-                    <SelectItem value="fair">
-                      {t("condition.fair")} - {t("condition.fairDesc")}
-                    </SelectItem>
-                    <SelectItem value="damaged">
-                      {t("condition.damaged")} - {t("condition.damagedDesc")}
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground">
-                  {t("loans.conditionDid")}
-                </p>
-              </div>
-
-              {/* Notes */}
-              <div className="space-y-2">
-                <Label htmlFor="bulkNotes">{t("loans.notesOptional")}</Label>
-                <Textarea
-                  id="bulkNotes"
-                  placeholder={t("loans.bulkNotesPlaceholder")}
-                  value={bulkReturnNotes}
-                  onChange={(e) => setBulkReturnNotes(e.target.value)}
-                  rows={2}
-                />
-              </div>
-            </div>
-
-            <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={() => setBulkReturnModalOpen(false)}
-                disabled={isSubmittingBulkReturn}
-              >
-                {t("loans.cancel")}
-              </Button>
-              <Button onClick={handleSubmitBulkReturn} disabled={isSubmittingBulkReturn}>
-                {isSubmittingBulkReturn ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
-                    {t("loans.submitting") || "Submitting..."}
-                  </>
-                ) : (
-                  t("loans.submitReturns", { count: selectedLoans.length })
                 )}
               </Button>
             </DialogFooter>

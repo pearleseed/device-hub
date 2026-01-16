@@ -4,6 +4,11 @@ import { ok, err, parseId, withAdmin } from "./_helpers";
 const VALID_TYPES: AuditObjectType[] = ["device", "user", "department", "borrow_request", "return_request", "renewal_request"];
 
 export const auditRoutes = {
+  /**
+   * GET /api/audit
+   * Retrieve audit logs with flexible filtering options.
+   * Query Params: startDate, endDate, objectType, objectId, actorId, action, limit
+   */
   async getLogs(request: Request): Promise<Response> {
     return withAdmin(request, async () => {
       try {
@@ -22,6 +27,10 @@ export const auditRoutes = {
     });
   },
 
+  /**
+   * GET /api/audit/:type/:id
+   * Shortcut to get logs for a specific object (e.g. device history).
+   */
   async getByObject(request: Request, params: Record<string, string>): Promise<Response> {
     return withAdmin(request, async () => {
       try {

@@ -41,6 +41,7 @@ import {
 import { useCreateDevice } from "@/hooks/use-api-mutations";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { Textarea } from "../ui/textarea";
 
 const deviceSchema = z.object({
   name: z.string().min(2, "Device name must be at least 2 characters").max(100),
@@ -59,6 +60,7 @@ const deviceSchema = z.object({
   processor: z.string().max(100).optional(),
   ram: z.string().max(20).optional(),
   storage: z.string().max(50).optional(),
+  notes: z.string().max(500).optional(),
 });
 
 type DeviceFormData = z.infer<typeof deviceSchema>;
@@ -150,6 +152,7 @@ export const AddDeviceModal: React.FC<AddDeviceModalProps> = ({
       processor: "",
       ram: "",
       storage: "",
+      notes: "",
     },
   });
 
@@ -192,6 +195,7 @@ export const AddDeviceModal: React.FC<AddDeviceModalProps> = ({
         }),
         purchase_price: data.purchasePrice,
         purchase_date: data.purchaseDate,
+        notes: data.notes || "",
       });
 
       form.reset();
@@ -216,33 +220,33 @@ export const AddDeviceModal: React.FC<AddDeviceModalProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-5xl h-[90vh] overflow-y-auto sm:h-auto">
-        <DialogHeader className="pb-4 border-b">
-          <DialogTitle className="text-2xl font-semibold tracking-tight">
+      <DialogContent className="max-w-[95vw] sm:max-w-2xl lg:max-w-5xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
+        <DialogHeader className="pb-3 sm:pb-4 border-b">
+          <DialogTitle className="text-lg sm:text-2xl font-semibold tracking-tight">
             Add New Device
           </DialogTitle>
         </DialogHeader>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 sm:space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
               {/* Basic Information Card */}
               <Card className="lg:col-span-2 h-full flex flex-col">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base font-medium flex items-center gap-2 text-primary">
-                    <Laptop className="h-5 w-5" />
+                <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-6">
+                  <CardTitle className="text-sm sm:text-base font-medium flex items-center gap-2 text-primary">
+                    <Laptop className="h-4 w-4 sm:h-5 sm:w-5" />
                     Basic Information
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 px-3 sm:px-6">
                   <FormField
                     control={form.control}
                     name="name"
                     render={({ field }) => (
                       <FormItem className="col-span-1 sm:col-span-2">
-                        <FormLabel>Device Name *</FormLabel>
+                        <FormLabel className="text-xs sm:text-sm">Device Name *</FormLabel>
                         <FormControl>
-                          <Input placeholder="e.g. MacBook Pro 14" {...field} />
+                          <Input placeholder="e.g. MacBook Pro 14" className="h-9 sm:h-10 text-sm" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -253,13 +257,13 @@ export const AddDeviceModal: React.FC<AddDeviceModalProps> = ({
                     name="category"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Category *</FormLabel>
+                        <FormLabel className="text-xs sm:text-sm">Category *</FormLabel>
                         <Select
                           onValueChange={field.onChange}
                           defaultValue={field.value}
                         >
                           <FormControl>
-                            <SelectTrigger className="capitalize">
+                            <SelectTrigger className="capitalize h-9 sm:h-10 text-sm">
                               <SelectValue />
                             </SelectTrigger>
                           </FormControl>
@@ -284,9 +288,9 @@ export const AddDeviceModal: React.FC<AddDeviceModalProps> = ({
                     name="assetTag"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Asset Tag *</FormLabel>
+                        <FormLabel className="text-xs sm:text-sm">Asset Tag *</FormLabel>
                         <FormControl>
-                          <Input placeholder="e.g. LAP-001" {...field} />
+                          <Input placeholder="e.g. LAP-001" className="h-9 sm:h-10 text-sm" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -297,9 +301,9 @@ export const AddDeviceModal: React.FC<AddDeviceModalProps> = ({
                     name="brand"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Brand *</FormLabel>
+                        <FormLabel className="text-xs sm:text-sm">Brand *</FormLabel>
                         <FormControl>
-                          <Input placeholder="e.g. Apple" {...field} />
+                          <Input placeholder="e.g. Apple" className="h-9 sm:h-10 text-sm" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -310,9 +314,9 @@ export const AddDeviceModal: React.FC<AddDeviceModalProps> = ({
                     name="model"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Model *</FormLabel>
+                        <FormLabel className="text-xs sm:text-sm">Model *</FormLabel>
                         <FormControl>
-                          <Input placeholder="e.g. M3 Pro 2023" {...field} />
+                          <Input placeholder="e.g. M3 Pro 2023" className="h-9 sm:h-10 text-sm" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -321,15 +325,15 @@ export const AddDeviceModal: React.FC<AddDeviceModalProps> = ({
                 </CardContent>
               </Card>
 
-              {/* Device Image Card */}
+              {/* Device Image Card - Hidden on mobile, shown as collapsible */}
               <Card className="lg:col-span-1 h-full flex flex-col">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base font-medium flex items-center gap-2 text-primary">
-                    <ImageIcon className="h-5 w-5" />
+                <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-6">
+                  <CardTitle className="text-sm sm:text-base font-medium flex items-center gap-2 text-primary">
+                    <ImageIcon className="h-4 w-4 sm:h-5 sm:w-5" />
                     Device Image
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4 flex-1 flex flex-col">
+                <CardContent className="space-y-3 sm:space-y-4 flex-1 flex flex-col px-3 sm:px-6">
                   <Tabs
                     value={imageInputMode}
                     onValueChange={(v) =>
@@ -337,13 +341,13 @@ export const AddDeviceModal: React.FC<AddDeviceModalProps> = ({
                     }
                     className="w-full flex-1 flex flex-col"
                   >
-                    <TabsList className="grid w-full grid-cols-2 mb-4">
-                      <TabsTrigger value="url" className="gap-2">
-                        <Link2 className="h-4 w-4" />
+                    <TabsList className="grid w-full grid-cols-2 mb-3 sm:mb-4 h-8 sm:h-10">
+                      <TabsTrigger value="url" className="gap-1 sm:gap-2 text-xs sm:text-sm">
+                        <Link2 className="h-3 w-3 sm:h-4 sm:w-4" />
                         URL
                       </TabsTrigger>
-                      <TabsTrigger value="upload" className="gap-2">
-                        <Upload className="h-4 w-4" />
+                      <TabsTrigger value="upload" className="gap-1 sm:gap-2 text-xs sm:text-sm">
+                        <Upload className="h-3 w-3 sm:h-4 sm:w-4" />
                         Upload
                       </TabsTrigger>
                     </TabsList>
@@ -356,7 +360,7 @@ export const AddDeviceModal: React.FC<AddDeviceModalProps> = ({
                           render={({ field }) => (
                             <FormItem>
                               <FormControl>
-                                <Input placeholder="https://example.com/image.jpg" {...field} />
+                                <Input placeholder="https://example.com/image.jpg" className="h-9 sm:h-10 text-sm" {...field} />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -367,11 +371,11 @@ export const AddDeviceModal: React.FC<AddDeviceModalProps> = ({
                         <div className="space-y-2">
                           <label
                             htmlFor="device-image-upload"
-                            className="flex items-center justify-center w-full h-10 border border-dashed rounded-md cursor-pointer bg-muted/30 hover:bg-muted/50 transition-colors border-muted-foreground/25"
+                            className="flex items-center justify-center w-full h-9 sm:h-10 border border-dashed rounded-md cursor-pointer bg-muted/30 hover:bg-muted/50 transition-colors border-muted-foreground/25"
                           >
                             <div className="flex items-center gap-2 text-muted-foreground">
-                              <Upload className="w-4 h-4" />
-                              <span className="text-sm font-medium">
+                              <Upload className="w-3 h-3 sm:w-4 sm:h-4" />
+                              <span className="text-xs sm:text-sm font-medium">
                                 Click to upload (Max 5MB)
                               </span>
                             </div>
@@ -386,18 +390,48 @@ export const AddDeviceModal: React.FC<AddDeviceModalProps> = ({
                         </div>
                       </TabsContent>
 
-                      {/* Preview Area - fill remaining space */}
-                      <ImagePreview
-                        imageUrl={watchedImage}
-                        uploadedImagePreview={uploadedImagePreview}
-                        onRemove={() => {
-                          if (uploadedImagePreview) {
-                            URL.revokeObjectURL(uploadedImagePreview);
-                          }
-                          setUploadedImagePreview(null);
-                          form.setValue("image", "");
-                        }}
-                      />
+                      {/* Preview Area - smaller on mobile */}
+                      <div className="hidden sm:block">
+                        <ImagePreview
+                          imageUrl={watchedImage}
+                          uploadedImagePreview={uploadedImagePreview}
+                          onRemove={() => {
+                            if (uploadedImagePreview) {
+                              URL.revokeObjectURL(uploadedImagePreview);
+                            }
+                            setUploadedImagePreview(null);
+                            form.setValue("image", "");
+                          }}
+                        />
+                      </div>
+                      {/* Compact preview for mobile */}
+                      <div className="sm:hidden mt-2">
+                        {(uploadedImagePreview || watchedImage) && (
+                          <div className="relative h-20 rounded-md border bg-muted/30 overflow-hidden">
+                            <img
+                              src={uploadedImagePreview || watchedImage}
+                              alt="Preview"
+                              className="w-full h-full object-contain"
+                            />
+                            {uploadedImagePreview && (
+                              <Button
+                                type="button"
+                                variant="destructive"
+                                size="icon"
+                                className="absolute top-1 right-1 h-5 w-5 rounded-full"
+                                onClick={() => {
+                                  URL.revokeObjectURL(uploadedImagePreview);
+                                  setUploadedImagePreview(null);
+                                  form.setValue("image", "");
+                                }}
+                              >
+                                <span className="sr-only">Remove</span>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-2.5 w-2.5"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
+                              </Button>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </Tabs>
                 </CardContent>
@@ -405,21 +439,21 @@ export const AddDeviceModal: React.FC<AddDeviceModalProps> = ({
 
               {/* Specifications Card */}
               <Card className="lg:col-span-2 h-full flex flex-col">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base font-medium flex items-center gap-2 text-primary">
-                    <Cpu className="h-5 w-5" />
+                <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-6">
+                  <CardTitle className="text-sm sm:text-base font-medium flex items-center gap-2 text-primary">
+                    <Cpu className="h-4 w-4 sm:h-5 sm:w-5" />
                     Specifications
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <CardContent className="grid grid-cols-2 gap-3 sm:gap-4 px-3 sm:px-6">
                   <FormField
                     control={form.control}
                     name="processor"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Processor</FormLabel>
+                        <FormLabel className="text-xs sm:text-sm">Processor</FormLabel>
                         <FormControl>
-                          <Input placeholder="e.g. Intel Core i7 / M3" {...field} />
+                          <Input placeholder="e.g. Intel i7" className="h-9 sm:h-10 text-sm" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -430,9 +464,9 @@ export const AddDeviceModal: React.FC<AddDeviceModalProps> = ({
                     name="ram"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>RAM</FormLabel>
+                        <FormLabel className="text-xs sm:text-sm">RAM</FormLabel>
                         <FormControl>
-                          <Input placeholder="e.g. 16GB" {...field} />
+                          <Input placeholder="e.g. 16GB" className="h-9 sm:h-10 text-sm" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -443,9 +477,9 @@ export const AddDeviceModal: React.FC<AddDeviceModalProps> = ({
                     name="storage"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Storage</FormLabel>
+                        <FormLabel className="text-xs sm:text-sm">Storage</FormLabel>
                         <FormControl>
-                          <Input placeholder="e.g. 512GB SSD" {...field} />
+                          <Input placeholder="e.g. 512GB SSD" className="h-9 sm:h-10 text-sm" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -456,9 +490,9 @@ export const AddDeviceModal: React.FC<AddDeviceModalProps> = ({
                     name="os"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Operating System</FormLabel>
+                        <FormLabel className="text-xs sm:text-sm">OS</FormLabel>
                         <FormControl>
-                          <Input placeholder="e.g. macOS Sonoma" {...field} />
+                          <Input placeholder="e.g. macOS" className="h-9 sm:h-10 text-sm" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -469,25 +503,26 @@ export const AddDeviceModal: React.FC<AddDeviceModalProps> = ({
 
               {/* Purchase Info Card */}
               <Card className="lg:col-span-1 h-full flex flex-col">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base font-medium flex items-center gap-2 text-primary">
-                    <Receipt className="h-5 w-5" />
+                <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-6">
+                  <CardTitle className="text-sm sm:text-base font-medium flex items-center gap-2 text-primary">
+                    <Receipt className="h-4 w-4 sm:h-5 sm:w-5" />
                     Purchase Info
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="grid grid-cols-2 lg:grid-cols-1 gap-3 sm:gap-4 px-3 sm:px-6">
                   <FormField
                     control={form.control}
                     name="purchasePrice"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Purchase Price ($)</FormLabel>
+                        <FormLabel className="text-xs sm:text-sm">Price ($)</FormLabel>
                         <FormControl>
                           <Input
                             type="number"
                             step="0.01"
                             min="0"
                             placeholder="0.00"
+                            className="h-9 sm:h-10 text-sm"
                             {...field}
                           />
                         </FormControl>
@@ -500,9 +535,37 @@ export const AddDeviceModal: React.FC<AddDeviceModalProps> = ({
                     name="purchaseDate"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Purchase Date</FormLabel>
+                        <FormLabel className="text-xs sm:text-sm">Date</FormLabel>
                         <FormControl>
-                          <Input type="date" {...field} />
+                          <Input type="date" className="h-9 sm:h-10 text-sm" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </CardContent>
+              </Card>
+
+              {/* Notes Card */}
+              <Card className="lg:col-span-3">
+                <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-6">
+                  <CardTitle className="text-sm sm:text-base font-medium flex items-center gap-2 text-primary">
+                    <Receipt className="h-4 w-4 sm:h-5 sm:w-5" />
+                    Notes
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="px-3 sm:px-6">
+                  <FormField
+                    control={form.control}
+                    name="notes"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormControl>
+                          <Textarea
+                            placeholder="Add any additional notes..."
+                            className="min-h-[60px] sm:min-h-[100px] text-sm"
+                            {...field}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -512,15 +575,15 @@ export const AddDeviceModal: React.FC<AddDeviceModalProps> = ({
               </Card>
             </div>
 
-            <DialogFooter className="pt-4 border-t gap-2">
-              <Button type="button" variant="outline" onClick={handleClose}>
+            <DialogFooter className="pt-3 sm:pt-4 border-t gap-2 flex-col-reverse sm:flex-row">
+              <Button type="button" variant="outline" onClick={handleClose} className="w-full sm:w-auto h-9 sm:h-10">
                 Cancel
               </Button>
-              <Button type="submit" disabled={createDevice.isPending} className="px-8">
+              <Button type="submit" disabled={createDevice.isPending} className="w-full sm:w-auto px-6 sm:px-8 h-9 sm:h-10">
                 {createDevice.isPending ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Adding Device...
+                    Adding...
                   </>
                 ) : (
                   "Add Device"

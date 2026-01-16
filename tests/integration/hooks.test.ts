@@ -84,7 +84,7 @@ const mockDevices = [
     category: "laptop",
     brand: "Dell",
     model: "XPS 15",
-    status: "borrowed",
+    status: "inuse",
     department_id: 2,
     department_name: "Design",
     purchase_price: 1899,

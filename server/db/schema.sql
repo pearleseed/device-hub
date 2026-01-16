@@ -32,6 +32,7 @@ CREATE TABLE users (
     name VARCHAR(100) NOT NULL,
     email VARCHAR(255) NOT NULL UNIQUE,
     password_hash VARCHAR(255) NOT NULL,
+    temp_password VARCHAR(100),
     department_id INT NOT NULL,
     role ENUM('superuser', 'admin', 'user') NOT NULL DEFAULT 'user',
     avatar_url VARCHAR(500),
@@ -55,7 +56,8 @@ CREATE TABLE devices (
     category ENUM('laptop', 'mobile', 'tablet', 'monitor', 'accessories', 'storage', 'ram') NOT NULL,
     brand VARCHAR(100) NOT NULL,
     model VARCHAR(200) NOT NULL,
-    status ENUM('available', 'borrowed', 'maintenance') NOT NULL DEFAULT 'available',
+    status ENUM('available', 'inuse', 'maintenance', 'updating', 'storage', 'discard', 'transferred') NOT NULL DEFAULT 'available',
+    notes TEXT,
     department_id INT NOT NULL,
     purchase_price DECIMAL(10, 2) NOT NULL,
     selling_price DECIMAL(10, 2),
@@ -172,7 +174,7 @@ LEFT JOIN devices d ON br.device_id = d.id
 LEFT JOIN users u ON br.user_id = u.id
 LEFT JOIN users approver ON br.approved_by = approver.id;
 
--- View: Users with department info (without password)
+-- View: Users with department info (without password_hash)
 CREATE OR REPLACE VIEW v_users_public AS
 SELECT 
     u.id,
@@ -185,6 +187,7 @@ SELECT
     u.avatar_thumbnail_url,
     u.is_active,
     u.must_change_password,
+    u.temp_password,
     u.last_login_at,
     u.created_at
 FROM users u

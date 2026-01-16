@@ -18,8 +18,9 @@ interface DeviceSpecs {
   latency?: string; voltage?: string;
 }
 
-const parseSpecs = (specsJson: string | undefined | null): DeviceSpecs => {
+const parseSpecs = (specsJson: string | Record<string, string> | undefined | null): DeviceSpecs => {
   if (!specsJson) return {};
+  if (typeof specsJson !== "string") return specsJson as DeviceSpecs;
   try { return JSON.parse(specsJson) as DeviceSpecs; } catch { return {}; }
 };
 
@@ -57,7 +58,7 @@ interface DeviceCardProps {
   className?: string;
   showQuickRequest?: boolean;
   /** Override device status for display (e.g., when device has pending request) */
-  effectiveStatus?: DeviceWithDepartment["status"];
+  effectiveStatus?: DeviceWithDepartment["status"] | "pending";
 }
 
 export const DeviceCard: React.FC<DeviceCardProps> = memo(({

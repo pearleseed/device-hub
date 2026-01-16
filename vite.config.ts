@@ -14,7 +14,7 @@ export default defineConfig({
     https: {}, // Enable HTTPS via mkcert
     proxy: {
       "/api": {
-        target: "https://localhost:3001",
+        target: "http://localhost:3001",
         changeOrigin: true,
         secure: false, // Accept self-signed certs
         // Forward cookies properly - rewrite to empty string to preserve original domain

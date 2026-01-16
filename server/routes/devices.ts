@@ -4,10 +4,15 @@ import { auditLogger } from "../services/audit-logger";
 import { ok, created, err, notFound, forbidden, parseId, withAuth, withAdmin } from "./_helpers";
 import type { Device, DeviceWithDepartment, CreateDeviceRequest, UpdateDeviceRequest, DeviceCategory, DeviceStatus } from "../types";
 
+// Allowed values for categories and statuses
 const VALID_CATEGORIES = ["laptop", "mobile", "tablet", "monitor", "accessories", "storage", "ram"];
-const VALID_STATUSES = ["available", "borrowed", "maintenance"];
+const VALID_STATUSES = ["available", "inuse", "maintenance", "updating", "storage", "discard", "transferred"];
 
 export const devicesRoutes = {
+  /**
+   * GET /api/devices
+   * Search and filter devices.
+   */
   async getAll(request: Request): Promise<Response> {
     return withAuth(request, async () => {
       const url = new URL(request.url);
@@ -16,14 +21,17 @@ export const devicesRoutes = {
       let sql = "SELECT * FROM v_device_details WHERE 1=1";
       const params: unknown[] = [];
 
+      // Dynamic Query Building
       if (category) { sql += " AND category = ?"; params.push(category); }
       if (status) { sql += " AND status = ?"; params.push(status); }
       if (department_id) { sql += " AND department_id = ?"; params.push(+department_id); }
       if (search) {
+        // Multi-column search
         sql += " AND (name LIKE ? OR asset_tag LIKE ? OR brand LIKE ? OR model LIKE ?)";
         const term = `%${search}%`;
         params.push(term, term, term, term);
       }
+      // Price range filtering
       const priceCol = price_field === "selling_price" ? "selling_price" : "purchase_price";
       if (min_price) { sql += ` AND ${priceCol} >= ?`; params.push(+min_price); }
       if (max_price) { sql += ` AND ${priceCol} < ?`; params.push(+max_price); }
@@ -34,6 +42,10 @@ export const devicesRoutes = {
     });
   },
 
+  /**
+   * GET /api/devices/:id
+   * Get detailed information for a specific device.
+   */
   async getById(request: Request, params: Record<string, string>): Promise<Response> {
     return withAuth(request, async () => {
       const id = parseId(params.id);
@@ -43,10 +55,15 @@ export const devicesRoutes = {
     });
   },
 
+  /**
+   * POST /api/devices
+   * Create a new device.
+   * Access: Admin only.
+   */
   async create(request: Request): Promise<Response> {
     return withAdmin(request, async (payload) => {
       const body: CreateDeviceRequest = await request.json();
-      const { name, asset_tag, category, brand, model, department_id, purchase_price, purchase_date, specs_json, image_url } = body;
+      const { name, asset_tag, category, brand, model, department_id, purchase_price, purchase_date, specs_json, notes, image_url } = body;
 
       if (!name?.trim()) return err("Name is required");
       if (!asset_tag?.trim()) return err("Asset tag is required");
@@ -61,8 +78,8 @@ export const devicesRoutes = {
       const [existing] = await db<Device[]>`SELECT id FROM devices WHERE asset_tag = ${assetTagUpper}`;
       if (existing) return err("Asset tag already exists");
 
-      await db`INSERT INTO devices (name, asset_tag, category, brand, model, department_id, purchase_price, purchase_date, specs_json, image_url)
-               VALUES (${name.trim()}, ${assetTagUpper}, ${category}, ${brand.trim()}, ${model.trim()}, ${department_id}, ${purchase_price}, ${purchase_date}, ${specs_json || "{}"}, ${image_url || ""})`;
+      await db`INSERT INTO devices (name, asset_tag, category, brand, model, department_id, purchase_price, purchase_date, specs_json, notes, image_url)
+               VALUES (${name.trim()}, ${assetTagUpper}, ${category}, ${brand.trim()}, ${model.trim()}, ${department_id}, ${purchase_price}, ${purchase_date}, ${specs_json || "{}"}, ${notes || null}, ${image_url || ""})`;
 
       const [newDevice] = await db<Device[]>`SELECT * FROM devices WHERE asset_tag = ${assetTagUpper}`;
 
@@ -76,6 +93,11 @@ export const devicesRoutes = {
     });
   },
 
+  /**
+   * PUT /api/devices/:id
+   * Update device details.
+   * Access: Admin only.
+   */
   async update(request: Request, params: Record<string, string>): Promise<Response> {
     return withAdmin(request, async (payload) => {
       const id = parseId(params.id);
@@ -100,6 +122,7 @@ export const devicesRoutes = {
       if (body.purchase_date !== undefined) { updates.push("purchase_date = ?"); values.push(body.purchase_date); }
       if (body.specs_json !== undefined) { updates.push("specs_json = ?"); values.push(body.specs_json); }
       if (body.image_url !== undefined) { updates.push("image_url = ?"); values.push(body.image_url); }
+      if (body.notes !== undefined) { updates.push("notes = ?"); values.push(body.notes); }
 
       if (!updates.length) return err("No fields to update");
 
@@ -118,11 +141,17 @@ export const devicesRoutes = {
     });
   },
 
+  /**
+   * DELETE /api/devices/:id
+   * Soft delete or hard delete a device. A device can only be deleted if it has no active/pending related records.
+   * Access: Admin.
+   */
   async delete(request: Request, params: Record<string, string>): Promise<Response> {
     return withAdmin(request, async (payload) => {
       const id = parseId(params.id);
       if (!id) return err("Invalid device ID");
 
+      // Integrity Check: Do not delete devices that are currently borrowed
       const [active] = await db<{ count: number }[]>`
         SELECT COUNT(*) as count FROM borrow_requests WHERE device_id = ${id} AND status IN ('pending', 'approved', 'active')`;
       if (active.count > 0) return err("Cannot delete device with active borrow requests");
@@ -140,6 +169,10 @@ export const devicesRoutes = {
     });
   },
 
+  /**
+   * GET /api/devices/category/:category
+   * Get all devices in a specific category.
+   */
   async getByCategory(request: Request, params: Record<string, string>): Promise<Response> {
     return withAuth(request, async () => {
       const category = params.category as DeviceCategory;
@@ -149,6 +182,10 @@ export const devicesRoutes = {
     });
   },
 
+  /**
+   * GET /api/devices/status/:status
+   * Get all devices with a specific status.
+   */
   async getByStatus(request: Request, params: Record<string, string>): Promise<Response> {
     return withAuth(request, async () => {
       const status = params.status as DeviceStatus;
@@ -158,6 +195,11 @@ export const devicesRoutes = {
     });
   },
 
+  /**
+   * GET /api/devices/pending/ids
+   * Get IDs of devices that have pending or approved borrow requests.
+   * Used for frontend availability checking.
+   */
   async getPendingDeviceIds(request: Request): Promise<Response> {
     return withAuth(request, async () => {
       const results = await db<{ device_id: number }[]>`

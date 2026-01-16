@@ -46,8 +46,8 @@ export const useOverdueAlerts = () => {
       if (!notifiedRef.current.has(key) && !existingOverdueNotifications.some((msg) => msg.includes(item.device.name))) {
         addNotification({
           type: "overdue",
-          title: "Overdue Return Alert",
-          message: `${item.device?.name} is ${item.daysOverdue} day${item.daysOverdue > 1 ? "s" : ""} overdue (assigned to ${item.user?.name})`,
+          title: "notifications.overdueTitle",
+          message: `notifications.overdueMessage|deviceName:${item.device?.name}|count:${item.daysOverdue}|userName:${item.user?.name}`,
           link: "/admin/requests?tab=borrow",
         });
         notifiedRef.current.add(key);

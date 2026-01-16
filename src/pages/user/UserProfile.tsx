@@ -374,7 +374,7 @@ const UserProfile: React.FC = () => {
             <StatsCard
               title={t("userDashboard.activeLoansTitle")}
               value={stats.activeLoans}
-              subtitle={t("userProfile.currentlyBorrowed")}
+              subtitle={t("userProfile.currentlyInUse")}
               icon={Package}
               accentColor="success"
               href="/loans"
@@ -470,17 +470,10 @@ const UserProfile: React.FC = () => {
                     </div>
                     <div className="p-4 rounded-lg bg-muted/50">
                       <p className="text-sm text-muted-foreground mb-1">
-                        {t("userProfile.successRate")}
+                        {t("userProfile.approvalRate")}
                       </p>
                       <p className="text-2xl font-bold">
-                        {stats.completedLoans + stats.activeLoans > 0
-                          ? Math.round(
-                              ((stats.completedLoans + stats.activeLoans) /
-                                (stats.completedLoans + stats.activeLoans + stats.rejectedRequests)) *
-                                100
-                            )
-                          : 0}
-                        %
+                        {approvalRate}%
                       </p>
                     </div>
                   </div>

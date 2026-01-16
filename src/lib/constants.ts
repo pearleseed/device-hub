@@ -18,8 +18,12 @@ const CATEGORY_ICONS: Record<string, string> = {
 
 const STATUS_COLORS: Record<string, string> = {
   available: "bg-status-available text-status-available-foreground",
-  borrowed: "bg-status-borrowed text-status-borrowed-foreground",
+  inuse: "bg-status-inuse text-status-inuse-foreground",
   maintenance: "bg-status-maintenance text-status-maintenance-foreground",
+  updating: "bg-status-maintenance text-status-maintenance-foreground",
+  storage: "bg-muted text-muted-foreground",
+  discard: "bg-destructive text-destructive-foreground",
+  transferred: "bg-blue-500 text-white",
 };
 
 export const getCategoryIcon = (category: string): string => CATEGORY_ICONS[category] || "📦";

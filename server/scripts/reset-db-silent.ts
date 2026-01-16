@@ -1,6 +1,15 @@
+/**
+ * Database Reset Script (Silent)
+ * Resets the database without interactive logging.
+ * Used by the test runner to ensure a clean state before tests.
+ */
 import { initializeDatabase } from "../db/connection";
 import { spawn } from "bun";
 
+/**
+ * Seeds the database using the mysql CLI
+ * This is faster than processing the SQL file in JS for large dumps
+ */
 async function seedWithMysql(): Promise<void> {
   const seedFile = import.meta.dir + "/../db/seed.sql";
   

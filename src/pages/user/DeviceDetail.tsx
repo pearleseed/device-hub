@@ -30,7 +30,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { useDevice, useDevices } from "@/hooks/use-api-queries";
+import { useDevice, useDevices, usePendingDeviceIds } from "@/hooks/use-api-queries";
 import { useCreateBorrowRequest } from "@/hooks/use-api-mutations";
 import { cn, getDeviceImageUrl, getDeviceThumbnailUrl, parseSpecs } from "@/lib/utils";
 import { getCategoryIcon } from "@/lib/constants";
@@ -209,10 +209,7 @@ const CompactDateRangeCalendar: React.FC<CompactDateRangeCalendarProps> = ({
                   </p>
                   {loanDuration > 0 && (
                     <p className="text-xs text-muted-foreground">
-                      {t("deviceDetail.daySelected", {
-                        count: loanDuration,
-                        s: loanDuration > 1 ? "s" : "",
-                      })}
+                      {t("deviceDetail.daySelected", { count: loanDuration })}
                     </p>
                   )}
                 </>
@@ -375,6 +372,7 @@ const DeviceDetail: React.FC = () => {
   const { data: device, isLoading } = useDevice(deviceId);
   const { data: allDevices = [] } = useDevices();
   const { data: userBorrowRequests = [] } = useUserBorrowRequests(user?.id ?? 0);
+  const { data: pendingDeviceIds = [] } = usePendingDeviceIds();
   
   // Mutation hook for creating borrow request
   const createBorrowRequest = useCreateBorrowRequest();
@@ -445,6 +443,14 @@ const DeviceDetail: React.FC = () => {
 
   // Parse specs from JSON string - must be before early returns to maintain hooks order
   const specs = useMemo(() => parseSpecs(device?.specs_json), [device?.specs_json]);
+
+  // Execute status logic
+  const effectiveStatus = useMemo(() => {
+    if (!device) return "available";
+    if (device.status !== "available") return device.status;
+    if (pendingDeviceIds.includes(device.id)) return "pending";
+    return "available";
+  }, [device, pendingDeviceIds]);
 
   // Show loading state while fetching
   if (isLoading) {
@@ -731,10 +737,7 @@ const DeviceDetail: React.FC = () => {
                     – {dateRange?.to && format(dateRange.to, "MMMM d, yyyy")}
                   </p>
                   <p className="text-muted-foreground mt-1">
-                    {t("deviceDetail.daySelected", {
-                      count: loanDuration,
-                      s: loanDuration > 1 ? "s" : "",
-                    })}
+                    {t("deviceDetail.daySelected", { count: loanDuration })}
                   </p>
                 </CardContent>
               </Card>
@@ -825,7 +828,7 @@ const DeviceDetail: React.FC = () => {
               />
               <div className="absolute top-4 left-4">
                 <StatusBadge
-                  status={device.status}
+                  status={effectiveStatus}
                   className="text-sm px-3 py-1"
                 />
               </div>
@@ -1008,7 +1011,7 @@ const DeviceDetail: React.FC = () => {
                 <CardHeader className="bg-linear-to-br from-card to-muted/30 border-b border-border/30 py-4">
                   <CardTitle className="flex items-center gap-2 text-base">
                     <CalendarDays className="h-5 w-5 text-primary" />
-                    {device.status === "available"
+                    {effectiveStatus === "available"
                       ? t("deviceDetail.requestThisDevice")
                       : t("deviceDetail.deviceUnavailableTitle")}
                   </CardTitle>
@@ -1085,7 +1088,7 @@ const DeviceDetail: React.FC = () => {
                         </div>
                       )}
                     </div>
-                  ) : device.status === "available" ? (
+                  ) : effectiveStatus === "available" ? (
                     <div className="space-y-4">
                       {/* Quick Date Presets */}
                       <div>
@@ -1164,13 +1167,15 @@ const DeviceDetail: React.FC = () => {
                       <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
                         <Package className="h-8 w-8 text-muted-foreground" />
                       </div>
-                      <p className="text-muted-foreground mb-2">
-                        {t("deviceDetail.thisDeviceCurrently")}{" "}
-                        {device.status === "borrowed"
-                          ? t("deviceDetail.borrowedStatus")
-                          : t("deviceDetail.underMaintenanceStatus")}
-                        .
-                      </p>
+                      <p className="text-muted-foreground">
+                  {t("deviceDetail.deviceUnavailableTitle")}:{" "}
+                  {effectiveStatus === "inuse"
+                    ? t("status.inuse")
+                    : effectiveStatus === "pending"
+                    ? t("status.pending")
+                    : t("status.maintenance")}
+                  .
+                </p>
                       <p className="text-sm text-muted-foreground">
                         {t("deviceDetail.checkBackLater")}
                       </p>

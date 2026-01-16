@@ -1,3 +1,33 @@
+import { vi, beforeAll, afterAll, afterEach } from "vitest";
+
+// Mock bun package for Vitest
+vi.mock("bun", () => {
+  const sqlMock = Object.assign(
+    (s: TemplateStringsArray) => {
+      const query = s.join("?");
+      if (query.includes("FROM users WHERE id =")) {
+        return Promise.resolve([{ id: 123, email: "test@example.com", role: "user", department_id: 1 }]);
+      }
+      return Promise.resolve([]);
+    },
+    {
+      begin: (op: any) => op(sqlMock),
+      reserve: () => ({ release: () => {}, unsafe: async () => [] }),
+      unsafe: async () => [],
+      close: async () => {},
+    }
+  );
+  return {
+    SQL: function() { return sqlMock; },
+    spawn: vi.fn(),
+    file: vi.fn(() => ({
+      exists: () => Promise.resolve(true),
+      text: () => Promise.resolve(""),
+    })),
+    sleep: (ms: number) => new Promise(resolve => setTimeout(resolve, ms)),
+  };
+});
+
 /**
  * Global test setup for Vitest
  * Sets up test environment variables and global utilities
@@ -21,7 +51,6 @@ if (typeof (globalThis as any).Bun === "undefined") {
   };
 }
 
-import { beforeAll, afterAll, afterEach } from "vitest";
 import { testApiClient } from "./utils/api-client";
 import { TEST_CONFIG } from "./test-config";
 

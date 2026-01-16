@@ -1,7 +1,8 @@
 // Shared TypeScript types for the backend
 
+// Status enums for better type safety
 export type UserRole = "superuser" | "admin" | "user";
-export type DeviceStatus = "available" | "borrowed" | "maintenance";
+export type DeviceStatus = "available" | "inuse" | "maintenance" | "updating" | "storage" | "discard" | "transferred";
 export type DeviceCategory =
   | "laptop"
   | "mobile"
@@ -11,11 +12,11 @@ export type DeviceCategory =
   | "storage"
   | "ram";
 export type RequestStatus =
-  | "pending"
-  | "approved"
-  | "active"
-  | "returned"
-  | "rejected";
+  | "pending"  // Initial state, waiting for admin approval
+  | "approved" // Approved by admin, waiting to be picked up/active
+  | "active"   // Device currently in possession of user
+  | "returned" // Device returned
+  | "rejected"; // Request denied
 export type DeviceCondition = "excellent" | "good" | "fair" | "damaged";
 export type RenewalStatus = "pending" | "approved" | "rejected";
 
@@ -84,6 +85,7 @@ export interface Device {
   ip_address: string | null;
   hostname: string | null;
   specs_json: string;
+  notes: string | null;
   image_url: string;
   image_thumbnail_url: string | null;
   created_at: Date;
@@ -209,6 +211,7 @@ export interface CreateDeviceRequest {
   purchase_price: number;
   purchase_date: string;
   specs_json: string;
+  notes?: string;
   image_url: string;
 }
 

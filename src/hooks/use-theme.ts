@@ -30,16 +30,9 @@ export function useTheme() {
   useEffect(() => {
     const root = window.document.documentElement;
 
-    root.classList.add("theme-transitioning");
     root.classList.remove("light", "dark");
     root.classList.add(resolvedTheme);
     localStorage.setItem("theme", theme);
-
-    const timeout = setTimeout(() => root.classList.remove("theme-transitioning"), 350);
-
-    return () => {
-      clearTimeout(timeout);
-    };
   }, [theme, resolvedTheme]);
 
   const setTheme = useCallback((newTheme: Theme) => setThemeState(newTheme), []);

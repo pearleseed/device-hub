@@ -110,9 +110,8 @@ describe("Device API - Listing", () => {
     });
 
     it("should filter devices by search parameter (Req 2.4)", async () => {
-      // First get all devices to find a searchable term
       const allDevicesResponse =
-        await api.get<DeviceWithDepartment[]>("/api/devices");
+        await api.get<DeviceWithDepartment[]>("/api/devices", ctx.adminToken);
 
       if (
         allDevicesResponse.data.data &&
@@ -122,7 +121,7 @@ describe("Device API - Listing", () => {
 
         const response = await api.get<DeviceWithDepartment[]>(
           "/api/devices",
-          undefined,
+          ctx.adminToken,
           { search: searchTerm },
         );
 
@@ -152,7 +151,7 @@ describe("Device API - Listing", () => {
 
       const response = await api.get<DeviceWithDepartment[]>(
         "/api/devices",
-        undefined,
+        ctx.adminToken,
         { min_price: minPrice, max_price: maxPrice },
       );
 
@@ -175,7 +174,7 @@ describe("Device API - Listing", () => {
 
       const response = await api.get<DeviceWithDepartment[]>(
         "/api/devices",
-        undefined,
+        ctx.adminToken,
         { min_price: minPrice },
       );
 
@@ -195,7 +194,7 @@ describe("Device API - Listing", () => {
 
       const response = await api.get<DeviceWithDepartment[]>(
         "/api/devices",
-        undefined,
+        ctx.adminToken,
         { max_price: maxPrice },
       );
 
@@ -213,7 +212,7 @@ describe("Device API - Listing", () => {
     it("should combine multiple filters", async () => {
       const response = await api.get<DeviceWithDepartment[]>(
         "/api/devices",
-        undefined,
+        ctx.adminToken,
         { category: "laptop", status: "available" },
       );
 
@@ -237,9 +236,8 @@ describe("Device API - Listing", () => {
 describe("Device API - Retrieval", () => {
   describe("GET /api/devices/:id", () => {
     it("should return device with parsed specs for valid ID (Req 2.6)", async () => {
-      // First get all devices to find a valid ID
       const allDevicesResponse =
-        await api.get<DeviceWithDepartment[]>("/api/devices");
+        await api.get<DeviceWithDepartment[]>("/api/devices", ctx.adminToken);
 
       if (
         allDevicesResponse.data.data &&
@@ -269,6 +267,7 @@ describe("Device API - Retrieval", () => {
 
       const response = await api.get<DeviceWithDepartment>(
         `/api/devices/${nonExistentId}`,
+        ctx.adminToken,
       );
 
       expect(response.status).toBe(404);
@@ -279,6 +278,7 @@ describe("Device API - Retrieval", () => {
     it("should return 400 for invalid device ID format", async () => {
       const response = await api.get<DeviceWithDepartment>(
         "/api/devices/invalid",
+        ctx.adminToken,
       );
 
       expect(response.status).toBe(400);
@@ -417,9 +417,8 @@ describe("Device API - CRUD Operations", () => {
     });
 
     it("should return 403 for non-admin updating device", async () => {
-      // Get an existing device
       const allDevicesResponse =
-        await api.get<DeviceWithDepartment[]>("/api/devices");
+        await api.get<DeviceWithDepartment[]>("/api/devices", ctx.adminToken);
 
       if (
         allDevicesResponse.data.data &&
@@ -499,6 +498,7 @@ describe("Device API - CRUD Operations", () => {
         // Verify device is deleted
         const getResponse = await api.get<DeviceWithDepartment>(
           `/api/devices/${deviceId}`,
+          ctx.adminToken,
         );
         expect(getResponse.status).toBe(404);
       }
@@ -553,7 +553,7 @@ describe("Device API - Property Tests", () => {
         fc.asyncProperty(validCategoryArb, async (category) => {
           const response = await api.get<DeviceWithDepartment[]>(
             "/api/devices",
-            undefined,
+            ctx.adminToken,
             { category },
           );
 
@@ -573,13 +573,21 @@ describe("Device API - Property Tests", () => {
     });
 
     it("for any valid status filter, all returned devices should match that status", async () => {
-      const validStatuses = ["available", "borrowed", "maintenance"] as const;
+      const validStatuses = [
+        "available",
+        "inuse",
+        "maintenance",
+        "updating",
+        "storage",
+        "discard",
+        "transferred",
+      ] as const;
 
       await fc.assert(
         fc.asyncProperty(fc.constantFrom(...validStatuses), async (status) => {
           const response = await api.get<DeviceWithDepartment[]>(
             "/api/devices",
-            undefined,
+            ctx.adminToken,
             { status },
           );
 
@@ -609,7 +617,7 @@ describe("Device API - Property Tests", () => {
 
             const response = await api.get<DeviceWithDepartment[]>(
               "/api/devices",
-              undefined,
+              ctx.adminToken,
               {
                 min_price: minPrice.toString(),
                 max_price: maxPrice.toString(),
@@ -641,7 +649,7 @@ describe("Device API - Property Tests", () => {
   describe("Property 5: Device Retrieval by ID", () => {
     it("for any existing device ID, retrieval should return that device", async () => {
       const allDevicesResponse =
-        await api.get<DeviceWithDepartment[]>("/api/devices");
+        await api.get<DeviceWithDepartment[]>("/api/devices", ctx.adminToken);
 
       if (
         !allDevicesResponse.data.data ||
@@ -656,6 +664,7 @@ describe("Device API - Property Tests", () => {
         fc.asyncProperty(fc.constantFrom(...existingIds), async (deviceId) => {
           const response = await api.get<DeviceWithDepartment>(
             `/api/devices/${deviceId}`,
+            ctx.adminToken,
           );
 
           expect(response.status).toBe(200);
@@ -672,7 +681,7 @@ describe("Device API - Property Tests", () => {
 
     it("for any non-existent device ID, retrieval should return 404", async () => {
       const allDevicesResponse =
-        await api.get<DeviceWithDepartment[]>("/api/devices");
+        await api.get<DeviceWithDepartment[]>("/api/devices", ctx.adminToken);
       const existingIds = new Set(
         allDevicesResponse.data.data?.map((d) => d.id) || [],
       );
@@ -687,6 +696,7 @@ describe("Device API - Property Tests", () => {
 
             const response = await api.get<DeviceWithDepartment>(
               `/api/devices/${randomId}`,
+              ctx.adminToken,
             );
 
             expect(response.status).toBe(404);

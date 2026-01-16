@@ -136,7 +136,7 @@ describe("Edge Cases - Special Characters and Unicode", () => {
 
   describe("Search with special characters", () => {
     it("should handle search with SQL injection attempt", async () => {
-      const response = await api.get("/api/devices", undefined, {
+      const response = await api.get("/api/devices", ctx.userToken, {
         search: "'; DROP TABLE devices; --",
       });
 
@@ -146,7 +146,7 @@ describe("Edge Cases - Special Characters and Unicode", () => {
     });
 
     it("should handle search with regex special characters", async () => {
-      const response = await api.get("/api/devices", undefined, {
+      const response = await api.get("/api/devices", ctx.userToken, {
         search: "test.*[a-z]+",
       });
 
@@ -585,9 +585,9 @@ describe("Edge Cases - Resource States", () => {
       }
     });
 
-    it("should not allow borrowing an already borrowed device", async () => {
+    it("should not allow borrowing an already inuse device", async () => {
       const devicesResponse = await api.get<DeviceWithDepartment[]>("/api/devices", undefined, {
-        status: "borrowed",
+        status: "inuse",
       });
 
       if (devicesResponse.data.data && devicesResponse.data.data.length > 0) {
@@ -599,7 +599,7 @@ describe("Edge Cases - Resource States", () => {
             device_id: device.id,
             start_date: daysFromNow(1),
             end_date: daysFromNow(7),
-            reason: "Test borrowing borrowed device",
+            reason: "Test borrowing inuse device",
           },
           ctx.userToken,
         );
@@ -612,7 +612,7 @@ describe("Edge Cases - Resource States", () => {
 
   describe("Non-existent resources", () => {
     it("should return 404 for non-existent device", async () => {
-      const response = await api.get("/api/devices/999999");
+      const response = await api.get("/api/devices/999999", ctx.adminToken);
       expect(response.status).toBe(404);
       expect(response.data.success).toBe(false);
     });
@@ -788,7 +788,7 @@ describe("Edge Cases - Duplicates and Conflicts", () => {
 describe("Edge Cases - Filters and Queries", () => {
   describe("Invalid filter values", () => {
     it("should handle invalid category filter gracefully", async () => {
-      const response = await api.get<DeviceWithDepartment[]>("/api/devices", undefined, {
+      const response = await api.get<DeviceWithDepartment[]>("/api/devices", ctx.userToken, {
         category: "invalid_category",
       });
 

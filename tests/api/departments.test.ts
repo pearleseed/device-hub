@@ -88,7 +88,7 @@ describe("Department API - Names Listing", () => {
       expect(Array.isArray(response.data.data)).toBe(true);
 
       // Verify all expected department names are present (matching ENUM in schema)
-      const names = response.data.data;
+      const names = response.data.data?.map((d: any) => d.name) || [];
       expect(names).toContain("QA");
       expect(names).toContain("DEV");
       expect(names).toContain("CG");
@@ -293,7 +293,7 @@ describe("Department API - CRUD Operations", () => {
         userToken,
       );
 
-      expect(response.status).toBe(401);
+      expect(response.status).toBe(403);
       expect(response.data.success).toBe(false);
     });
 
@@ -336,7 +336,7 @@ describe("Department API - CRUD Operations", () => {
 
       expect(response.status).toBe(400);
       expect(response.data.success).toBe(false);
-      expect(response.data.error).toContain("Code");
+      expect(response.data.error?.toLowerCase()).toContain("code");
     });
   });
 
@@ -422,7 +422,7 @@ describe("Department API - CRUD Operations", () => {
           userToken,
         );
 
-        expect(response.status).toBe(401);
+        expect(response.status).toBe(403);
         expect(response.data.success).toBe(false);
       }
     });

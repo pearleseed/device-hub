@@ -1,3 +1,8 @@
+/**
+ * Database Initialization Script
+ * Creates the database schema (tables, indexes) if they don't exist.
+ * Safe to run multiple times (idempotent).
+ */
 import { initializeDatabase } from "../db/connection";
 import * as log from "./lib/logger";
 

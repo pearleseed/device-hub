@@ -34,7 +34,7 @@ interface NotificationContextType {
 }
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
-const API_BASE = import.meta.env.VITE_API_URL || "";
+const API_BASE = import.meta.env.PROD ? (import.meta.env.VITE_API_URL || "") : "";
 
 // Helper to get the correct link based on notification type and user role
 // eslint-disable-next-line react-refresh/only-export-components
@@ -85,6 +85,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({
     try {
       const response = await fetch(`${API_BASE}/api/in-app-notifications?limit=50`, {
         headers: getAuthHeaders(),
+        credentials: "include",
       });
 
       if (response.ok) {
@@ -161,6 +162,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({
             message: notification.message,
             link: notification.link,
           }),
+          credentials: "include",
         });
 
         if (response.ok) {
@@ -181,6 +183,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({
       const response = await fetch(`${API_BASE}/api/in-app-notifications/${id}/read`, {
         method: "PATCH",
         headers: getAuthHeaders(),
+        credentials: "include",
       });
 
       if (response.ok) {
@@ -199,6 +202,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({
       const response = await fetch(`${API_BASE}/api/in-app-notifications/read-all`, {
         method: "PATCH",
         headers: getAuthHeaders(),
+        credentials: "include",
       });
 
       if (response.ok) {
@@ -215,6 +219,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({
       const response = await fetch(`${API_BASE}/api/in-app-notifications/${id}`, {
         method: "DELETE",
         headers: getAuthHeaders(),
+        credentials: "include",
       });
 
       if (response.ok) {
@@ -236,6 +241,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({
       const response = await fetch(`${API_BASE}/api/in-app-notifications/clear`, {
         method: "DELETE",
         headers: getAuthHeaders(),
+        credentials: "include",
       });
 
       if (response.ok) {

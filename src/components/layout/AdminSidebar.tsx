@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { NotificationCenter } from "@/components/notifications/NotificationCenter";
 import { LanguageSelector } from "@/components/ui/language-selector";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { useBorrowRequests, useRenewals } from "@/hooks/use-api-queries";
 import {
   LayoutDashboard,
   Package,
@@ -47,6 +48,17 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
   const { user, logout } = useAuth();
   const { t } = useLanguage();
   const location = useLocation();
+  
+  // Fetch request counts for the badge
+  const { data: borrowRequests } = useBorrowRequests();
+  const { data: renewalRequests } = useRenewals();
+  
+  // Calculate total pending requests count (borrow + renewal requests)
+  const pendingRequestsCount = useMemo(() => {
+    const pendingBorrows = borrowRequests?.filter(r => r.status === "pending").length || 0;
+    const pendingRenewals = renewalRequests?.filter(r => r.status === "pending").length || 0;
+    return pendingBorrows + pendingRenewals;
+  }, [borrowRequests, renewalRequests]);
 
   // Use localStorage for persistence when not controlled
   const [internalCollapsed, setInternalCollapsed] = useState(() => {
@@ -111,6 +123,9 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
       >
         {navItems.map((item) => {
           const isActive = location.pathname === item.path;
+          const isRequestsItem = item.path === "/admin/requests";
+          const showBadge = isRequestsItem && pendingRequestsCount > 0;
+          
           return (
             <Link
               key={item.path}
@@ -134,7 +149,23 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
                 className="h-4 w-4 lg:h-5 lg:w-5 shrink-0"
                 aria-hidden="true"
               />
-              {!collapsed && <span>{t(item.labelKey)}</span>}
+              {!collapsed && (
+                <span className="flex-1">{t(item.labelKey)}</span>
+              )}
+              
+              {/* Pending requests badge */}
+              {showBadge && (
+                <Badge 
+                  variant="destructive" 
+                  className={cn(
+                    "h-5 min-w-5 px-1.5 text-[10px] font-semibold flex items-center justify-center",
+                    collapsed && "absolute -top-1 -right-1"
+                  )}
+                  aria-label={`${pendingRequestsCount} pending requests`}
+                >
+                  {pendingRequestsCount > 99 ? "99+" : pendingRequestsCount}
+                </Badge>
+              )}
 
               {/* Tooltip for collapsed state */}
               {collapsed && (
@@ -143,6 +174,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
                   role="tooltip"
                 >
                   {t(item.labelKey)}
+                  {showBadge && ` (${pendingRequestsCount})`}
                 </div>
               )}
             </Link>

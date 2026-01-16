@@ -11,8 +11,9 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import * as fc from "fast-check";
 import { TestApiClient } from "../utils/api-client";
-import { setupTestContext, type TestContext } from "../utils/helpers";
+import { setupTestContextWithDevice, type TestContext } from "../utils/helpers";
 import { invalidTokenArb } from "../utils/generators";
+import type { UserPublic } from "../../src/types/api";
 
 // ============================================================================
 // Test Setup
@@ -22,7 +23,7 @@ const api = new TestApiClient();
 let ctx: TestContext;
 
 beforeAll(async () => {
-  ctx = await setupTestContext();
+  ctx = await setupTestContextWithDevice();
 });
 
 // ============================================================================
@@ -281,24 +282,26 @@ describe("Authorization - Admin-Only Endpoints Reject Regular Users", () => {
       },
       ctx.userToken,
     );
-    // Device creation returns 401 for non-admin (as per implementation)
-    expect(response.status).toBe(401);
+    expect(response.status).toBe(403);
     expect(response.data.success).toBe(false);
   });
 
-  it("PUT /api/devices/:id returns 401 for regular user (Req 11.2)", async () => {
+  it("PUT /api/devices/:id returns 403 for regular user (Req 11.2)", async () => {
     const response = await api.put(
-      "/api/devices/1",
+      `/api/devices/${ctx.testDevice!.id}`,
       { name: "Updated" },
       ctx.userToken,
     );
-    expect(response.status).toBe(401);
+    expect(response.status).toBe(403);
     expect(response.data.success).toBe(false);
   });
 
-  it("DELETE /api/devices/:id returns 401 for regular user (Req 11.2)", async () => {
-    const response = await api.delete("/api/devices/1", ctx.userToken);
-    expect(response.status).toBe(401);
+  it("DELETE /api/devices/:id returns 403 for regular user (Req 11.2)", async () => {
+    const response = await api.delete(
+      `/api/devices/${ctx.testDevice!.id}`,
+      ctx.userToken,
+    );
+    expect(response.status).toBe(403);
     expect(response.data.success).toBe(false);
   });
 
@@ -421,12 +424,12 @@ describe("Authorization - Superuser-Only Endpoints Reject Admins", () => {
 describe("Authorization - User Resource Ownership", () => {
   it("GET /api/users/:id returns 403 when non-admin accesses another user (Req 11.4)", async () => {
     // Get the current user's ID
-    const meResponse = await api.get("/api/auth/me", ctx.userToken);
-    const currentUser = meResponse.data.data?.user as { id: number };
+    const meResponse = await api.get<{ user: UserPublic }>("/api/auth/me", ctx.userToken);
+    const currentUser = (meResponse.data as any).user;
 
     // Get all users to find another user
-    const usersResponse = await api.get("/api/users", ctx.adminToken);
-    const users = usersResponse.data.data as Array<{ id: number }>;
+    const usersResponse = await api.get<UserPublic[]>("/api/users", ctx.adminToken);
+    const users = usersResponse.data.data;
     const otherUser = users?.find((u) => u.id !== currentUser?.id);
 
     if (otherUser) {
@@ -441,8 +444,8 @@ describe("Authorization - User Resource Ownership", () => {
 
   it("GET /api/users/:id succeeds when user accesses own profile (Req 11.4)", async () => {
     // Get the current user's ID
-    const meResponse = await api.get("/api/auth/me", ctx.userToken);
-    const currentUser = meResponse.data.data?.user as { id: number };
+    const meResponse = await api.get<{ user: UserPublic }>("/api/auth/me", ctx.userToken);
+    const currentUser = (meResponse.data as any).user;
 
     if (currentUser) {
       const response = await api.get(
@@ -456,12 +459,12 @@ describe("Authorization - User Resource Ownership", () => {
 
   it("GET /api/borrow/user/:userId returns 403 when non-admin accesses another user requests (Req 11.4)", async () => {
     // Get the current user's ID
-    const meResponse = await api.get("/api/auth/me", ctx.userToken);
-    const currentUser = meResponse.data.data?.user as { id: number };
+    const meResponse = await api.get<{ user: UserPublic }>("/api/auth/me", ctx.userToken);
+    const currentUser = (meResponse.data as any).user;
 
     // Get all users to find another user
-    const usersResponse = await api.get("/api/users", ctx.adminToken);
-    const users = usersResponse.data.data as Array<{ id: number }>;
+    const usersResponse = await api.get<UserPublic[]>("/api/users", ctx.adminToken);
+    const users = usersResponse.data.data;
     const otherUser = users?.find((u) => u.id !== currentUser?.id);
 
     if (otherUser) {
@@ -557,15 +560,15 @@ describe("Authorization - Property Tests", () => {
                 purchase_price: 100,
                 purchase_date: "2024-01-01",
               },
-              expectedStatus: 401,
+              expectedStatus: 403,
             },
             {
               method: "PUT",
               path: "/api/devices/1",
               body: { name: "Updated" },
-              expectedStatus: 401,
+              expectedStatus: 403,
             },
-            { method: "DELETE", path: "/api/devices/1", expectedStatus: 401 },
+            { method: "DELETE", path: "/api/devices/1", expectedStatus: 403 },
           ),
           async (endpoint) => {
             const response = await makeRequest(

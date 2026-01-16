@@ -70,13 +70,14 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
     setIsLoading(true);
 
     try {
-      const token = localStorage.getItem("auth-token");
+      // Use cookie-based authentication (credentials: "include")
       const response = await fetch(`${API_BASE}/api/auth/change-password`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
+          // Authorization header not needed for cookie-based auth
         },
+        credentials: "include",
         body: JSON.stringify({
           currentPassword,
           newPassword,

@@ -1,3 +1,9 @@
+/**
+ * Database Reset Script
+ * WARNING: This script drops all tables and recreates them, deleting all data.
+ * It then seeds the database with initial data.
+ * Use with caution!
+ */
 import { initializeDatabase, seedDatabase } from "../db/connection";
 import * as log from "./lib/logger";
 

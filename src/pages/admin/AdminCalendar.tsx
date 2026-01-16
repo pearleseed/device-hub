@@ -377,26 +377,26 @@ const AdminCalendar: React.FC = () => {
             <div className="h-6 w-px bg-border mx-1" />
 
             {/* View Toggle */}
-            <div className="flex items-center bg-muted rounded-md p-0.5">
+            <div className="flex items-center bg-muted rounded-md p-1">
               <Button
                 variant={activeView === "calendar" ? "default" : "ghost"}
                 size="sm"
-                className="h-7 px-2.5 gap-1.5"
+                className="h-8 px-6 gap-2"
                 onClick={() => setActiveView("calendar")}
               >
-                <Calendar className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline text-xs">
+                <Calendar className="h-4 w-4" />
+                <span className="hidden sm:inline text-sm font-medium">
                   {t("calendar.calendarView")}
                 </span>
               </Button>
               <Button
                 variant={activeView === "timeline" ? "default" : "ghost"}
                 size="sm"
-                className="h-7 px-2.5 gap-1.5"
+                className="h-8 px-6 gap-2"
                 onClick={() => setActiveView("timeline")}
               >
-                <LayoutList className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline text-xs">
+                <LayoutList className="h-4 w-4" />
+                <span className="hidden sm:inline text-sm font-medium">
                   {t("calendar.timelineView")}
                 </span>
               </Button>

@@ -1,23 +1,11 @@
 # Device Hub - API Documentation
 
 ## Base URL
-
 ```
 http://localhost:3000/api
 ```
 
-## Authentication
-
-All protected endpoints require a JWT token in the Authorization header:
-
-```
-Authorization: Bearer <token>
-```
-
 ## Response Format
-
-All responses follow this structure:
-
 ```json
 {
   "success": true|false,
@@ -29,13 +17,18 @@ All responses follow this structure:
 
 ---
 
-## Authentication Endpoints
+# Authentication Endpoints
 
-### POST /api/auth/login
+## POST /api/auth/login
 
-Authenticate user and receive JWT token.
+| Item | Detail |
+|------|--------|
+| **Endpoint** | `POST /api/auth/login` |
+| **Auth** | None |
+| **Query Params** | None |
+| **Header** | `Content-Type: application/json` |
 
-**Request Body:**
+**Body:**
 ```json
 {
   "email": "user@example.com",
@@ -44,7 +37,7 @@ Authenticate user and receive JWT token.
 }
 ```
 
-**Response (200):**
+**Success Response (200):**
 ```json
 {
   "success": true,
@@ -63,18 +56,31 @@ Authenticate user and receive JWT token.
 }
 ```
 
-**Error Responses:**
-- `400` - Email and password are required
-- `401` - Invalid email or password
-- `403` - Account has been locked
+**Error Response:**
+| Code | Message |
+|------|---------|
+| 400 | Email and password are required |
+| 401 | Invalid email or password |
+| 403 | Account has been locked |
+
+**Usecase:** Authenticate user and receive JWT token for subsequent API calls.
+
+**Validation Rules:**
+- Email: Required, valid email format
+- Password: Required
 
 ---
 
-### POST /api/auth/signup
+## POST /api/auth/signup
 
-Register a new user account.
+| Item | Detail |
+|------|--------|
+| **Endpoint** | `POST /api/auth/signup` |
+| **Auth** | None |
+| **Query Params** | None |
+| **Header** | `Content-Type: application/json` |
 
-**Request Body:**
+**Body:**
 ```json
 {
   "name": "John Doe",
@@ -84,7 +90,7 @@ Register a new user account.
 }
 ```
 
-**Response (201):**
+**Success Response (201):**
 ```json
 {
   "success": true,
@@ -100,22 +106,37 @@ Register a new user account.
 }
 ```
 
-**Error Responses:**
-- `400` - Name/Email/Password/Department is required
-- `400` - Invalid email format
-- `400` - Password must be at least 6 characters
-- `400` - An account with this email already exists
-- `400` - Invalid department
+**Error Response:**
+| Code | Message |
+|------|---------|
+| 400 | Name/Email/Password/Department is required |
+| 400 | Invalid email format |
+| 400 | Password must be at least 6 characters |
+| 400 | An account with this email already exists |
+| 400 | Invalid department |
+
+**Usecase:** Register a new user account in the system.
+
+**Validation Rules:**
+- Name: Required
+- Email: Required, valid email format, unique
+- Password: Required, minimum 6 characters
+- Department ID: Required, must exist in database
 
 ---
 
-### GET /api/auth/me
+## GET /api/auth/me
 
-Get current authenticated user information.
+| Item | Detail |
+|------|--------|
+| **Endpoint** | `GET /api/auth/me` |
+| **Auth** | Bearer Token |
+| **Query Params** | None |
+| **Header** | `Authorization: Bearer <token>` |
 
-**Headers:** `Authorization: Bearer <token>`
+**Body:** None
 
-**Response (200):**
+**Success Response (200):**
 ```json
 {
   "success": true,
@@ -133,19 +154,29 @@ Get current authenticated user information.
 }
 ```
 
-**Error Responses:**
-- `401` - Unauthorized
-- `404` - User not found
+**Error Response:**
+| Code | Message |
+|------|---------|
+| 401 | Unauthorized |
+| 404 | User not found |
+
+**Usecase:** Get current authenticated user information.
+
+**Validation Rules:**
+- Valid JWT token required
 
 ---
 
-### POST /api/auth/change-password
+## POST /api/auth/change-password
 
-Change the current user's password.
+| Item | Detail |
+|------|--------|
+| **Endpoint** | `POST /api/auth/change-password` |
+| **Auth** | Bearer Token |
+| **Query Params** | None |
+| **Header** | `Authorization: Bearer <token>`, `Content-Type: application/json` |
 
-**Headers:** `Authorization: Bearer <token>`
-
-**Request Body:**
+**Body:**
 ```json
 {
   "currentPassword": "oldpassword123",
@@ -153,7 +184,7 @@ Change the current user's password.
 }
 ```
 
-**Response (200):**
+**Success Response (200):**
 ```json
 {
   "success": true,
@@ -161,37 +192,64 @@ Change the current user's password.
 }
 ```
 
-**Error Responses:**
-- `400` - Current password and new password are required
-- `400` - New password must be at least 6 characters
-- `401` - Unauthorized / Current password is incorrect
-- `404` - User not found
+**Error Response:**
+| Code | Message |
+|------|---------|
+| 400 | Current password and new password are required |
+| 400 | New password must be at least 6 characters |
+| 401 | Unauthorized / Current password is incorrect |
+| 404 | User not found |
+
+**Usecase:** Change the current user's password.
+
+**Validation Rules:**
+- Current Password: Required, must match existing password
+- New Password: Required, minimum 6 characters
 
 ---
 
-### POST /api/auth/logout
+## POST /api/auth/logout
 
-Logout the current user and clear authentication cookie.
+| Item | Detail |
+|------|--------|
+| **Endpoint** | `POST /api/auth/logout` |
+| **Auth** | None |
+| **Query Params** | None |
+| **Header** | None |
 
-**Response (200):**
+**Body:** None
+
+**Success Response (200):**
 ```json
 {
   "success": true
 }
 ```
 
-**Side Effects:**
-- Clears the `auth_token` cookie
+**Error Response:** None
+
+**Usecase:** Logout the current user and clear authentication cookie.
+
+**Validation Rules:** None
+
+**Side Effects:** Clears the `auth_token` cookie
 
 ---
 
-## Health Check Endpoints
+# Health Check Endpoints
 
-### GET /api/health
+## GET /api/health
 
-Get server health status including database pool information.
+| Item | Detail |
+|------|--------|
+| **Endpoint** | `GET /api/health` |
+| **Auth** | None |
+| **Query Params** | None |
+| **Header** | None |
 
-**Response (200):**
+**Body:** None
+
+**Success Response (200):**
 ```json
 {
   "status": "ok",
@@ -207,7 +265,7 @@ Get server health status including database pool information.
 }
 ```
 
-**Response (503) - Degraded:**
+**Error Response (503):**
 ```json
 {
   "status": "degraded",
@@ -219,19 +277,26 @@ Get server health status including database pool information.
 }
 ```
 
+**Usecase:** Get server health status including database pool information.
+
+**Validation Rules:** None
+
 ---
 
-## User Endpoints
+# User Endpoints
 
-### GET /api/users
+## GET /api/users
 
-List all users.
+| Item | Detail |
+|------|--------|
+| **Endpoint** | `GET /api/users` |
+| **Auth** | Bearer Token (Admin only) |
+| **Query Params** | None |
+| **Header** | `Authorization: Bearer <token>` |
 
-**Headers:** `Authorization: Bearer <token>`
+**Body:** None
 
-**Access:** Admin only
-
-**Response (200):**
+**Success Response (200):**
 ```json
 {
   "success": true,
@@ -253,17 +318,30 @@ List all users.
 }
 ```
 
+**Error Response:**
+| Code | Message |
+|------|---------|
+| 401 | Unauthorized |
+| 403 | Forbidden |
+
+**Usecase:** List all users in the system.
+
+**Validation Rules:**
+- Valid JWT token required
+- User must have admin role
+
 ---
 
-### POST /api/users
+## POST /api/users
 
-Create a new user (admin only).
+| Item | Detail |
+|------|--------|
+| **Endpoint** | `POST /api/users` |
+| **Auth** | Bearer Token (Admin only) |
+| **Query Params** | None |
+| **Header** | `Authorization: Bearer <token>`, `Content-Type: application/json` |
 
-**Headers:** `Authorization: Bearer <token>`
-
-**Access:** Admin only (Admins can only create 'user' role, Superusers can create any role)
-
-**Request Body:**
+**Body:**
 ```json
 {
   "name": "John Doe",
@@ -274,11 +352,7 @@ Create a new user (admin only).
 }
 ```
 
-**Required Fields:** name, email, password, department_id
-
-**Optional Fields:** role (default: "user")
-
-**Response (201):**
+**Success Response (201):**
 ```json
 {
   "success": true,
@@ -295,25 +369,37 @@ Create a new user (admin only).
 }
 ```
 
-**Error Responses:**
-- `400` - Name is required / Invalid email / Password must be at least 6 characters / Invalid department
-- `400` - Email already exists
-- `401` - Unauthorized
-- `403` - Forbidden / Admins can only create user accounts
+**Error Response:**
+| Code | Message |
+|------|---------|
+| 400 | Name is required / Invalid email / Password must be at least 6 characters / Invalid department |
+| 400 | Email already exists |
+| 401 | Unauthorized |
+| 403 | Forbidden / Admins can only create user accounts |
 
-**Note:** Created users will have `must_change_password` set to `true`.
+**Usecase:** Create a new user (admin only). Created users will have `must_change_password` set to `true`.
+
+**Validation Rules:**
+- Name: Required
+- Email: Required, valid format, unique
+- Password: Required, minimum 6 characters
+- Department ID: Required, must exist
+- Role: Optional (default: "user"), Admins can only create 'user' role, Superusers can create any role
 
 ---
 
-### GET /api/users/:id
+## GET /api/users/:id
 
-Get user by ID.
+| Item | Detail |
+|------|--------|
+| **Endpoint** | `GET /api/users/:id` |
+| **Auth** | Bearer Token |
+| **Query Params** | None |
+| **Header** | `Authorization: Bearer <token>` |
 
-**Headers:** `Authorization: Bearer <token>`
+**Body:** None
 
-**Access:** Users can only view their own profile, admins can view any.
-
-**Response (200):**
+**Success Response (200):**
 ```json
 {
   "success": true,
@@ -330,23 +416,32 @@ Get user by ID.
 }
 ```
 
-**Error Responses:**
-- `400` - Invalid user ID
-- `401` - Unauthorized
-- `403` - Forbidden
-- `404` - User not found
+**Error Response:**
+| Code | Message |
+|------|---------|
+| 400 | Invalid user ID |
+| 401 | Unauthorized |
+| 403 | Forbidden |
+| 404 | User not found |
+
+**Usecase:** Get user by ID. Users can only view their own profile, admins can view any.
+
+**Validation Rules:**
+- ID: Required, valid integer
+- Users can only access their own profile unless admin
 
 ---
 
-### PUT /api/users/:id
+## PUT /api/users/:id
 
-Update user profile.
+| Item | Detail |
+|------|--------|
+| **Endpoint** | `PUT /api/users/:id` |
+| **Auth** | Bearer Token |
+| **Query Params** | None |
+| **Header** | `Authorization: Bearer <token>`, `Content-Type: application/json` |
 
-**Headers:** `Authorization: Bearer <token>`
-
-**Access:** Users can only update their own profile, admins can update any.
-
-**Request Body:**
+**Body:**
 ```json
 {
   "name": "John Updated",
@@ -356,12 +451,7 @@ Update user profile.
 }
 ```
 
-**Note:** Role changes:
-- Superusers can assign any role
-- Admins can only assign 'user' role
-- Regular users cannot change roles
-
-**Response (200):**
+**Success Response (200):**
 ```json
 {
   "success": true,
@@ -376,22 +466,33 @@ Update user profile.
 }
 ```
 
-**Error Responses:**
-- `400` - Invalid user ID / No fields to update
-- `401` - Unauthorized
-- `403` - Forbidden / Admins cannot assign admin or superuser roles
+**Error Response:**
+| Code | Message |
+|------|---------|
+| 400 | Invalid user ID / No fields to update |
+| 401 | Unauthorized |
+| 403 | Forbidden / Admins cannot assign admin or superuser roles |
+
+**Usecase:** Update user profile. Users can only update their own profile, admins can update any.
+
+**Validation Rules:**
+- ID: Required, valid integer
+- Role changes: Superusers can assign any role, Admins can only assign 'user' role, Regular users cannot change roles
 
 ---
 
-### DELETE /api/users/:id
+## DELETE /api/users/:id
 
-Delete a user.
+| Item | Detail |
+|------|--------|
+| **Endpoint** | `DELETE /api/users/:id` |
+| **Auth** | Bearer Token (Superuser only) |
+| **Query Params** | None |
+| **Header** | `Authorization: Bearer <token>` |
 
-**Headers:** `Authorization: Bearer <token>`
+**Body:** None
 
-**Access:** Superuser only
-
-**Response (200):**
+**Success Response (200):**
 ```json
 {
   "success": true,
@@ -399,29 +500,40 @@ Delete a user.
 }
 ```
 
-**Error Responses:**
-- `400` - Invalid user ID / Cannot delete your own account / Cannot delete user with active borrow requests
-- `401` - Unauthorized
-- `403` - Forbidden - Superuser access required
+**Error Response:**
+| Code | Message |
+|------|---------|
+| 400 | Invalid user ID / Cannot delete your own account / Cannot delete user with active borrow requests |
+| 401 | Unauthorized |
+| 403 | Forbidden - Superuser access required |
+
+**Usecase:** Delete a user from the system.
+
+**Validation Rules:**
+- ID: Required, valid integer
+- Cannot delete own account
+- Cannot delete user with active borrow requests
+- Superuser role required
 
 ---
 
-### PATCH /api/users/:id/password
+## PATCH /api/users/:id/password
 
-Reset user password.
+| Item | Detail |
+|------|--------|
+| **Endpoint** | `PATCH /api/users/:id/password` |
+| **Auth** | Bearer Token (Superuser only) |
+| **Query Params** | None |
+| **Header** | `Authorization: Bearer <token>`, `Content-Type: application/json` |
 
-**Headers:** `Authorization: Bearer <token>`
-
-**Access:** Superuser only
-
-**Request Body:**
+**Body:**
 ```json
 {
   "password": "newpassword123"
 }
 ```
 
-**Response (200):**
+**Success Response (200):**
 ```json
 {
   "success": true,
@@ -429,29 +541,39 @@ Reset user password.
 }
 ```
 
-**Error Responses:**
-- `400` - Invalid user ID / Password must be at least 6 characters
-- `401` - Unauthorized
-- `403` - Forbidden - Superuser access required
+**Error Response:**
+| Code | Message |
+|------|---------|
+| 400 | Invalid user ID / Password must be at least 6 characters |
+| 401 | Unauthorized |
+| 403 | Forbidden - Superuser access required |
+
+**Usecase:** Reset user password (admin function).
+
+**Validation Rules:**
+- ID: Required, valid integer
+- Password: Required, minimum 6 characters
+- Superuser role required
 
 ---
 
-### PATCH /api/users/:id/status
+## PATCH /api/users/:id/status
 
-Toggle user active status (lock/unlock account).
+| Item | Detail |
+|------|--------|
+| **Endpoint** | `PATCH /api/users/:id/status` |
+| **Auth** | Bearer Token (Superuser only) |
+| **Query Params** | None |
+| **Header** | `Authorization: Bearer <token>`, `Content-Type: application/json` |
 
-**Headers:** `Authorization: Bearer <token>`
-
-**Access:** Superuser only
-
-**Request Body:**
+**Body:**
 ```json
 {
   "is_active": false
 }
 ```
 
-**Response (200):**
+**Success Response (200):**
 ```json
 {
   "success": true,
@@ -464,33 +586,45 @@ Toggle user active status (lock/unlock account).
 }
 ```
 
-**Error Responses:**
-- `400` - Invalid user ID / is_active must be a boolean / Cannot change your own account status
-- `401` - Unauthorized
-- `403` - Forbidden - Superuser access required
+**Error Response:**
+| Code | Message |
+|------|---------|
+| 400 | Invalid user ID / is_active must be a boolean / Cannot change your own account status |
+| 401 | Unauthorized |
+| 403 | Forbidden - Superuser access required |
+
+**Usecase:** Toggle user active status (lock/unlock account).
+
+**Validation Rules:**
+- ID: Required, valid integer
+- is_active: Required, boolean
+- Cannot change own account status
+- Superuser role required
 
 ---
 
-## User Import/Export Endpoints
+# User Import/Export Endpoints
 
-### POST /api/users/import
+## POST /api/users/import
 
-Import users from CSV file.
+| Item | Detail |
+|------|--------|
+| **Endpoint** | `POST /api/users/import` |
+| **Auth** | Bearer Token (Admin only) |
+| **Query Params** | None |
+| **Header** | `Authorization: Bearer <token>`, `Content-Type: multipart/form-data` or `application/json` |
 
-**Headers:** `Authorization: Bearer <token>`
+**Body (multipart/form-data):**
+- `file`: CSV file
 
-**Access:** Admin only
-
-**Request:** `multipart/form-data` with file field named `file`
-
-Or JSON body:
+**Body (JSON):**
 ```json
 {
   "csvContent": "name,email,department_id,role\nJohn,john@example.com,1,user"
 }
 ```
 
-**Response (200):**
+**Success Response (200):**
 ```json
 {
   "success": true,
@@ -506,61 +640,112 @@ Or JSON body:
 }
 ```
 
-**Error Responses:**
-- `400` - No CSV file provided / File must be a CSV / File size must be less than 5MB
-- `401` - Unauthorized
-- `403` - Forbidden
+**Error Response:**
+| Code | Message |
+|------|---------|
+| 400 | No CSV file provided / File must be a CSV / File size must be less than 5MB |
+| 401 | Unauthorized |
+| 403 | Forbidden |
+
+**Usecase:** Import users from CSV file.
+
+**Validation Rules:**
+- File: Required, CSV format, max 5MB
+- Admin role required
 
 ---
 
-### GET /api/users/export
+## GET /api/users/export
 
-Export users with temporary passwords.
+| Item | Detail |
+|------|--------|
+| **Endpoint** | `GET /api/users/export` |
+| **Auth** | Bearer Token (Admin only) |
+| **Query Params** | `ids` (optional): Comma-separated user IDs to export |
+| **Header** | `Authorization: Bearer <token>` |
 
-**Headers:** `Authorization: Bearer <token>`
+**Body:** None
 
-**Access:** Admin only
+**Success Response:** CSV file download
 
-**Query Parameters:**
-- `ids` (optional): Comma-separated user IDs to export
+**Error Response:**
+| Code | Message |
+|------|---------|
+| 401 | Unauthorized |
+| 403 | Forbidden |
 
-**Response:** CSV file download
+**Usecase:** Export users with temporary passwords.
 
----
-
-### GET /api/users/export/admin
-
-Export all users with decrypted passwords.
-
-**Headers:** `Authorization: Bearer <token>`
-
-**Access:** Superuser only
-
-**Response:** CSV file download
-
----
-
-### GET /api/users/import/template
-
-Download CSV template for user import.
-
-**Headers:** `Authorization: Bearer <token>`
-
-**Access:** Admin only
-
-**Response:** CSV file download
+**Validation Rules:**
+- Admin role required
+- IDs (if provided): Valid comma-separated integers
 
 ---
 
-### POST /api/users/export/clear-passwords
+## GET /api/users/export/admin
 
-Clear temporary passwords from memory.
+| Item | Detail |
+|------|--------|
+| **Endpoint** | `GET /api/users/export/admin` |
+| **Auth** | Bearer Token (Superuser only) |
+| **Query Params** | None |
+| **Header** | `Authorization: Bearer <token>` |
 
-**Headers:** `Authorization: Bearer <token>`
+**Body:** None
 
-**Access:** Superuser only
+**Success Response:** CSV file download
 
-**Response (200):**
+**Error Response:**
+| Code | Message |
+|------|---------|
+| 401 | Unauthorized |
+| 403 | Forbidden |
+
+**Usecase:** Export all users with decrypted passwords.
+
+**Validation Rules:**
+- Superuser role required
+
+---
+
+## GET /api/users/import/template
+
+| Item | Detail |
+|------|--------|
+| **Endpoint** | `GET /api/users/import/template` |
+| **Auth** | Bearer Token (Admin only) |
+| **Query Params** | None |
+| **Header** | `Authorization: Bearer <token>` |
+
+**Body:** None
+
+**Success Response:** CSV file download (template)
+
+**Error Response:**
+| Code | Message |
+|------|---------|
+| 401 | Unauthorized |
+| 403 | Forbidden |
+
+**Usecase:** Download CSV template for user import.
+
+**Validation Rules:**
+- Admin role required
+
+---
+
+## POST /api/users/export/clear-passwords
+
+| Item | Detail |
+|------|--------|
+| **Endpoint** | `POST /api/users/export/clear-passwords` |
+| **Auth** | Bearer Token (Superuser only) |
+| **Query Params** | None |
+| **Header** | `Authorization: Bearer <token>` |
+
+**Body:** None
+
+**Success Response (200):**
 ```json
 {
   "success": true,
@@ -568,15 +753,33 @@ Clear temporary passwords from memory.
 }
 ```
 
+**Error Response:**
+| Code | Message |
+|------|---------|
+| 401 | Unauthorized |
+| 403 | Forbidden |
+
+**Usecase:** Clear temporary passwords from memory.
+
+**Validation Rules:**
+- Superuser role required
+
 ---
 
-## Device Endpoints
+# Device Endpoints
 
-### GET /api/devices/pending-ids
+## GET /api/devices/pending-ids
 
-Get IDs of devices that have pending or approved borrow requests.
+| Item | Detail |
+|------|--------|
+| **Endpoint** | `GET /api/devices/pending-ids` |
+| **Auth** | None |
+| **Query Params** | None |
+| **Header** | None |
 
-**Response (200):**
+**Body:** None
+
+**Success Response (200):**
 ```json
 {
   "success": true,
@@ -584,13 +787,24 @@ Get IDs of devices that have pending or approved borrow requests.
 }
 ```
 
+**Error Response:** None
+
+**Usecase:** Get IDs of devices that have pending or approved borrow requests.
+
+**Validation Rules:** None
+
 ---
 
-### GET /api/devices
+## GET /api/devices
 
-List all devices with optional filters.
+| Item | Detail |
+|------|--------|
+| **Endpoint** | `GET /api/devices` |
+| **Auth** | None |
+| **Query Params** | `category`, `status`, `department_id`, `search`, `min_price`, `max_price`, `price_field` |
+| **Header** | None |
 
-**Query Parameters:**
+**Query Parameters Detail:**
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | category | string | Filter by category (laptop, mobile, tablet, monitor, accessories, storage, ram) |
@@ -601,7 +815,9 @@ List all devices with optional filters.
 | max_price | number | Maximum price filter |
 | price_field | string | Price field to filter (purchase_price or selling_price) |
 
-**Response (200):**
+**Body:** None
+
+**Success Response (200):**
 ```json
 {
   "success": true,
@@ -628,13 +844,28 @@ List all devices with optional filters.
 }
 ```
 
+**Error Response:** None
+
+**Usecase:** List all devices with optional filters.
+
+**Validation Rules:**
+- Category (if provided): Must be one of: laptop, mobile, tablet, monitor, accessories, storage, ram
+- Status (if provided): Must be one of: available, borrowed, maintenance
+
 ---
 
-### GET /api/devices/:id
+## GET /api/devices/:id
 
-Get device by ID.
+| Item | Detail |
+|------|--------|
+| **Endpoint** | `GET /api/devices/:id` |
+| **Auth** | None |
+| **Query Params** | None |
+| **Header** | None |
 
-**Response (200):**
+**Body:** None
+
+**Success Response (200):**
 ```json
 {
   "success": true,
@@ -655,21 +886,29 @@ Get device by ID.
 }
 ```
 
-**Error Responses:**
-- `400` - Invalid device ID
-- `404` - Device not found
+**Error Response:**
+| Code | Message |
+|------|---------|
+| 400 | Invalid device ID |
+| 404 | Device not found |
+
+**Usecase:** Get device by ID.
+
+**Validation Rules:**
+- ID: Required, valid integer
 
 ---
 
-### POST /api/devices
+## POST /api/devices
 
-Create a new device.
+| Item | Detail |
+|------|--------|
+| **Endpoint** | `POST /api/devices` |
+| **Auth** | Bearer Token (Admin only) |
+| **Query Params** | None |
+| **Header** | `Authorization: Bearer <token>`, `Content-Type: application/json` |
 
-**Headers:** `Authorization: Bearer <token>`
-
-**Access:** Admin only
-
-**Request Body:**
+**Body:**
 ```json
 {
   "name": "MacBook Pro 16",
@@ -685,9 +924,7 @@ Create a new device.
 }
 ```
 
-**Required Fields:** name, asset_tag, category, brand, model, department_id, purchase_price, purchase_date
-
-**Response (201):**
+**Success Response (201):**
 ```json
 {
   "success": true,
@@ -701,21 +938,36 @@ Create a new device.
 }
 ```
 
-**Error Responses:**
-- `400` - Missing required fields / Asset tag already exists
-- `401` - Unauthorized
+**Error Response:**
+| Code | Message |
+|------|---------|
+| 400 | Missing required fields / Asset tag already exists |
+| 401 | Unauthorized |
+
+**Usecase:** Create a new device.
+
+**Validation Rules:**
+- Name: Required
+- Asset Tag: Required, unique
+- Category: Required, must be one of: laptop, mobile, tablet, monitor, accessories, storage, ram
+- Brand: Required
+- Model: Required
+- Department ID: Required, must exist
+- Purchase Price: Required
+- Purchase Date: Required
 
 ---
 
-### PUT /api/devices/:id
+## PUT /api/devices/:id
 
-Update a device.
+| Item | Detail |
+|------|--------|
+| **Endpoint** | `PUT /api/devices/:id` |
+| **Auth** | Bearer Token (Admin only) |
+| **Query Params** | None |
+| **Header** | `Authorization: Bearer <token>`, `Content-Type: application/json` |
 
-**Headers:** `Authorization: Bearer <token>`
-
-**Access:** Admin only
-
-**Request Body:**
+**Body:**
 ```json
 {
   "name": "MacBook Pro 16 Updated",
@@ -724,7 +976,7 @@ Update a device.
 }
 ```
 
-**Response (200):**
+**Success Response (200):**
 ```json
 {
   "success": true,
@@ -737,21 +989,33 @@ Update a device.
 }
 ```
 
-**Error Responses:**
-- `400` - Invalid device ID / No fields to update / Asset tag already exists
-- `401` - Unauthorized
+**Error Response:**
+| Code | Message |
+|------|---------|
+| 400 | Invalid device ID / No fields to update / Asset tag already exists |
+| 401 | Unauthorized |
+
+**Usecase:** Update a device.
+
+**Validation Rules:**
+- ID: Required, valid integer
+- Asset Tag (if provided): Must be unique
+- Admin role required
 
 ---
 
-### DELETE /api/devices/:id
+## DELETE /api/devices/:id
 
-Delete a device.
+| Item | Detail |
+|------|--------|
+| **Endpoint** | `DELETE /api/devices/:id` |
+| **Auth** | Bearer Token (Admin only) |
+| **Query Params** | None |
+| **Header** | `Authorization: Bearer <token>` |
 
-**Headers:** `Authorization: Bearer <token>`
+**Body:** None
 
-**Access:** Admin only
-
-**Response (200):**
+**Success Response (200):**
 ```json
 {
   "success": true,
@@ -759,19 +1023,33 @@ Delete a device.
 }
 ```
 
-**Error Responses:**
-- `400` - Invalid device ID / Cannot delete device with active borrow requests
-- `401` - Unauthorized
+**Error Response:**
+| Code | Message |
+|------|---------|
+| 400 | Invalid device ID / Cannot delete device with active borrow requests |
+| 401 | Unauthorized |
+
+**Usecase:** Delete a device.
+
+**Validation Rules:**
+- ID: Required, valid integer
+- Cannot delete device with active borrow requests
+- Admin role required
 
 ---
 
-### GET /api/devices/category/:category
+## GET /api/devices/category/:category
 
-Get devices by category.
+| Item | Detail |
+|------|--------|
+| **Endpoint** | `GET /api/devices/category/:category` |
+| **Auth** | None |
+| **Query Params** | None |
+| **Header** | None |
 
-**Valid Categories:** laptop, mobile, tablet, monitor, accessories, storage, ram
+**Body:** None
 
-**Response (200):**
+**Success Response (200):**
 ```json
 {
   "success": true,
@@ -785,18 +1063,30 @@ Get devices by category.
 }
 ```
 
-**Error Responses:**
-- `400` - Invalid category
+**Error Response:**
+| Code | Message |
+|------|---------|
+| 400 | Invalid category |
+
+**Usecase:** Get devices by category.
+
+**Validation Rules:**
+- Category: Required, must be one of: laptop, mobile, tablet, monitor, accessories, storage, ram
 
 ---
 
-### GET /api/devices/status/:status
+## GET /api/devices/status/:status
 
-Get devices by status.
+| Item | Detail |
+|------|--------|
+| **Endpoint** | `GET /api/devices/status/:status` |
+| **Auth** | None |
+| **Query Params** | None |
+| **Header** | None |
 
-**Valid Statuses:** available, borrowed, maintenance
+**Body:** None
 
-**Response (200):**
+**Success Response (200):**
 ```json
 {
   "success": true,
@@ -810,28 +1100,38 @@ Get devices by status.
 }
 ```
 
-**Error Responses:**
-- `400` - Invalid status
+**Error Response:**
+| Code | Message |
+|------|---------|
+| 400 | Invalid status |
+
+**Usecase:** Get devices by status.
+
+**Validation Rules:**
+- Status: Required, must be one of: available, borrowed, maintenance
 
 ---
 
-## Borrow Request Endpoints
+# Borrow Request Endpoints
 
-### GET /api/borrow
+## GET /api/borrow
 
-List borrow requests.
+| Item | Detail |
+|------|--------|
+| **Endpoint** | `GET /api/borrow` |
+| **Auth** | Bearer Token |
+| **Query Params** | `status`, `device_id` |
+| **Header** | `Authorization: Bearer <token>` |
 
-**Headers:** `Authorization: Bearer <token>`
-
-**Access:** Users see only their own requests, admins see all.
-
-**Query Parameters:**
+**Query Parameters Detail:**
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | status | string | Filter by status (pending, approved, active, returned, rejected) |
 | device_id | number | Filter by device ID |
 
-**Response (200):**
+**Body:** None
+
+**Success Response (200):**
 ```json
 {
   "success": true,
@@ -857,17 +1157,31 @@ List borrow requests.
 }
 ```
 
+**Error Response:**
+| Code | Message |
+|------|---------|
+| 401 | Unauthorized |
+
+**Usecase:** List borrow requests. Users see only their own requests, admins see all.
+
+**Validation Rules:**
+- Valid JWT token required
+- Status (if provided): Must be one of: pending, approved, active, returned, rejected
+
 ---
 
-### GET /api/borrow/:id
+## GET /api/borrow/:id
 
-Get borrow request by ID.
+| Item | Detail |
+|------|--------|
+| **Endpoint** | `GET /api/borrow/:id` |
+| **Auth** | Bearer Token |
+| **Query Params** | None |
+| **Header** | `Authorization: Bearer <token>` |
 
-**Headers:** `Authorization: Bearer <token>`
+**Body:** None
 
-**Access:** Users can only see their own requests, admins can see all.
-
-**Response (200):**
+**Success Response (200):**
 ```json
 {
   "success": true,
@@ -885,23 +1199,34 @@ Get borrow request by ID.
 }
 ```
 
-**Error Responses:**
-- `400` - Invalid request ID
-- `401` - Unauthorized
-- `403` - Forbidden
-- `404` - Request not found
+**Error Response:**
+| Code | Message |
+|------|---------|
+| 400 | Invalid request ID |
+| 401 | Unauthorized |
+| 403 | Forbidden |
+| 404 | Request not found |
+
+**Usecase:** Get borrow request by ID. Users can only see their own requests, admins can see all.
+
+**Validation Rules:**
+- ID: Required, valid integer
+- Users can only access their own requests unless admin
 
 ---
 
-### GET /api/borrow/user/:userId
+## GET /api/borrow/user/:userId
 
-Get borrow requests for a specific user.
+| Item | Detail |
+|------|--------|
+| **Endpoint** | `GET /api/borrow/user/:userId` |
+| **Auth** | Bearer Token |
+| **Query Params** | None |
+| **Header** | `Authorization: Bearer <token>` |
 
-**Headers:** `Authorization: Bearer <token>`
+**Body:** None
 
-**Access:** Users can only see their own requests, admins can see any user's requests.
-
-**Response (200):**
+**Success Response (200):**
 ```json
 {
   "success": true,
@@ -917,24 +1242,33 @@ Get borrow requests for a specific user.
 }
 ```
 
-**Error Responses:**
-- `400` - Invalid user ID
-- `401` - Unauthorized
-- `403` - Forbidden
+**Error Response:**
+| Code | Message |
+|------|---------|
+| 400 | Invalid user ID |
+| 401 | Unauthorized |
+| 403 | Forbidden |
+
+**Usecase:** Get borrow requests for a specific user. Users can only see their own requests, admins can see any user's requests.
+
+**Validation Rules:**
+- User ID: Required, valid integer
+- Users can only access their own requests unless admin
 
 ---
 
-### GET /api/borrow/status/:status
+## GET /api/borrow/status/:status
 
-Get borrow requests by status.
+| Item | Detail |
+|------|--------|
+| **Endpoint** | `GET /api/borrow/status/:status` |
+| **Auth** | Bearer Token |
+| **Query Params** | None |
+| **Header** | `Authorization: Bearer <token>` |
 
-**Headers:** `Authorization: Bearer <token>`
+**Body:** None
 
-**Access:** Users see only their own requests, admins see all.
-
-**Valid Statuses:** pending, approved, active, returned, rejected
-
-**Response (200):**
+**Success Response (200):**
 ```json
 {
   "success": true,
@@ -948,19 +1282,29 @@ Get borrow requests by status.
 }
 ```
 
-**Error Responses:**
-- `400` - Invalid status
-- `401` - Unauthorized
+**Error Response:**
+| Code | Message |
+|------|---------|
+| 400 | Invalid status |
+| 401 | Unauthorized |
+
+**Usecase:** Get borrow requests by status. Users see only their own requests, admins see all.
+
+**Validation Rules:**
+- Status: Required, must be one of: pending, approved, active, returned, rejected
 
 ---
 
-### POST /api/borrow
+## POST /api/borrow
 
-Create a new borrow request.
+| Item | Detail |
+|------|--------|
+| **Endpoint** | `POST /api/borrow` |
+| **Auth** | Bearer Token |
+| **Query Params** | None |
+| **Header** | `Authorization: Bearer <token>`, `Content-Type: application/json` |
 
-**Headers:** `Authorization: Bearer <token>`
-
-**Request Body:**
+**Body:**
 ```json
 {
   "device_id": 1,
@@ -970,7 +1314,7 @@ Create a new borrow request.
 }
 ```
 
-**Response (201):**
+**Success Response (201):**
 ```json
 {
   "success": true,
@@ -988,26 +1332,39 @@ Create a new borrow request.
 }
 ```
 
-**Error Responses:**
-- `400` - Device ID/Start date/End date/Reason is required
-- `400` - Start date cannot be in the past
-- `400` - End date must be after start date
-- `400` - Device is under maintenance
-- `400` - Device is already booked for this period
-- `401` - Unauthorized
-- `404` - Device not found
+**Error Response:**
+| Code | Message |
+|------|---------|
+| 400 | Device ID/Start date/End date/Reason is required |
+| 400 | Start date cannot be in the past |
+| 400 | End date must be after start date |
+| 400 | Device is under maintenance |
+| 400 | Device is already booked for this period |
+| 401 | Unauthorized |
+| 404 | Device not found |
+
+**Usecase:** Create a new borrow request.
+
+**Validation Rules:**
+- Device ID: Required, must exist
+- Start Date: Required, cannot be in the past
+- End Date: Required, must be after start date
+- Reason: Required
+- Device must be available (not under maintenance)
+- Device must not be booked for the requested period
 
 ---
 
-### PATCH /api/borrow/:id/status
+## PATCH /api/borrow/:id/status
 
-Update borrow request status.
+| Item | Detail |
+|------|--------|
+| **Endpoint** | `PATCH /api/borrow/:id/status` |
+| **Auth** | Bearer Token (Admin only for approve/reject/activate) |
+| **Query Params** | None |
+| **Header** | `Authorization: Bearer <token>`, `Content-Type: application/json` |
 
-**Headers:** `Authorization: Bearer <token>`
-
-**Access:** Admin only for approve/reject/activate
-
-**Request Body:**
+**Body:**
 ```json
 {
   "status": "approved"
@@ -1023,7 +1380,7 @@ Update borrow request status.
 | returned | (none) |
 | rejected | (none) |
 
-**Response (200):**
+**Success Response (200):**
 ```json
 {
   "success": true,
@@ -1036,30 +1393,42 @@ Update borrow request status.
 }
 ```
 
-**Error Responses:**
-- `400` - Invalid request ID / Invalid status / Cannot transition from X to Y
-- `401` - Unauthorized
-- `403` - Forbidden
-- `404` - Request not found
+**Error Response:**
+| Code | Message |
+|------|---------|
+| 400 | Invalid request ID / Invalid status / Cannot transition from X to Y |
+| 401 | Unauthorized |
+| 403 | Forbidden |
+| 404 | Request not found |
+
+**Usecase:** Update borrow request status.
+
+**Validation Rules:**
+- ID: Required, valid integer
+- Status: Required, must follow valid transition rules
+- Admin role required for approve/reject/activate
 
 ---
 
-## Return Request Endpoints
+# Return Request Endpoints
 
-### GET /api/returns
+## GET /api/returns
 
-List return requests.
+| Item | Detail |
+|------|--------|
+| **Endpoint** | `GET /api/returns` |
+| **Auth** | Bearer Token |
+| **Query Params** | `condition` |
+| **Header** | `Authorization: Bearer <token>` |
 
-**Headers:** `Authorization: Bearer <token>`
-
-**Access:** Users see only their own returns, admins see all.
-
-**Query Parameters:**
+**Query Parameters Detail:**
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | condition | string | Filter by device condition (excellent, good, fair, damaged) |
 
-**Response (200):**
+**Body:** None
+
+**Success Response (200):**
 ```json
 {
   "success": true,
@@ -1081,17 +1450,31 @@ List return requests.
 }
 ```
 
+**Error Response:**
+| Code | Message |
+|------|---------|
+| 401 | Unauthorized |
+
+**Usecase:** List return requests. Users see only their own returns, admins see all.
+
+**Validation Rules:**
+- Valid JWT token required
+- Condition (if provided): Must be one of: excellent, good, fair, damaged
+
 ---
 
-### GET /api/returns/:id
+## GET /api/returns/:id
 
-Get return request by ID.
+| Item | Detail |
+|------|--------|
+| **Endpoint** | `GET /api/returns/:id` |
+| **Auth** | Bearer Token |
+| **Query Params** | None |
+| **Header** | `Authorization: Bearer <token>` |
 
-**Headers:** `Authorization: Bearer <token>`
+**Body:** None
 
-**Access:** Users can only see their own returns, admins can see all.
-
-**Response (200):**
+**Success Response (200):**
 ```json
 {
   "success": true,
@@ -1108,23 +1491,32 @@ Get return request by ID.
 }
 ```
 
-**Error Responses:**
-- `400` - Invalid return request ID
-- `401` - Unauthorized
-- `403` - Forbidden
-- `404` - Return request not found
+**Error Response:**
+| Code | Message |
+|------|---------|
+| 400 | Invalid return request ID |
+| 401 | Unauthorized |
+| 403 | Forbidden |
+| 404 | Return request not found |
+
+**Usecase:** Get return request by ID. Users can only see their own returns, admins can see all.
+
+**Validation Rules:**
+- ID: Required, valid integer
+- Users can only access their own returns unless admin
 
 ---
 
-### POST /api/returns
+## POST /api/returns
 
-Create a return request.
+| Item | Detail |
+|------|--------|
+| **Endpoint** | `POST /api/returns` |
+| **Auth** | Bearer Token (Borrower or Admin) |
+| **Query Params** | None |
+| **Header** | `Authorization: Bearer <token>`, `Content-Type: application/json` |
 
-**Headers:** `Authorization: Bearer <token>`
-
-**Access:** Borrower or admin
-
-**Request Body:**
+**Body:**
 ```json
 {
   "borrow_request_id": 5,
@@ -1133,11 +1525,7 @@ Create a return request.
 }
 ```
 
-**Valid Conditions:** excellent, good, fair, damaged
-
-**Note:** Notes are required when condition is "damaged".
-
-**Response (201):**
+**Success Response (201):**
 ```json
 {
   "success": true,
@@ -1152,39 +1540,49 @@ Create a return request.
 }
 ```
 
+**Error Response:**
+| Code | Message |
+|------|---------|
+| 400 | Borrow request ID is required / Valid condition is required |
+| 400 | Notes are required when device is returned in damaged condition |
+| 400 | Can only create return request for active borrowings |
+| 400 | Return request already exists |
+| 401 | Unauthorized |
+| 403 | Forbidden |
+| 404 | Borrow request not found |
+
+**Usecase:** Create a return request.
+
+**Validation Rules:**
+- Borrow Request ID: Required, must exist
+- Condition: Required, must be one of: excellent, good, fair, damaged
+- Notes: Required when condition is "damaged"
+- Borrow request must be in "active" status
+- Return request must not already exist
+
 **Side Effects:**
 - Borrow request status changes to "returned"
 - Device status changes to "available" (or "maintenance" if damaged)
 
-**Error Responses:**
-- `400` - Borrow request ID is required / Valid condition is required
-- `400` - Notes are required when device is returned in damaged condition
-- `400` - Can only create return request for active borrowings
-- `400` - Return request already exists
-- `401` - Unauthorized
-- `403` - Forbidden
-- `404` - Borrow request not found
-
 ---
 
-### PATCH /api/returns/:id/condition
+## PATCH /api/returns/:id/condition
 
-Update the device condition of a return request.
+| Item | Detail |
+|------|--------|
+| **Endpoint** | `PATCH /api/returns/:id/condition` |
+| **Auth** | Bearer Token (Admin only) |
+| **Query Params** | None |
+| **Header** | `Authorization: Bearer <token>`, `Content-Type: application/json` |
 
-**Headers:** `Authorization: Bearer <token>`
-
-**Access:** Admin only
-
-**Request Body:**
+**Body:**
 ```json
 {
   "condition": "fair"
 }
 ```
 
-**Valid Conditions:** excellent, good, fair, damaged
-
-**Response (200):**
+**Success Response (200):**
 ```json
 {
   "success": true,
@@ -1200,33 +1598,45 @@ Update the device condition of a return request.
 }
 ```
 
+**Error Response:**
+| Code | Message |
+|------|---------|
+| 400 | Invalid return request ID / Valid condition is required |
+| 401 | Unauthorized |
+| 403 | Forbidden |
+| 404 | Return request not found |
+
+**Usecase:** Update the device condition of a return request.
+
+**Validation Rules:**
+- ID: Required, valid integer
+- Condition: Required, must be one of: excellent, good, fair, damaged
+- Admin role required
+
 **Side Effects:**
 - Device status changes to "maintenance" if condition is "damaged", otherwise "available"
 
-**Error Responses:**
-- `400` - Invalid return request ID / Valid condition is required
-- `401` - Unauthorized
-- `403` - Forbidden
-- `404` - Return request not found
-
 ---
 
-## Renewal Request Endpoints
+# Renewal Request Endpoints
 
-### GET /api/renewals
+## GET /api/renewals
 
-List renewal requests.
+| Item | Detail |
+|------|--------|
+| **Endpoint** | `GET /api/renewals` |
+| **Auth** | Bearer Token |
+| **Query Params** | `status` |
+| **Header** | `Authorization: Bearer <token>` |
 
-**Headers:** `Authorization: Bearer <token>`
-
-**Access:** Users see only their own renewals, admins see all.
-
-**Query Parameters:**
+**Query Parameters Detail:**
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | status | string | Filter by status (pending, approved, rejected) |
 
-**Response (200):**
+**Body:** None
+
+**Success Response (200):**
 ```json
 {
   "success": true,
@@ -1250,17 +1660,31 @@ List renewal requests.
 }
 ```
 
+**Error Response:**
+| Code | Message |
+|------|---------|
+| 401 | Unauthorized |
+
+**Usecase:** List renewal requests. Users see only their own renewals, admins see all.
+
+**Validation Rules:**
+- Valid JWT token required
+- Status (if provided): Must be one of: pending, approved, rejected
+
 ---
 
-### GET /api/renewals/:id
+## GET /api/renewals/:id
 
-Get renewal request by ID.
+| Item | Detail |
+|------|--------|
+| **Endpoint** | `GET /api/renewals/:id` |
+| **Auth** | Bearer Token |
+| **Query Params** | None |
+| **Header** | `Authorization: Bearer <token>` |
 
-**Headers:** `Authorization: Bearer <token>`
+**Body:** None
 
-**Access:** Users can only see their own renewals, admins can see all.
-
-**Response (200):**
+**Success Response (200):**
 ```json
 {
   "success": true,
@@ -1277,23 +1701,34 @@ Get renewal request by ID.
 }
 ```
 
-**Error Responses:**
-- `400` - Invalid renewal request ID
-- `401` - Unauthorized
-- `403` - Forbidden
-- `404` - Renewal request not found
+**Error Response:**
+| Code | Message |
+|------|---------|
+| 400 | Invalid renewal request ID |
+| 401 | Unauthorized |
+| 403 | Forbidden |
+| 404 | Renewal request not found |
+
+**Usecase:** Get renewal request by ID. Users can only see their own renewals, admins can see all.
+
+**Validation Rules:**
+- ID: Required, valid integer
+- Users can only access their own renewals unless admin
 
 ---
 
-### GET /api/renewals/borrow/:borrowId
+## GET /api/renewals/borrow/:borrowId
 
-Get renewal requests for a specific borrow request.
+| Item | Detail |
+|------|--------|
+| **Endpoint** | `GET /api/renewals/borrow/:borrowId` |
+| **Auth** | Bearer Token |
+| **Query Params** | None |
+| **Header** | `Authorization: Bearer <token>` |
 
-**Headers:** `Authorization: Bearer <token>`
+**Body:** None
 
-**Access:** Users can only see their own renewals, admins can see all.
-
-**Response (200):**
+**Success Response (200):**
 ```json
 {
   "success": true,
@@ -1308,23 +1743,31 @@ Get renewal requests for a specific borrow request.
 }
 ```
 
-**Error Responses:**
-- `400` - Invalid borrow request ID
-- `401` - Unauthorized
+**Error Response:**
+| Code | Message |
+|------|---------|
+| 400 | Invalid borrow request ID |
+| 401 | Unauthorized |
+
+**Usecase:** Get renewal requests for a specific borrow request.
+
+**Validation Rules:**
+- Borrow ID: Required, valid integer
 
 ---
 
-### GET /api/renewals/status/:status
+## GET /api/renewals/status/:status
 
-Get renewal requests by status.
+| Item | Detail |
+|------|--------|
+| **Endpoint** | `GET /api/renewals/status/:status` |
+| **Auth** | Bearer Token |
+| **Query Params** | None |
+| **Header** | `Authorization: Bearer <token>` |
 
-**Headers:** `Authorization: Bearer <token>`
+**Body:** None
 
-**Access:** Users see only their own renewals, admins see all.
-
-**Valid Statuses:** pending, approved, rejected
-
-**Response (200):**
+**Success Response (200):**
 ```json
 {
   "success": true,
@@ -1338,19 +1781,29 @@ Get renewal requests by status.
 }
 ```
 
-**Error Responses:**
-- `400` - Invalid status
-- `401` - Unauthorized
+**Error Response:**
+| Code | Message |
+|------|---------|
+| 400 | Invalid status |
+| 401 | Unauthorized |
+
+**Usecase:** Get renewal requests by status. Users see only their own renewals, admins see all.
+
+**Validation Rules:**
+- Status: Required, must be one of: pending, approved, rejected
 
 ---
 
-### POST /api/renewals
+## POST /api/renewals
 
-Create a renewal request.
+| Item | Detail |
+|------|--------|
+| **Endpoint** | `POST /api/renewals` |
+| **Auth** | Bearer Token |
+| **Query Params** | None |
+| **Header** | `Authorization: Bearer <token>`, `Content-Type: application/json` |
 
-**Headers:** `Authorization: Bearer <token>`
-
-**Request Body:**
+**Body:**
 ```json
 {
   "borrow_request_id": 5,
@@ -1359,7 +1812,7 @@ Create a renewal request.
 }
 ```
 
-**Response (201):**
+**Success Response (201):**
 ```json
 {
   "success": true,
@@ -1375,35 +1828,46 @@ Create a renewal request.
 }
 ```
 
-**Error Responses:**
-- `400` - Borrow request ID/Requested end date/Reason is required
-- `400` - Can only request renewal for active loans
-- `400` - Requested end date must be after current end date
-- `400` - A pending renewal request already exists for this loan
-- `401` - Unauthorized
-- `403` - You can only request renewal for your own loans
-- `404` - Borrow request not found
+**Error Response:**
+| Code | Message |
+|------|---------|
+| 400 | Borrow request ID/Requested end date/Reason is required |
+| 400 | Can only request renewal for active loans |
+| 400 | Requested end date must be after current end date |
+| 400 | A pending renewal request already exists for this loan |
+| 401 | Unauthorized |
+| 403 | You can only request renewal for your own loans |
+| 404 | Borrow request not found |
+
+**Usecase:** Create a renewal request.
+
+**Validation Rules:**
+- Borrow Request ID: Required, must exist
+- Requested End Date: Required, must be after current end date
+- Reason: Required
+- Borrow request must be in "active" status
+- No pending renewal request for this loan
+- User can only request renewal for their own loans
 
 ---
 
-### PATCH /api/renewals/:id/status
+## PATCH /api/renewals/:id/status
 
-Approve or reject a renewal request.
+| Item | Detail |
+|------|--------|
+| **Endpoint** | `PATCH /api/renewals/:id/status` |
+| **Auth** | Bearer Token (Admin only) |
+| **Query Params** | None |
+| **Header** | `Authorization: Bearer <token>`, `Content-Type: application/json` |
 
-**Headers:** `Authorization: Bearer <token>`
-
-**Access:** Admin only
-
-**Request Body:**
+**Body:**
 ```json
 {
   "status": "approved"
 }
 ```
 
-**Valid Statuses:** approved, rejected
-
-**Response (200):**
+**Success Response (200):**
 ```json
 {
   "success": true,
@@ -1417,26 +1881,44 @@ Approve or reject a renewal request.
 }
 ```
 
+**Error Response:**
+| Code | Message |
+|------|---------|
+| 400 | Invalid renewal request ID / Invalid status |
+| 400 | Can only update status of pending renewal requests |
+| 400 | Device is booked for the requested renewal period |
+| 401 | Unauthorized |
+| 403 | Forbidden |
+| 404 | Renewal request not found |
+
+**Usecase:** Approve or reject a renewal request.
+
+**Validation Rules:**
+- ID: Required, valid integer
+- Status: Required, must be one of: approved, rejected
+- Renewal request must be in "pending" status
+- Device must not be booked for the requested period (for approval)
+- Admin role required
+
 **Side Effects (on approval):**
 - Borrow request end_date is updated to requested_end_date
 
-**Error Responses:**
-- `400` - Invalid renewal request ID / Invalid status
-- `400` - Can only update status of pending renewal requests
-- `400` - Device is booked for the requested renewal period
-- `401` - Unauthorized
-- `403` - Forbidden
-- `404` - Renewal request not found
-
 ---
 
-## Department Endpoints
+# Department Endpoints
 
-### GET /api/departments
+## GET /api/departments
 
-List all departments with user and device counts.
+| Item | Detail |
+|------|--------|
+| **Endpoint** | `GET /api/departments` |
+| **Auth** | None |
+| **Query Params** | None |
+| **Header** | None |
 
-**Response (200):**
+**Body:** None
+
+**Success Response (200):**
 ```json
 {
   "success": true,
@@ -1453,13 +1935,26 @@ List all departments with user and device counts.
 }
 ```
 
+**Error Response:** None
+
+**Usecase:** List all departments with user and device counts.
+
+**Validation Rules:** None
+
 ---
 
-### GET /api/departments/names
+## GET /api/departments/names
 
-Get list of valid department names.
+| Item | Detail |
+|------|--------|
+| **Endpoint** | `GET /api/departments/names` |
+| **Auth** | None |
+| **Query Params** | None |
+| **Header** | None |
 
-**Response (200):**
+**Body:** None
+
+**Success Response (200):**
 ```json
 {
   "success": true,
@@ -1478,13 +1973,26 @@ Get list of valid department names.
 }
 ```
 
+**Error Response:** None
+
+**Usecase:** Get list of valid department names.
+
+**Validation Rules:** None
+
 ---
 
-### GET /api/departments/:id
+## GET /api/departments/:id
 
-Get department by ID.
+| Item | Detail |
+|------|--------|
+| **Endpoint** | `GET /api/departments/:id` |
+| **Auth** | None |
+| **Query Params** | None |
+| **Header** | None |
 
-**Response (200):**
+**Body:** None
+
+**Success Response (200):**
 ```json
 {
   "success": true,
@@ -1498,21 +2006,29 @@ Get department by ID.
 }
 ```
 
-**Error Responses:**
-- `400` - Invalid department ID
-- `404` - Department not found
+**Error Response:**
+| Code | Message |
+|------|---------|
+| 400 | Invalid department ID |
+| 404 | Department not found |
+
+**Usecase:** Get department by ID.
+
+**Validation Rules:**
+- ID: Required, valid integer
 
 ---
 
-### POST /api/departments
+## POST /api/departments
 
-Create a new department.
+| Item | Detail |
+|------|--------|
+| **Endpoint** | `POST /api/departments` |
+| **Auth** | Bearer Token (Admin only) |
+| **Query Params** | None |
+| **Header** | `Authorization: Bearer <token>`, `Content-Type: application/json` |
 
-**Headers:** `Authorization: Bearer <token>`
-
-**Access:** Admin only
-
-**Request Body:**
+**Body:**
 ```json
 {
   "name": "Engineering",
@@ -1520,9 +2036,7 @@ Create a new department.
 }
 ```
 
-**Note:** Name must be one of the valid department names from `/api/departments/names`.
-
-**Response (201):**
+**Success Response (201):**
 ```json
 {
   "success": true,
@@ -1535,21 +2049,31 @@ Create a new department.
 }
 ```
 
-**Error Responses:**
-- `400` - Name/Code is required / Invalid department name / Department code already exists
-- `401` - Unauthorized
+**Error Response:**
+| Code | Message |
+|------|---------|
+| 400 | Name/Code is required / Invalid department name / Department code already exists |
+| 401 | Unauthorized |
+
+**Usecase:** Create a new department.
+
+**Validation Rules:**
+- Name: Required, must be one of the valid department names from `/api/departments/names`
+- Code: Required, unique
+- Admin role required
 
 ---
 
-### PUT /api/departments/:id
+## PUT /api/departments/:id
 
-Update a department.
+| Item | Detail |
+|------|--------|
+| **Endpoint** | `PUT /api/departments/:id` |
+| **Auth** | Bearer Token (Admin only) |
+| **Query Params** | None |
+| **Header** | `Authorization: Bearer <token>`, `Content-Type: application/json` |
 
-**Headers:** `Authorization: Bearer <token>`
-
-**Access:** Admin only
-
-**Request Body:**
+**Body:**
 ```json
 {
   "name": "Engineering",
@@ -1557,7 +2081,7 @@ Update a department.
 }
 ```
 
-**Response (200):**
+**Success Response (200):**
 ```json
 {
   "success": true,
@@ -1570,21 +2094,34 @@ Update a department.
 }
 ```
 
-**Error Responses:**
-- `400` - Invalid department ID / No fields to update / Invalid department name / Department code already exists
-- `401` - Unauthorized
+**Error Response:**
+| Code | Message |
+|------|---------|
+| 400 | Invalid department ID / No fields to update / Invalid department name / Department code already exists |
+| 401 | Unauthorized |
+
+**Usecase:** Update a department.
+
+**Validation Rules:**
+- ID: Required, valid integer
+- Name (if provided): Must be one of the valid department names
+- Code (if provided): Must be unique
+- Admin role required
 
 ---
 
-### DELETE /api/departments/:id
+## DELETE /api/departments/:id
 
-Delete a department.
+| Item | Detail |
+|------|--------|
+| **Endpoint** | `DELETE /api/departments/:id` |
+| **Auth** | Bearer Token (Admin only) |
+| **Query Params** | None |
+| **Header** | `Authorization: Bearer <token>` |
 
-**Headers:** `Authorization: Bearer <token>`
+**Body:** None
 
-**Access:** Admin only
-
-**Response (200):**
+**Success Response (200):**
 ```json
 {
   "success": true,
@@ -1592,21 +2129,31 @@ Delete a department.
 }
 ```
 
-**Error Responses:**
-- `400` - Invalid department ID / Cannot delete department with users or devices
-- `401` - Unauthorized
+**Error Response:**
+| Code | Message |
+|------|---------|
+| 400 | Invalid department ID / Cannot delete department with users or devices |
+| 401 | Unauthorized |
+
+**Usecase:** Delete a department.
+
+**Validation Rules:**
+- ID: Required, valid integer
+- Cannot delete department with users or devices
+- Admin role required
 
 ---
 
-### POST /api/departments/bulk
+## POST /api/departments/bulk
 
-Bulk create multiple departments.
+| Item | Detail |
+|------|--------|
+| **Endpoint** | `POST /api/departments/bulk` |
+| **Auth** | Bearer Token (Admin only) |
+| **Query Params** | None |
+| **Header** | `Authorization: Bearer <token>`, `Content-Type: application/json` |
 
-**Headers:** `Authorization: Bearer <token>`
-
-**Access:** Admin only
-
-**Request Body:**
+**Body:**
 ```json
 [
   { "name": "Engineering", "code": "ENG" },
@@ -1615,7 +2162,7 @@ Bulk create multiple departments.
 ]
 ```
 
-**Response (201):**
+**Success Response (201):**
 ```json
 {
   "success": true,
@@ -1630,30 +2177,37 @@ Bulk create multiple departments.
 }
 ```
 
-**Error Responses:**
-- `400` - Invalid payload. Expected array of departments
-- `400` - Failed to create departments (when all fail)
-- `401` - Unauthorized
+**Error Response:**
+| Code | Message |
+|------|---------|
+| 400 | Invalid payload. Expected array of departments |
+| 400 | Failed to create departments (when all fail) |
+| 401 | Unauthorized |
+
+**Usecase:** Bulk create multiple departments.
+
+**Validation Rules:**
+- Body: Required, array of department objects
+- Each department: name and code required
+- Admin role required
 
 ---
 
-## Avatar Endpoints
+# Avatar Endpoints
 
-### POST /api/avatars/user/:userId
+## POST /api/avatars/user/:userId
 
-Upload or update a user's avatar.
+| Item | Detail |
+|------|--------|
+| **Endpoint** | `POST /api/avatars/user/:userId` |
+| **Auth** | Bearer Token |
+| **Query Params** | None |
+| **Header** | `Authorization: Bearer <token>`, `Content-Type: multipart/form-data` |
 
-**Headers:** `Authorization: Bearer <token>`
+**Body (multipart/form-data):**
+- `avatar`: Image file (JPEG, PNG, GIF, WebP)
 
-**Access:** Users can only update their own avatar, admins can update any.
-
-**Request:** `multipart/form-data` with file field named `avatar`
-
-**Supported Formats:** JPEG, PNG, GIF, WebP
-
-**Max File Size:** Configured per entity type
-
-**Response (200):**
+**Success Response (200):**
 ```json
 {
   "success": true,
@@ -1664,26 +2218,38 @@ Upload or update a user's avatar.
 }
 ```
 
-**Error Responses:**
-- `400` - Invalid user ID / No file provided / Invalid file type / File too large
-- `401` - Unauthorized
-- `403` - Forbidden
-- `404` - User not found
-- `500` - Failed to process image
+**Error Response:**
+| Code | Message |
+|------|---------|
+| 400 | Invalid user ID / No file provided / Invalid file type / File too large |
+| 401 | Unauthorized |
+| 403 | Forbidden |
+| 404 | User not found |
+| 500 | Failed to process image |
+
+**Usecase:** Upload or update a user's avatar. Users can only update their own avatar, admins can update any.
+
+**Validation Rules:**
+- User ID: Required, valid integer
+- File: Required, JPEG/PNG/GIF/WebP format
+- File size: Must be within configured limit
+- Users can only update their own avatar unless admin
 
 ---
 
-### POST /api/avatars/device/:deviceId
+## POST /api/avatars/device/:deviceId
 
-Upload or update a device's image.
+| Item | Detail |
+|------|--------|
+| **Endpoint** | `POST /api/avatars/device/:deviceId` |
+| **Auth** | Bearer Token (Admin only) |
+| **Query Params** | None |
+| **Header** | `Authorization: Bearer <token>`, `Content-Type: multipart/form-data` |
 
-**Headers:** `Authorization: Bearer <token>`
+**Body (multipart/form-data):**
+- `avatar`: Image file (JPEG, PNG, GIF, WebP)
 
-**Access:** Admin only
-
-**Request:** `multipart/form-data` with file field named `avatar`
-
-**Response (200):**
+**Success Response (200):**
 ```json
 {
   "success": true,
@@ -1694,24 +2260,37 @@ Upload or update a device's image.
 }
 ```
 
-**Error Responses:**
-- `400` - Invalid device ID / No file provided / Invalid file type / File too large
-- `401` - Unauthorized
-- `403` - Forbidden
-- `404` - Device not found
-- `500` - Failed to process image
+**Error Response:**
+| Code | Message |
+|------|---------|
+| 400 | Invalid device ID / No file provided / Invalid file type / File too large |
+| 401 | Unauthorized |
+| 403 | Forbidden |
+| 404 | Device not found |
+| 500 | Failed to process image |
+
+**Usecase:** Upload or update a device's image.
+
+**Validation Rules:**
+- Device ID: Required, valid integer
+- File: Required, JPEG/PNG/GIF/WebP format
+- File size: Must be within configured limit
+- Admin role required
 
 ---
 
-### DELETE /api/avatars/user/:userId
+## DELETE /api/avatars/user/:userId
 
-Delete a user's avatar.
+| Item | Detail |
+|------|--------|
+| **Endpoint** | `DELETE /api/avatars/user/:userId` |
+| **Auth** | Bearer Token |
+| **Query Params** | None |
+| **Header** | `Authorization: Bearer <token>` |
 
-**Headers:** `Authorization: Bearer <token>`
+**Body:** None
 
-**Access:** Users can only delete their own avatar, admins can delete any.
-
-**Response (200):**
+**Success Response (200):**
 ```json
 {
   "success": true,
@@ -1719,24 +2298,35 @@ Delete a user's avatar.
 }
 ```
 
-**Error Responses:**
-- `400` - Invalid user ID
-- `401` - Unauthorized
-- `403` - Forbidden
-- `404` - User not found / Avatar not found
-- `500` - Failed to delete avatar
+**Error Response:**
+| Code | Message |
+|------|---------|
+| 400 | Invalid user ID |
+| 401 | Unauthorized |
+| 403 | Forbidden |
+| 404 | User not found / Avatar not found |
+| 500 | Failed to delete avatar |
+
+**Usecase:** Delete a user's avatar. Users can only delete their own avatar, admins can delete any.
+
+**Validation Rules:**
+- User ID: Required, valid integer
+- Users can only delete their own avatar unless admin
 
 ---
 
-### DELETE /api/avatars/device/:deviceId
+## DELETE /api/avatars/device/:deviceId
 
-Delete a device's image.
+| Item | Detail |
+|------|--------|
+| **Endpoint** | `DELETE /api/avatars/device/:deviceId` |
+| **Auth** | Bearer Token (Admin only) |
+| **Query Params** | None |
+| **Header** | `Authorization: Bearer <token>` |
 
-**Headers:** `Authorization: Bearer <token>`
+**Body:** None
 
-**Access:** Admin only
-
-**Response (200):**
+**Success Response (200):**
 ```json
 {
   "success": true,
@@ -1744,26 +2334,35 @@ Delete a device's image.
 }
 ```
 
-**Error Responses:**
-- `400` - Invalid device ID
-- `401` - Unauthorized
-- `403` - Forbidden
-- `404` - Device not found
-- `500` - Failed to delete avatar
+**Error Response:**
+| Code | Message |
+|------|---------|
+| 400 | Invalid device ID |
+| 401 | Unauthorized |
+| 403 | Forbidden |
+| 404 | Device not found |
+| 500 | Failed to delete avatar |
+
+**Usecase:** Delete a device's image.
+
+**Validation Rules:**
+- Device ID: Required, valid integer
+- Admin role required
 
 ---
 
-## Audit Log Endpoints
+# Audit Log Endpoints
 
-### GET /api/audit
+## GET /api/audit
 
-Get audit logs with optional filters.
+| Item | Detail |
+|------|--------|
+| **Endpoint** | `GET /api/audit` |
+| **Auth** | Bearer Token (Admin only) |
+| **Query Params** | `startDate`, `endDate`, `objectType`, `objectId`, `actorId`, `action`, `limit` |
+| **Header** | `Authorization: Bearer <token>` |
 
-**Headers:** `Authorization: Bearer <token>`
-
-**Access:** Admin only
-
-**Query Parameters:**
+**Query Parameters Detail:**
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | startDate | string | Filter logs from this date (ISO format) |
@@ -1774,7 +2373,9 @@ Get audit logs with optional filters.
 | action | string | Filter by action type |
 | limit | number | Maximum number of logs to return (default: 100) |
 
-**Response (200):**
+**Body:** None
+
+**Success Response (200):**
 ```json
 {
   "success": true,
@@ -1800,22 +2401,31 @@ Get audit logs with optional filters.
 }
 ```
 
-**Error Responses:**
-- `401` - Unauthorized
+**Error Response:**
+| Code | Message |
+|------|---------|
+| 401 | Unauthorized |
+
+**Usecase:** Get audit logs with optional filters.
+
+**Validation Rules:**
+- Admin role required
+- Object Type (if provided): Must be one of: device, user, department, borrow_request, return_request, renewal_request
 
 ---
 
-### GET /api/audit/object/:type/:id
+## GET /api/audit/object/:type/:id
 
-Get audit logs for a specific object.
+| Item | Detail |
+|------|--------|
+| **Endpoint** | `GET /api/audit/object/:type/:id` |
+| **Auth** | Bearer Token (Admin only) |
+| **Query Params** | None |
+| **Header** | `Authorization: Bearer <token>` |
 
-**Headers:** `Authorization: Bearer <token>`
+**Body:** None
 
-**Access:** Admin only
-
-**Valid Object Types:** device, user, department, borrow_request, return_request, renewal_request
-
-**Response (200):**
+**Success Response (200):**
 ```json
 {
   "success": true,
@@ -1843,28 +2453,42 @@ Get audit logs for a specific object.
 }
 ```
 
-**Error Responses:**
-- `400` - Invalid object ID / Invalid object type
-- `401` - Unauthorized
+**Error Response:**
+| Code | Message |
+|------|---------|
+| 400 | Invalid object ID / Invalid object type |
+| 401 | Unauthorized |
+
+**Usecase:** Get audit logs for a specific object.
+
+**Validation Rules:**
+- Type: Required, must be one of: device, user, department, borrow_request, return_request, renewal_request
+- ID: Required, valid integer
+- Admin role required
 
 ---
 
-## In-App Notification Endpoints
+# In-App Notification Endpoints
 
-### GET /api/in-app-notifications
+## GET /api/in-app-notifications
 
-Get notifications for the authenticated user.
+| Item | Detail |
+|------|--------|
+| **Endpoint** | `GET /api/in-app-notifications` |
+| **Auth** | Bearer Token |
+| **Query Params** | `unread`, `limit`, `offset` |
+| **Header** | `Authorization: Bearer <token>` |
 
-**Headers:** `Authorization: Bearer <token>`
-
-**Query Parameters:**
+**Query Parameters Detail:**
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | unread | string | Set to "true" to get only unread notifications |
 | limit | number | Maximum notifications to return (default: 50) |
 | offset | number | Pagination offset (default: 0) |
 
-**Response (200):**
+**Body:** None
+
+**Success Response (200):**
 ```json
 {
   "success": true,
@@ -1887,15 +2511,30 @@ Get notifications for the authenticated user.
 }
 ```
 
+**Error Response:**
+| Code | Message |
+|------|---------|
+| 401 | Unauthorized |
+
+**Usecase:** Get notifications for the authenticated user.
+
+**Validation Rules:**
+- Valid JWT token required
+
 ---
 
-### GET /api/in-app-notifications/unread-count
+## GET /api/in-app-notifications/unread-count
 
-Get unread notification count.
+| Item | Detail |
+|------|--------|
+| **Endpoint** | `GET /api/in-app-notifications/unread-count` |
+| **Auth** | Bearer Token |
+| **Query Params** | None |
+| **Header** | `Authorization: Bearer <token>` |
 
-**Headers:** `Authorization: Bearer <token>`
+**Body:** None
 
-**Response (200):**
+**Success Response (200):**
 ```json
 {
   "success": true,
@@ -1905,17 +2544,28 @@ Get unread notification count.
 }
 ```
 
+**Error Response:**
+| Code | Message |
+|------|---------|
+| 401 | Unauthorized |
+
+**Usecase:** Get unread notification count.
+
+**Validation Rules:**
+- Valid JWT token required
+
 ---
 
-### POST /api/in-app-notifications
+## POST /api/in-app-notifications
 
-Create a notification (admin only).
+| Item | Detail |
+|------|--------|
+| **Endpoint** | `POST /api/in-app-notifications` |
+| **Auth** | Bearer Token (Admin only) |
+| **Query Params** | None |
+| **Header** | `Authorization: Bearer <token>`, `Content-Type: application/json` |
 
-**Headers:** `Authorization: Bearer <token>`
-
-**Access:** Admin only
-
-**Request Body:**
+**Body:**
 ```json
 {
   "user_id": 2,
@@ -1929,16 +2579,18 @@ Create a notification (admin only).
 ```
 
 **Valid Notification Types:**
-- `request_approved` - Borrow request approved
-- `request_rejected` - Borrow request rejected
-- `new_request` - New request submitted (for admins)
-- `overdue` - Loan is overdue
-- `device_returned` - Device has been returned
-- `renewal_approved` - Renewal request approved
-- `renewal_rejected` - Renewal request rejected
-- `info` - General information
+| Type | Description |
+|------|-------------|
+| request_approved | Borrow request was approved |
+| request_rejected | Borrow request was rejected |
+| new_request | New request submitted (admin notification) |
+| overdue | Loan is past due date |
+| device_returned | Device has been returned |
+| renewal_approved | Renewal request was approved |
+| renewal_rejected | Renewal request was rejected |
+| info | General information notification |
 
-**Response (201):**
+**Success Response (201):**
 ```json
 {
   "success": true,
@@ -1954,20 +2606,36 @@ Create a notification (admin only).
 }
 ```
 
-**Error Responses:**
-- `400` - user_id, type, title, and message are required
-- `401` - Unauthorized
-- `403` - Forbidden
+**Error Response:**
+| Code | Message |
+|------|---------|
+| 400 | user_id, type, title, and message are required |
+| 401 | Unauthorized |
+| 403 | Forbidden |
+
+**Usecase:** Create a notification (admin only).
+
+**Validation Rules:**
+- User ID: Required
+- Type: Required, must be valid notification type
+- Title: Required
+- Message: Required
+- Admin role required
 
 ---
 
-### PATCH /api/in-app-notifications/:id/read
+## PATCH /api/in-app-notifications/:id/read
 
-Mark a notification as read.
+| Item | Detail |
+|------|--------|
+| **Endpoint** | `PATCH /api/in-app-notifications/:id/read` |
+| **Auth** | Bearer Token |
+| **Query Params** | None |
+| **Header** | `Authorization: Bearer <token>` |
 
-**Headers:** `Authorization: Bearer <token>`
+**Body:** None
 
-**Response (200):**
+**Success Response (200):**
 ```json
 {
   "success": true,
@@ -1975,20 +2643,32 @@ Mark a notification as read.
 }
 ```
 
-**Error Responses:**
-- `400` - Invalid notification ID
-- `401` - Unauthorized
-- `404` - Notification not found
+**Error Response:**
+| Code | Message |
+|------|---------|
+| 400 | Invalid notification ID |
+| 401 | Unauthorized |
+| 404 | Notification not found |
+
+**Usecase:** Mark a notification as read.
+
+**Validation Rules:**
+- ID: Required, valid integer
 
 ---
 
-### PATCH /api/in-app-notifications/read-all
+## PATCH /api/in-app-notifications/read-all
 
-Mark all notifications as read.
+| Item | Detail |
+|------|--------|
+| **Endpoint** | `PATCH /api/in-app-notifications/read-all` |
+| **Auth** | Bearer Token |
+| **Query Params** | None |
+| **Header** | `Authorization: Bearer <token>` |
 
-**Headers:** `Authorization: Bearer <token>`
+**Body:** None
 
-**Response (200):**
+**Success Response (200):**
 ```json
 {
   "success": true,
@@ -1996,15 +2676,30 @@ Mark all notifications as read.
 }
 ```
 
+**Error Response:**
+| Code | Message |
+|------|---------|
+| 401 | Unauthorized |
+
+**Usecase:** Mark all notifications as read.
+
+**Validation Rules:**
+- Valid JWT token required
+
 ---
 
-### DELETE /api/in-app-notifications/:id
+## DELETE /api/in-app-notifications/:id
 
-Delete a notification.
+| Item | Detail |
+|------|--------|
+| **Endpoint** | `DELETE /api/in-app-notifications/:id` |
+| **Auth** | Bearer Token |
+| **Query Params** | None |
+| **Header** | `Authorization: Bearer <token>` |
 
-**Headers:** `Authorization: Bearer <token>`
+**Body:** None
 
-**Response (200):**
+**Success Response (200):**
 ```json
 {
   "success": true,
@@ -2012,20 +2707,32 @@ Delete a notification.
 }
 ```
 
-**Error Responses:**
-- `400` - Invalid notification ID
-- `401` - Unauthorized
-- `404` - Notification not found
+**Error Response:**
+| Code | Message |
+|------|---------|
+| 400 | Invalid notification ID |
+| 401 | Unauthorized |
+| 404 | Notification not found |
+
+**Usecase:** Delete a notification.
+
+**Validation Rules:**
+- ID: Required, valid integer
 
 ---
 
-### DELETE /api/in-app-notifications/clear
+## DELETE /api/in-app-notifications/clear
 
-Clear all notifications for the authenticated user.
+| Item | Detail |
+|------|--------|
+| **Endpoint** | `DELETE /api/in-app-notifications/clear` |
+| **Auth** | Bearer Token |
+| **Query Params** | None |
+| **Header** | `Authorization: Bearer <token>` |
 
-**Headers:** `Authorization: Bearer <token>`
+**Body:** None
 
-**Response (200):**
+**Success Response (200):**
 ```json
 {
   "success": true,
@@ -2033,292 +2740,28 @@ Clear all notifications for the authenticated user.
 }
 ```
 
----
+**Error Response:**
+| Code | Message |
+|------|---------|
+| 401 | Unauthorized |
 
-## Mattermost Notification Endpoints
+**Usecase:** Clear all notifications for the authenticated user.
 
-### POST /api/notifications/send
-
-Send a notification for a device action.
-
-**Headers:** `Authorization: Bearer <token>`
-
-**Access:** Admin only
-
-**Request Body:**
-```json
-{
-  "action": "BORROW",
-  "userId": 2,
-  "mattermostUsername": "john.doe",
-  "device": {
-    "id": 1,
-    "name": "MacBook Pro 16",
-    "assetTag": "LAP-001"
-  },
-  "requestId": 5,
-  "startDate": "2024-02-01",
-  "endDate": "2024-02-15"
-}
-```
-
-**Valid Actions:**
-- `BORROW` - Requires startDate, endDate
-- `RETURN` - Requires returnDate
-- `RENEWAL` - Requires previousEndDate, newEndDate
-
-**Response (200):**
-```json
-{
-  "success": true,
-  "data": {
-    "notificationId": "abc123",
-    "channel": "direct_message"
-  },
-  "message": "Notification sent via direct_message"
-}
-```
-
-**Error Responses:**
-- `400` - Invalid or missing action / Missing required fields
-- `401` - Unauthorized
-- `403` - Forbidden
-- `500` - Failed to send notification
+**Validation Rules:**
+- Valid JWT token required
 
 ---
 
-### GET /api/notifications/status
+# Data Types Reference
 
-Get notification service status.
-
-**Headers:** `Authorization: Bearer <token>`
-
-**Access:** Admin only
-
-**Response (200):**
-```json
-{
-  "success": true,
-  "data": {
-    "enabled": true,
-    "connected": true,
-    "lastError": null,
-    "messagesSent": 150,
-    "messagesQueued": 0
-  }
-}
-```
-
----
-
-### GET /api/notifications/users
-
-Get all user notification states (for debugging).
-
-**Headers:** `Authorization: Bearer <token>`
-
-**Access:** Admin only
-
-**Response (200):**
-```json
-{
-  "success": true,
-  "data": {
-    "user_2": {
-      "mattermostUserId": "abc123",
-      "channelId": "xyz789",
-      "lastNotification": "2024-01-15T10:00:00.000Z"
-    }
-  }
-}
-```
-
----
-
-### GET /api/notifications/idempotency
-
-Get idempotency records (for debugging).
-
-**Headers:** `Authorization: Bearer <token>`
-
-**Access:** Admin only
-
-**Response (200):**
-```json
-{
-  "success": true,
-  "data": [
-    {
-      "key": "borrow_5_approved",
-      "timestamp": "2024-01-15T10:00:00.000Z",
-      "result": "sent"
-    }
-  ]
-}
-```
-
----
-
-### POST /api/notifications/initialize
-
-Manually initialize the notification service.
-
-**Headers:** `Authorization: Bearer <token>`
-
-**Access:** Admin only
-
-**Response (200):**
-```json
-{
-  "success": true,
-  "message": "Notification service initialized"
-}
-```
-
-**Error Responses:**
-- `401` - Unauthorized
-- `403` - Forbidden
-- `500` - Failed to initialize notification service
-
----
-
-## Mattermost Slash Command Endpoints
-
-### POST /api/mattermost/command
-
-Handle incoming slash commands from Mattermost.
-
-**Content-Type:** `application/x-www-form-urlencoded` or `application/json`
-
-**Request Body (form data):**
-```
-channel_id=abc123
-channel_name=general
-command=/device
-text=list
-token=verification_token
-trigger_id=xyz789
-user_id=mm_user_123
-user_name=john.doe
-```
-
-**Response (200):**
-```json
-{
-  "response_type": "ephemeral",
-  "text": "Here are the available devices...",
-  "attachments": [...]
-}
-```
-
----
-
-### POST /api/mattermost/interactive
-
-Handle interactive message actions (button clicks, selections).
-
-**Request Body:**
-```json
-{
-  "user_id": "mm_user_123",
-  "user_name": "john.doe",
-  "channel_id": "abc123",
-  "trigger_id": "xyz789",
-  "context": {
-    "action": "select_device",
-    "device_id": 1
-  }
-}
-```
-
-**Response (200):**
-```json
-{
-  "update": {
-    "message": "Device selected!",
-    "props": {
-      "attachments": [...]
-    }
-  }
-}
-```
-
----
-
-### POST /api/mattermost/text-input
-
-Handle text input during wizard sessions.
-
-**Request Body:**
-```json
-{
-  "mattermostUserId": "mm_user_123",
-  "text": "2024-02-15"
-}
-```
-
-**Response (200):**
-```json
-{
-  "success": true,
-  "handled": true,
-  "response": {
-    "text": "End date set to 2024-02-15",
-    "attachments": [...]
-  }
-}
-```
-
----
-
-### GET /api/mattermost/sessions
-
-Get session statistics.
-
-**Headers:** `Authorization: Bearer <token>`
-
-**Access:** Admin only
-
-**Response (200):**
-```json
-{
-  "success": true,
-  "data": {
-    "stats": {
-      "activeSessions": 3,
-      "totalCreated": 150,
-      "expired": 147
-    },
-    "sessions": [
-      {
-        "id": "session_abc123",
-        "action": "borrow",
-        "step": "select_dates",
-        "mattermostUserId": "mm_user_123",
-        "createdAt": "2024-01-15T10:00:00.000Z",
-        "expiresAt": "2024-01-15T10:30:00.000Z"
-      }
-    ],
-    "userMappings": {
-      "mm_user_123": 2,
-      "mm_user_456": 5
-    }
-  }
-}
-```
-
----
-
-## Data Types Reference
-
-### User Roles
+## User Roles
 | Role | Description |
 |------|-------------|
 | superuser | Full system access, can manage all users and settings |
 | admin | Device and request management, cannot manage superusers |
 | user | Standard user access, can borrow devices |
 
-### Device Categories
+## Device Categories
 | Category | Description |
 |----------|-------------|
 | laptop | Laptops and notebooks |
@@ -2329,14 +2772,14 @@ Get session statistics.
 | storage | External drives, USB drives |
 | ram | Memory modules |
 
-### Device Status
+## Device Status
 | Status | Description |
 |--------|-------------|
 | available | Device is available for borrowing |
 | borrowed | Device is currently borrowed |
 | maintenance | Device is under maintenance/repair |
 
-### Request Status
+## Request Status
 | Status | Description |
 |--------|-------------|
 | pending | Request awaiting approval |
@@ -2345,7 +2788,7 @@ Get session statistics.
 | returned | Device has been returned |
 | rejected | Request was rejected |
 
-### Device Condition
+## Device Condition
 | Condition | Description |
 |-----------|-------------|
 | excellent | Like new condition |
@@ -2353,14 +2796,14 @@ Get session statistics.
 | fair | Visible wear, functional |
 | damaged | Requires repair |
 
-### Renewal Status
+## Renewal Status
 | Status | Description |
 |--------|-------------|
 | pending | Renewal awaiting approval |
 | approved | Renewal approved |
 | rejected | Renewal rejected |
 
-### Notification Types
+## Notification Types
 | Type | Description |
 |------|-------------|
 | request_approved | Borrow request was approved |
@@ -2374,7 +2817,7 @@ Get session statistics.
 
 ---
 
-## Error Codes
+# Error Codes
 
 | HTTP Code | Description |
 |-----------|-------------|

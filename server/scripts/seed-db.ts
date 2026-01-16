@@ -1,3 +1,8 @@
+/**
+ * Database Seeding Script
+ * Populates the database with sample data (users, devices, departments, requests).
+ * Useful for development and testing environments.
+ */
 import { seedDatabase } from "../db/connection";
 import * as log from "./lib/logger";
 

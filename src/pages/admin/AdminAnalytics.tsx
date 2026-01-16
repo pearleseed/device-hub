@@ -117,12 +117,25 @@ const AdminAnalytics: React.FC = () => {
   // Device statistics (current state - not filtered by date)
   const deviceStats = useMemo(() => {
     const available = devices.filter((d) => d.status === "available").length;
-    const borrowed = devices.filter((d) => d.status === "borrowed").length;
-    const maintenance = devices.filter(
-      (d) => d.status === "maintenance",
-    ).length;
-    return { available, borrowed, maintenance, total: devices.length };
+    const inuse = devices.filter((d) => d.status === "inuse").length;
+    const maintenance = devices.filter((d) => d.status === "maintenance").length;
+    const updating = devices.filter((d) => d.status === "updating").length;
+    const storage = devices.filter((d) => d.status === "storage").length;
+    const discard = devices.filter((d) => d.status === "discard").length;
+    const transferred = devices.filter((d) => d.status === "transferred").length;
+    
+    return {
+      available,
+      inuse,
+      maintenance,
+      updating,
+      storage,
+      discard,
+      transferred,
+      total: devices.length,
+    };
   }, [devices]);
+
 
   // Request statistics - filtered by date range
   const requestStats = useMemo(() => {
@@ -168,14 +181,34 @@ const AdminAnalytics: React.FC = () => {
         color: "hsl(var(--chart-2))",
       },
       {
-        name: t("status.borrowed"),
-        value: deviceStats.borrowed,
+        name: t("status.inuse"),
+        value: deviceStats.inuse,
         color: "hsl(var(--chart-1))",
       },
       {
         name: t("status.maintenance"),
         value: deviceStats.maintenance,
         color: "hsl(var(--chart-4))",
+      },
+      {
+        name: t("status.updating"),
+        value: deviceStats.updating,
+        color: "hsl(var(--chart-3))", // Borrowing chart-3 for updating
+      },
+      {
+        name: t("status.storage"),
+        value: deviceStats.storage,
+        color: "hsl(var(--muted-foreground))",
+      },
+      {
+        name: t("status.discard"),
+        value: deviceStats.discard,
+        color: "hsl(var(--destructive))",
+      },
+      {
+        name: t("status.transferred"),
+        value: deviceStats.transferred,
+        color: "hsl(var(--chart-5))",
       },
     ],
     [deviceStats, t],
@@ -413,6 +446,17 @@ const AdminAnalytics: React.FC = () => {
       }
     }
 
+    // Helper to parse specs from JSON string or object
+    const parseSpecs = (specsJson: any): Record<string, string> => {
+      if (!specsJson) return {};
+      if (typeof specsJson === 'object') return specsJson;
+      try {
+        return JSON.parse(specsJson);
+      } catch {
+        return {};
+      }
+    };
+
     return periods.map(({ label, start, end }) => {
       const requestsCount = bookingRequests.filter((r) => {
         const createdAt = new Date(r.created_at);
@@ -521,7 +565,7 @@ const AdminAnalytics: React.FC = () => {
       summary: {
         totalDevices: deviceStats.total,
         availableDevices: deviceStats.available,
-        borrowedDevices: deviceStats.borrowed,
+        inuseDevices: deviceStats.inuse,
         maintenanceDevices: deviceStats.maintenance,
         totalUsers: users.length,
         totalRequests: requestStats.total,
@@ -681,7 +725,7 @@ const AdminAnalytics: React.FC = () => {
             title={t("analytics.totalDevices")}
             value={deviceStats.total}
             subtitle={t("analytics.borrowedCount", {
-              count: deviceStats.borrowed,
+              count: deviceStats.inuse,
             })}
             accentColor="primary"
           />
@@ -704,7 +748,7 @@ const AdminAnalytics: React.FC = () => {
           <StatsCard
             icon={TrendingUp}
             title={t("analytics.utilization")}
-            value={`${deviceStats.total > 0 ? Math.round((deviceStats.borrowed / deviceStats.total) * 100) : 0}%`}
+            value={`${deviceStats.total > 0 ? Math.round((deviceStats.inuse / deviceStats.total) * 100) : 0}%`}
             subtitle={`+8% ${t("analytics.fromLastMonth")}`}
             accentColor="success"
           />

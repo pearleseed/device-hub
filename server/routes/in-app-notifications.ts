@@ -17,14 +17,24 @@ export interface CreateNotificationRequest {
   link?: string; related_request_id?: number; related_device_id?: number;
 }
 
+/**
+ * Internal helper to create a database notification.
+ * @param data Notification details
+ * @returns The created notification or null on failure
+ */
 export async function createNotification(data: CreateNotificationRequest): Promise<Notification | null> {
   try {
     await db`INSERT INTO notifications (user_id, type, title, message, link, related_request_id, related_device_id) VALUES (${data.user_id}, ${data.type}, ${data.title}, ${data.message}, ${data.link || null}, ${data.related_request_id || null}, ${data.related_device_id || null})`;
+    // Fetch newly created notification to return
     const [n] = await db<Notification[]>`SELECT * FROM notifications WHERE user_id = ${data.user_id} ORDER BY id DESC LIMIT 1`;
     return n || null;
   } catch (e) { console.error("Error creating notification:", e); return null; }
 }
 
+/**
+ * Helper to notify all admin/superuser accounts.
+ * Useful for high-priority events (e.g., new device requests).
+ */
 export async function notifyAdmins(type: NotificationType, title: string, message: string, link?: string, relatedRequestId?: number, relatedDeviceId?: number): Promise<void> {
   try {
     const admins = await db<{ id: number }[]>`SELECT id FROM users WHERE role IN ('admin', 'superuser') AND is_active = TRUE`;
@@ -33,16 +43,24 @@ export async function notifyAdmins(type: NotificationType, title: string, messag
 }
 
 export const inAppNotificationsRoutes = {
+  /**
+   * GET /api/notifications
+   * Fetch notifications for the current user.
+   * Supports filtering by unread status and pagination.
+   */
   async getAll(request: Request): Promise<Response> {
     return withAuth(request, async (payload) => {
       const url = new URL(request.url);
       const { unread, limit, offset } = Object.fromEntries(url.searchParams);
+      
       let sql = "SELECT * FROM v_notification_details WHERE user_id = ?";
       const params: unknown[] = [payload.userId];
+      
       if (unread === "true") sql += " AND is_read = FALSE";
       sql += " ORDER BY created_at DESC";
       if (limit) { sql += " LIMIT ?"; params.push(+limit); }
       if (offset) { sql += " OFFSET ?"; params.push(+offset); }
+
       const notifications = await db.unsafe<NotificationWithDetails[]>(sql, params);
       const [unreadResult] = await db<{ count: number }[]>`SELECT COUNT(*) as count FROM notifications WHERE user_id = ${payload.userId} AND is_read = FALSE`;
       
@@ -55,6 +73,10 @@ export const inAppNotificationsRoutes = {
     });
   },
 
+  /**
+   * GET /api/notifications/unread/count
+   * Get the count of unread notifications for the current user.
+   */
   async getUnreadCount(request: Request): Promise<Response> {
     return withAuth(request, async (payload) => {
       const [result] = await db<{ count: number }[]>`SELECT COUNT(*) as count FROM notifications WHERE user_id = ${payload.userId} AND is_read = FALSE`;
@@ -62,6 +84,10 @@ export const inAppNotificationsRoutes = {
     });
   },
 
+  /**
+   * PATCH /api/notifications/:id/read
+   * Mark a single notification as read.
+   */
   async markAsRead(request: Request, params: Record<string, string>): Promise<Response> {
     return withAuth(request, async (payload) => {
       const id = parseId(params.id);
@@ -74,6 +100,10 @@ export const inAppNotificationsRoutes = {
     });
   },
 
+  /**
+   * POST /api/notifications/read-all
+   * Mark all notifications for the current user as read.
+   */
   async markAllAsRead(request: Request): Promise<Response> {
     return withAuth(request, async (payload) => {
       await db`UPDATE notifications SET is_read = TRUE WHERE user_id = ${payload.userId}`;
@@ -81,6 +111,10 @@ export const inAppNotificationsRoutes = {
     });
   },
 
+  /**
+   * DELETE /api/notifications/:id
+   * Delete a single notification.
+   */
   async delete(request: Request, params: Record<string, string>): Promise<Response> {
     return withAuth(request, async (payload) => {
       const id = parseId(params.id);
@@ -93,6 +127,10 @@ export const inAppNotificationsRoutes = {
     });
   },
 
+  /**
+   * DELETE /api/notifications
+   * Clear all notifications for the current user.
+   */
   async clearAll(request: Request): Promise<Response> {
     return withAuth(request, async (payload) => {
       await db`DELETE FROM notifications WHERE user_id = ${payload.userId}`;
@@ -100,6 +138,10 @@ export const inAppNotificationsRoutes = {
     });
   },
 
+  /**
+   * POST /api/notifications
+   * Manually create a notification (Admin only).
+   */
   async create(request: Request): Promise<Response> {
     return withAdmin(request, async (payload) => {
       const body = await request.json();

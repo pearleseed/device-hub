@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { cn, getDeviceThumbnailUrl } from "@/lib/utils";
 import { differenceInDays, format } from "date-fns";
 import { RotateCcw, Calendar, CalendarClock } from "lucide-react";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface ActiveLoanCardProps {
   loan: BorrowRequestWithDetails;
@@ -26,6 +27,7 @@ export const ActiveLoanCard: React.FC<ActiveLoanCardProps> = ({
   hasPendingRenewal = false,
   className,
 }) => {
+  const { t } = useLanguage();
   const daysRemaining = differenceInDays(new Date(loan.end_date), new Date());
 
   const getUrgencyColor = () => {
@@ -36,10 +38,9 @@ export const ActiveLoanCard: React.FC<ActiveLoanCardProps> = ({
   };
 
   const getUrgencyLabel = () => {
-    if (daysRemaining < 0) return `${Math.abs(daysRemaining)}d overdue`;
-    if (daysRemaining === 0) return "Due today";
-    if (daysRemaining === 1) return "1 day left";
-    return `${daysRemaining} days left`;
+    if (daysRemaining < 0) return t("loans.daysOverdue", { count: Math.abs(daysRemaining) });
+    if (daysRemaining === 0) return t("loans.dueToday");
+    return t("loans.daysLeft", { count: daysRemaining });
   };
 
   return (
@@ -82,7 +83,7 @@ export const ActiveLoanCard: React.FC<ActiveLoanCardProps> = ({
         <div className="flex items-center gap-1 mt-2 text-xs text-muted-foreground">
           <Calendar className="h-3 w-3" />
           <span>
-            Return by: {format(new Date(loan.end_date), "MMM d, yyyy")}
+            {t("loan.returnBy")} {format(new Date(loan.end_date), "MMM d, yyyy")}
           </span>
         </div>
 
@@ -95,7 +96,7 @@ export const ActiveLoanCard: React.FC<ActiveLoanCardProps> = ({
             onClick={() => onReturn?.(loan.id)}
           >
             <RotateCcw className="h-3 w-3 mr-1" />
-            Return
+            {t("loans.return")}
           </Button>
           {onRequestRenewal && (
             <Button
@@ -106,7 +107,7 @@ export const ActiveLoanCard: React.FC<ActiveLoanCardProps> = ({
               disabled={hasPendingRenewal}
             >
               <CalendarClock className="h-3 w-3 mr-1" />
-              {hasPendingRenewal ? "Renewal Pending" : "Request Renewal"}
+              {hasPendingRenewal ? t("loans.renewalPending") : t("loans.requestRenewal")}
             </Button>
           )}
         </div>

@@ -53,9 +53,10 @@ import { EmptyState } from "@/components/ui/empty-state";
 
 // Helper function to parse specs_json safely
 const parseSpecs = (
-  specsJson: string | undefined | null,
+  specsJson: string | Record<string, string> | undefined | null,
 ): Record<string, string | undefined> => {
   if (!specsJson) return {};
+  if (typeof specsJson !== "string") return specsJson as Record<string, string>;
   try {
     return JSON.parse(specsJson);
   } catch {
@@ -124,7 +125,8 @@ const DeviceCatalog: React.FC = () => {
     () => [
       { value: "all", label: t("status.all") },
       { value: "available", label: t("status.available") },
-      { value: "borrowed", label: t("status.borrowed") },
+      { value: "pending", label: t("status.pending") },
+      { value: "inuse", label: t("status.inuse") },
       { value: "maintenance", label: t("status.maintenance") },
     ],
     [t],
@@ -186,9 +188,9 @@ const DeviceCatalog: React.FC = () => {
     useFavorites();
 
   // Helper to get effective status (considering pending requests)
-  const getEffectiveStatus = useCallback((device: DeviceWithDepartment): DeviceStatus => {
+  const getEffectiveStatus = useCallback((device: DeviceWithDepartment): DeviceStatus | "pending" => {
     if (device.status !== "available") return device.status;
-    if (pendingDeviceIds.includes(device.id)) return "borrowed";
+    if (pendingDeviceIds.includes(device.id)) return "pending";
     return "available";
   }, [pendingDeviceIds]);
 
@@ -255,10 +257,10 @@ const DeviceCatalog: React.FC = () => {
             new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
           );
         case "availability": {
-          const statusOrder = { available: 0, borrowed: 1, maintenance: 2 };
+          const statusOrder: Record<string, number> = { available: 0, pending: 1, inuse: 2, maintenance: 3 };
           const aStatus = getEffectiveStatus(a);
           const bStatus = getEffectiveStatus(b);
-          return statusOrder[aStatus] - statusOrder[bStatus];
+          return (statusOrder[aStatus] ?? 99) - (statusOrder[bStatus] ?? 99);
         }
         case "favorites": {
           const aFav = favorites.includes(String(a.id)) ? 0 : 1;

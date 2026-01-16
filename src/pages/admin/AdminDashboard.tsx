@@ -78,8 +78,8 @@ const AdminDashboard: React.FC = () => {
     () => devices.filter((d) => d.status === "available").length,
     [devices],
   );
-  const borrowedDevices = useMemo(
-    () => devices.filter((d) => d.status === "borrowed").length,
+  const inuseDevices = useMemo(
+    () => devices.filter((d) => d.status === "inuse").length,
     [devices],
   );
   const maintenanceDevices = useMemo(
@@ -237,13 +237,13 @@ const AdminDashboard: React.FC = () => {
             />
             <StatsCard
               title={t("dashboard.devicesOut")}
-              value={borrowedDevices}
+              value={inuseDevices}
               icon={Package}
               href="/admin/calendar"
               accentColor="success"
               subtitle={t("dashboard.currentlyBorrowed")}
             />
-          </div>
+  </div>
         )}
 
         {/* Secondary Stats - Collapsible inline */}

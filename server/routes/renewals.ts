@@ -8,6 +8,12 @@ import type { RenewalRequest, RenewalRequestWithDetails, CreateRenewalRequest, R
 const VALID_STATUSES: RenewalStatus[] = ["pending", "approved", "rejected"];
 
 export const renewalsRoutes = {
+  /**
+   * GET /api/renewals
+   * Fetch renewal requests.
+   * Access: Admin (all), User (own only).
+   * Query Params: status.
+   */
   async getAll(request: Request): Promise<Response> {
     return withAuth(request, async (payload) => {
       const url = new URL(request.url);
@@ -27,6 +33,11 @@ export const renewalsRoutes = {
     });
   },
 
+  /**
+   * GET /api/renewals/:id
+   * Get details of a specific renewal request.
+   * Access: Admin or Request Owner.
+   */
   async getById(request: Request, params: Record<string, string>): Promise<Response> {
     return withAuth(request, async (payload) => {
       const id = parseId(params.id);
@@ -38,6 +49,10 @@ export const renewalsRoutes = {
     });
   },
 
+  /**
+   * POST /api/renewals
+   * Request to extend the duration of a loan.
+   */
   async create(request: Request): Promise<Response> {
     return withAuth(request, async (payload) => {
       const body: CreateRenewalRequest = await request.json();
@@ -46,12 +61,15 @@ export const renewalsRoutes = {
 
       const [borrow] = await db<BorrowRequest[]>`SELECT * FROM borrow_requests WHERE id = ${borrow_request_id}`;
       if (!borrow) return notFound("Borrow request");
+      // Access Control
       if (borrow.user_id !== payload.userId && !requireAdmin(payload)) return forbidden();
       if (borrow.status !== "active") return err("Only active borrowings can be renewed");
       
+      // Duplication Check
       const [existing] = await db<RenewalRequest[]>`SELECT id FROM renewal_requests WHERE borrow_request_id = ${borrow_request_id} AND status = 'pending'`;
       if (existing) return err("A pending renewal request already exists for this loan");
 
+      // Date Validation
       const requestedDate = new Date(requested_end_date);
       const currentDate = new Date(borrow.end_date);
       if (requestedDate <= currentDate) return err("Requested end date must be after current end date");
@@ -60,11 +78,16 @@ export const renewalsRoutes = {
                VALUES (${borrow_request_id}, ${borrow.user_id}, ${borrow.end_date}, ${requested_end_date}, ${reason.trim()})`;
       const [newRenewal] = await db<RenewalRequestWithDetails[]>`SELECT * FROM v_renewal_details WHERE borrow_request_id = ${borrow_request_id} ORDER BY created_at DESC LIMIT 1`;
 
-      if (newRenewal) notifyAdmins("new_request", "New Renewal Request", `${newRenewal.user_name} requested extension for ${newRenewal.device_name}`, "/admin/requests?tab=renewal", newRenewal.id, newRenewal.device_id).catch(console.error);
+      if (newRenewal) notifyAdmins("new_request", "notifications.newRenewalRequest", `${newRenewal.user_name} requested extension for ${newRenewal.device_name}`, "/admin/requests?tab=renewal", newRenewal.id, newRenewal.device_id).catch(console.error);
       return created(newRenewal, "Renewal requested successfully");
     });
   },
 
+  /**
+   * PATCH /api/renewals/:id/status
+   * Approve or reject a renewal request.
+   * If approved, updates the borrow request's end date.
+   */
   async updateStatus(request: Request, params: Record<string, string>): Promise<Response> {
     return withAdmin(request, async (payload) => {
       const id = parseId(params.id);
@@ -78,6 +101,8 @@ export const renewalsRoutes = {
 
       await db.begin(async (tx) => {
         await tx`UPDATE renewal_requests SET status = ${status}, reviewed_by = ${payload.userId}, reviewed_at = NOW() WHERE id = ${id}`;
+        
+        // If approved, extend the loan
         if (status === "approved") {
           const reqEndDate = renewal.requested_end_date instanceof Date ? renewal.requested_end_date.toISOString().split("T")[0] : renewal.requested_end_date;
           await tx`UPDATE borrow_requests SET end_date = ${reqEndDate}, updated_at = NOW() WHERE id = ${renewal.borrow_request_id}`;
@@ -86,7 +111,7 @@ export const renewalsRoutes = {
 
       const [updated] = await db<RenewalRequestWithDetails[]>`SELECT * FROM v_renewal_details WHERE id = ${id}`;
       if (updated) {
-        createNotification({ user_id: renewal.user_id, type: status === "approved" ? "renewal_approved" : "renewal_rejected", title: status === "approved" ? "Renewal Approved" : "Renewal Rejected", message: `Your renewal for ${updated.device_name} has been ${status}`, link: "/loans?tab=active", related_request_id: renewal.borrow_request_id, related_device_id: updated.device_id }).catch(console.error);
+        createNotification({ user_id: renewal.user_id, type: status === "approved" ? "renewal_approved" : "renewal_rejected", title: status === "approved" ? "notifications.renewalApproved" : "notifications.renewalRejected", message: `Your renewal for ${updated.device_name} has been ${status}`, link: "/loans?tab=active", related_request_id: renewal.borrow_request_id, related_device_id: updated.device_id }).catch(console.error);
       }
 
       await auditLogger.log({ action: "status_change", objectType: "renewal_request", objectId: id, actor: auditLogger.createActorFromPayload(payload), changes: { before: { status: "pending" }, after: { status } }, metadata: { borrow_request_id: renewal.borrow_request_id } });
@@ -94,6 +119,11 @@ export const renewalsRoutes = {
     });
   },
 
+  /**
+   * GET /api/renewals/borrow/:borrowId
+   * Get renewal history for a specific borrow request.
+   * Access: Admin or Request Owner.
+   */
   async getByBorrowRequest(request: Request, params: Record<string, string>): Promise<Response> {
     return withAuth(request, async (payload) => {
       const borrowId = parseId(params.borrowId);
@@ -105,6 +135,11 @@ export const renewalsRoutes = {
     });
   },
 
+  /**
+   * GET /api/renewals/status/:status
+   * Get all renewal requests with a specific status.
+   * Access: Admin only.
+   */
   async getByStatus(request: Request, params: Record<string, string>): Promise<Response> {
     return withAdmin(request, async () => {
       const { status } = params;

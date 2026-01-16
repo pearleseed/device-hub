@@ -428,8 +428,8 @@ export const DeviceDetailModal: React.FC<DeviceDetailModalProps> = ({
             <div className="text-center p-4 bg-muted rounded-lg">
               <p className="text-muted-foreground">
                 This device is currently{" "}
-                {device.status === "borrowed"
-                  ? "borrowed"
+                {device.status === "inuse"
+                  ? "in use"
                   : "under maintenance"}
                 .
               </p>

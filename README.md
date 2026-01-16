@@ -29,10 +29,7 @@ Internal device management system for enterprises - allows employees to borrow/r
 
 - Node.js 18+ or Bun 1.0+
 - MySQL 8.0+
-- OpenSSL (for SSL certificate generation)
-  - macOS: Pre-installed
-  - Linux: `sudo apt install openssl` or `sudo yum install openssl`
-  - Windows: `winget install OpenSSL.Light` or download from [slproweb.com](https://slproweb.com/products/Win32OpenSSL.html)
+
 
 ## Installation
 
@@ -77,75 +74,9 @@ DB_NAME=device_hub
 DB_SSL=true
 ```
 
-### 4. Generate SSL Certificate (Development)
+### 4. Database Setup
 
-The server runs on HTTPS, so you need to create a self-signed certificate:
-
-**macOS / Linux:**
-```bash
-# Create certs directory
-mkdir -p server/certs
-
-# Get your local IP address
-# macOS:
-LOCAL_IP=$(ipconfig getifaddr en0)
-# Linux:
-# LOCAL_IP=$(hostname -I | awk '{print $1}')
-
-echo "Your local IP: $LOCAL_IP"
-
-# Generate self-signed certificate with local network support
-openssl req -x509 -newkey rsa:4096 \
-  -keyout server/certs/key.pem \
-  -out server/certs/cert.pem \
-  -days 365 -nodes \
-  -subj "/CN=localhost" \
-  -addext "subjectAltName=DNS:localhost,IP:127.0.0.1,IP:$LOCAL_IP"
-```
-
-**Windows (PowerShell):**
-```powershell
-# Create certs directory
-New-Item -ItemType Directory -Force -Path server\certs
-
-# Get your local IP address
-$LOCAL_IP = (Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.InterfaceAlias -notlike "*Loopback*" -and $_.IPAddress -notlike "169.*" } | Select-Object -First 1).IPAddress
-Write-Host "Your local IP: $LOCAL_IP"
-
-# Generate self-signed certificate (requires OpenSSL installed)
-# Install OpenSSL: winget install OpenSSL.Light
-openssl req -x509 -newkey rsa:4096 `
-  -keyout server/certs/key.pem `
-  -out server/certs/cert.pem `
-  -days 365 -nodes `
-  -subj "/CN=localhost" `
-  -addext "subjectAltName=DNS:localhost,IP:127.0.0.1,IP:$LOCAL_IP"
-```
-
-**Windows (Git Bash):**
-```bash
-# Create certs directory
-mkdir -p server/certs
-
-# Get your local IP address
-LOCAL_IP=$(ipconfig | grep -A 10 "Wireless\|Ethernet" | grep "IPv4" | head -1 | awk '{print $NF}')
-echo "Your local IP: $LOCAL_IP"
-
-# Generate self-signed certificate
-openssl req -x509 -newkey rsa:4096 \
-  -keyout server/certs/key.pem \
-  -out server/certs/cert.pem \
-  -days 365 -nodes \
-  -subj "//CN=localhost" \
-  -addext "subjectAltName=DNS:localhost,IP:127.0.0.1,IP:$LOCAL_IP"
-```
-
-> **Note:** 
-> - The `server/certs/` directory is git-ignored. Each developer needs to generate their own certificate.
-> - If your IP changes, regenerate the certificate.
-> - Windows users need OpenSSL installed. Install via: `winget install OpenSSL.Light` or download from [slproweb.com](https://slproweb.com/products/Win32OpenSSL.html)
-
-### 5. Initialize Database
+Ensure your MySQL server is running and you have created the database.
 
 ```bash
 # Create database
@@ -157,42 +88,32 @@ bun run db:init
 bun run db:seed
 ```
 
-### 6. Run the application
+### 5. Start the Application
 
-**macOS / Linux:**
+The easiest way to start both frontend and backend is:
+
 ```bash
-# Terminal 1 - Backend (HTTPS)
-bun run --watch server/index.ts
+bun run dev:all
+```
+
+Or run them separately:
+
+```bash
+# Terminal 1 - Backend
+bun run server/index.ts
 
 # Terminal 2 - Frontend
 bun run dev
-# or
-npm run dev
 ```
 
-**Windows (PowerShell / CMD):**
-```powershell
-# Terminal 1 - Backend (HTTPS)
-bun run --watch server/index.ts
+> **Note on HTTPS:**
+> - The Frontend uses `vite-plugin-mkcert` to automatically generate locally trusted SSL certificates.
+> - The Backend runs on HTTP (port 3001) by default for local development. The frontend proxies API requests to it.
 
-# Terminal 2 - Frontend
-bun run dev
-# or
-npm run dev
-```
 
 Access:
-- Frontend: http://localhost:5173
-- Backend API: https://localhost:3001
-- Local Network: https://[YOUR_IP]:3001 (e.g., https://192.168.1.100:3001)
-
-### 7. Trust SSL Certificate (Browser)
-
-On first access, the browser will show a security warning due to the self-signed certificate:
-1. Click **Advanced**
-2. Click **Proceed to localhost** (or your IP address)
-
-> **Local Network Access:** Other devices on the same network can access the API at `https://[YOUR_IP]:3001`. They will also need to accept the certificate warning.
+- Frontend: https://localhost:8080 (or similar)
+- Backend API: http://localhost:3001
 
 ## Default Accounts
 
@@ -205,35 +126,43 @@ On first access, the browser will show a security warning due to the self-signed
 ## Scripts
 
 ```bash
-# Frontend
-bun run dev          # Start development server
-bun run build        # Build for production
-bun run preview      # Preview production build
-bun run lint         # Run linting
+# Development
+bun run dev:all        # Start both frontend and backend
+bun run dev            # Start frontend only
+bun run dev:server     # Start backend only
 
-# Backend
-cd server
-bun run index.ts     # Start server
-bun run db:init      # Initialize schema
-bun run db:seed      # Seed sample data
+# Build & Preview
+bun run build          # Build for production
+bun run preview        # Preview production build
+
+# Code Quality
+bun run lint           # Run linting
+bun run test           # Run server tests
+
+# Database
+bun run db:init        # Initialize schema
+bun run db:seed        # Seed sample data
+bun run db:reset       # Reset database (drop & re-init)
 ```
 
 ## Project Structure
 
 ```
 device-hub/
-├── src/                    # Frontend source
+├── src/                    # Frontend source (React 19)
 │   ├── components/         # React components
-│   ├── contexts/           # React contexts (Auth, etc.)
-│   ├── hooks/              # Custom hooks
-│   ├── pages/              # Page components
-│   ├── types/              # TypeScript types
-│   └── lib/                # Utilities
-├── server/                 # Backend source
-│   ├── certs/              # SSL certificates
-│   ├── db/                 # Database (schema, seed, connection)
-│   ├── middleware/         # Auth, security middleware
-│   ├── routes/             # API routes
+│   ├── contexts/           # Global state contexts
+│   ├── hooks/              # Custom React hooks
+│   ├── pages/              # Route pages
+│   ├── types/              # Frontend types
+│   └── lib/                # Utilities and API clients
+├── server/                 # Backend source (Bun)
+│   ├── db/                 # Database schema and connection
+│   ├── middleware/         # Express-like middleware
+│   ├── routes/             # API route handlers
+│   ├── services/           # Business logic services
+│   ├── scripts/            # Maintenance scripts
+│   ├── mattermost/         # Mattermost bot integration
 │   └── index.ts            # Server entry point
 ├── public/                 # Static assets
 └── docs/                   # Documentation
@@ -242,3 +171,7 @@ device-hub/
 ## API Documentation
 
 See [docs/API_DOCUMENTATION.md](docs/API_DOCUMENTATION.md) for details.
+
+### Mattermost Integration
+
+See [docs/mattermost-bot-guide.md](docs/mattermost-bot-guide.md) for details on configuring and using the Mattermost bot.

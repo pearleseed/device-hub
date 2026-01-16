@@ -9,6 +9,10 @@ export interface ProcessedImage { original: Buffer; thumbnail: Buffer; mimeType:
 type OutputFormat = "jpeg" | "png" | "webp";
 const MIME_TO_FORMAT: Record<string, OutputFormat> = { "image/jpeg": "jpeg", "image/png": "png", "image/webp": "webp" };
 
+/**
+ * Helper to resize image to a square with center crop.
+ * Converts to the target format (jpeg/png/webp) with optimized quality settings.
+ */
 const resizeToSquare = async (buf: Buffer, size: number, fmt: OutputFormat): Promise<Buffer> => {
   const img = sharp(buf).resize(size, size, { fit: "cover", position: "center" });
   return fmt === "png" ? img.png({ quality: 90 }).toBuffer()
@@ -16,9 +20,15 @@ const resizeToSquare = async (buf: Buffer, size: number, fmt: OutputFormat): Pro
        : img.jpeg({ quality: 85 }).toBuffer();
 };
 
+/**
+ * Process a raw uploaded image buffer.
+ * Generates both a main avatar and a smaller thumbnail.
+ * Preserves the original format if supported (JPEG/PNG/WEBP), defaults to JPEG.
+ */
 export async function processAvatar(imageBuffer: Buffer, mimeType: string): Promise<ProcessedImage> {
   const fmt = MIME_TO_FORMAT[mimeType] || "jpeg";
   try {
+    // Parallel processing for speed
     const [original, thumbnail] = await Promise.all([
       resizeToSquare(imageBuffer, AVATAR_SIZE, fmt),
       resizeToSquare(imageBuffer, THUMBNAIL_SIZE, fmt),

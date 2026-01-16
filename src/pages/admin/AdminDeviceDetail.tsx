@@ -43,8 +43,8 @@ const deviceSchema = z.object({
   name: z.string().min(2, "Device name must be at least 2 characters").max(100),
   brand: z.string().min(1, "Brand is required").max(50),
   model: z.string().min(1, "Model is required").max(100),
-  category: z.enum(["laptop", "mobile", "tablet", "monitor", "accessories"]),
-  status: z.enum(["available", "borrowed", "maintenance"]),
+  category: z.enum(["laptop", "mobile", "tablet", "monitor", "accessories", "storage", "ram"]),
+  status: z.enum(["available", "inuse", "maintenance", "updating", "storage", "discard", "transferred"]),
   asset_tag: z.string().min(1, "Asset tag is required").max(20),
   image_url: z.string().optional().or(z.literal("")),
   purchase_price: z.coerce.number().min(0, "Price must be positive"),
@@ -60,15 +60,16 @@ const deviceSchema = z.object({
   storage: z.string().max(50).optional(),
   display: z.string().max(50).optional(),
   battery: z.string().max(50).optional(),
+  notes: z.string().max(500).optional(),
 });
 
 type DeviceFormData = z.infer<typeof deviceSchema>;
 
-type FormCategory = "laptop" | "mobile" | "tablet" | "monitor" | "accessories";
-type FormStatus = "available" | "borrowed" | "maintenance";
+type FormCategory = "laptop" | "mobile" | "tablet" | "monitor" | "accessories" | "storage" | "ram";
+type FormStatus = "available" | "inuse" | "maintenance" | "updating" | "storage" | "discard" | "transferred";
 
-const categories: FormCategory[] = ["laptop", "mobile", "tablet", "monitor", "accessories"];
-const statuses: FormStatus[] = ["available", "borrowed", "maintenance"];
+const categories: FormCategory[] = ["laptop", "mobile", "tablet", "monitor", "accessories", "storage", "ram"];
+const statuses: FormStatus[] = ["available", "inuse", "maintenance", "updating", "storage", "discard", "transferred"];
 
 const AdminDeviceDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -111,6 +112,7 @@ const AdminDeviceDetail: React.FC = () => {
         purchase_date: new Date().toISOString().split("T")[0],
         warranty_date: "", vendor: "", hostname: "", ip_address: "", mac_address: "",
         os: "", processor: "", ram: "", storage: "", display: "", battery: "",
+        notes: "",
       };
     }
     const parsedSpecs = parseSpecs(device.specs_json);
@@ -126,6 +128,7 @@ const AdminDeviceDetail: React.FC = () => {
       os: parsedSpecs.os || "", processor: parsedSpecs.processor || "",
       ram: parsedSpecs.ram || "", storage: parsedSpecs.storage || "",
       display: parsedSpecs.display || "", battery: parsedSpecs.battery || "",
+      notes: device.notes || "",
     };
   }, [device]);
 
@@ -186,6 +189,7 @@ const AdminDeviceDetail: React.FC = () => {
             os: data.os || "", processor: data.processor || "", ram: data.ram || "",
             storage: data.storage || "", display: data.display || "", battery: data.battery || "",
           }),
+          notes: data.notes || "",
         },
       });
       toast({ title: t("common.success"), description: t("inventory.deviceUpdated") });
@@ -385,6 +389,10 @@ const AdminDeviceDetail: React.FC = () => {
                     <FormItem><FormLabel>{t("deviceDetail.operatingSystemLabel")}</FormLabel>
                       <FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
                   )} />
+                  <FormField control={form.control} name="notes" render={({ field }) => (
+                    <FormItem className="md:col-span-2 lg:col-span-3"><FormLabel>{t("deviceModal.notes")}</FormLabel>
+                      <FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                  )} />
                 </CardContent>
               </Card>
             </form>
@@ -524,6 +532,15 @@ const AdminDeviceDetail: React.FC = () => {
               <div className="flex items-center justify-between"><span className="text-sm text-muted-foreground">{t("table.model")}</span><span className="font-medium">{device.model}</span></div>
               <Separator />
               <div className="flex items-center justify-between"><span className="text-sm text-muted-foreground">{t("table.category")}</span><Badge variant="outline" className="capitalize">{device.category}</Badge></div>
+              {device.notes && (
+                <>
+                  <Separator />
+                  <div className="space-y-2">
+                    <span className="text-sm text-muted-foreground">{t("deviceModal.notes")}</span>
+                    <p className="text-sm border rounded-md p-3 bg-muted/30 italic whitespace-pre-wrap">{device.notes}</p>
+                  </div>
+                </>
+              )}
             </CardContent>
           </Card>
         </div>
